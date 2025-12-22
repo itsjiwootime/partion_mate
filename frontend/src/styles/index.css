@@ -1,0 +1,23 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --mint-strong: #2ad3b5;
+  --mint-soft: #c9f7ea;
+  --ink: #0f2c2a;
+}
+
+* {
+  font-family: 'Space Grotesk', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+body {
+  @apply bg-clean-white text-ink;
+}
+
+.glass-panel {
+  @apply bg-white/80 backdrop-blur-md shadow-lg;
+}

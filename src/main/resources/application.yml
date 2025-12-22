@@ -1,0 +1,39 @@
+# application.yml
+
+spring:
+  application:
+    name: partition-mate
+
+  # ==================================
+  # 💡 [추가] 1. MySQL Docker Datasource 설정
+  # ==================================
+  datasource:
+    # Docker Compose 환경에서 서비스 이름(mysql-db)을 호스트명으로 사용
+    url: jdbc:mysql://localhost:3306/partition_mate?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+    # 💡 도커 컴포즈 파일과 일치하는 사용자/비밀번호 설정 필요
+    username: root
+    password: qwe123
+
+  # ==================================
+  # 💡 [추가] 2. JPA/Hibernate 설정
+  # ==================================
+  jpa:
+    hibernate:
+      # 'update'로 설정하여 서버 재시작 시 엔티티 변경 사항만 DB에 반영
+      ddl-auto: update
+    properties:
+      hibernate:
+        show_sql: true
+        format_sql: true
+        # MySQL 8.x 버전을 명시하여 방언(Dialect) 설정
+        dialect: org.hibernate.dialect.MySQL8Dialect
+
+# ==================================
+# 💡 JWT 설정 (기존 내용)
+# ==================================
+jwt:
+  # 환경 변수 사용은 매우 좋습니다.
+  secret: ${JWT_SECRET_KEY:default_secret_key_for_local_test_123456789}
+  expiration: 3600000
