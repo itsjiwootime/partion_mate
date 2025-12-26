@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client';
-import { MapPin, Package, Users, Clock3, ArrowLeft, Link as LinkIcon, Copy, ExternalLink } from 'lucide-react';
+import { Package, Users, Clock3, ArrowLeft, Link as LinkIcon, Copy, ExternalLink } from 'lucide-react';
+import { LoadingState } from '../components/Feedback';
 
 function PartyDetail() {
   const { id } = useParams();
@@ -52,7 +53,7 @@ function PartyDetail() {
     return Math.max(0, (detail.targetQuantity ?? 0) - (detail.currentQuantity ?? 0));
   }, [detail]);
 
-  if (loading) return <p className="text-sm text-ink/60">불러오는 중...</p>;
+  if (loading) return <LoadingState />;
   if (error) return <p className="text-sm text-red-600">{error}</p>;
   if (!detail) return <p className="text-sm text-ink/60">파티 정보를 찾을 수 없습니다.</p>;
 
@@ -60,17 +61,17 @@ function PartyDetail() {
     <div className="space-y-4">
       <button
         onClick={() => navigate(-1)}
-        className="flex items-center gap-2 text-sm font-semibold text-mint-700"
+        className="btn-ghost px-0"
       >
         <ArrowLeft size={16} /> 뒤로
       </button>
 
-      <div className="glass-panel rounded-2xl p-5 space-y-3">
+      <div className="card-elevated p-5 space-y-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-mint-700">
           {detail.status === 'full' ? '모집 완료' : '모집 중'}
         </p>
         <h1 className="text-xl font-semibold text-ink">{detail.title}</h1>
-        <p className="text-sm text-ink/60">{detail.storeName}</p>
+        <p className="section-subtitle">{detail.storeName}</p>
         {detail.productName && (
           <p className="text-sm font-semibold text-ink">
             제품명: <span className="text-ink/80">{detail.productName}</span>
@@ -95,7 +96,7 @@ function PartyDetail() {
               <span className="truncate text-ink/80">{detail.openChatUrl}</span>
               <button
                 onClick={() => navigator.clipboard.writeText(detail.openChatUrl)}
-                className="flex items-center gap-1 rounded-full bg-mint-500/15 px-2 py-1 text-[11px] font-semibold text-mint-700 hover:bg-mint-500/25"
+                className="btn-pill px-2 py-1 text-[11px]"
               >
                 <Copy size={12} />
                 복사
@@ -104,7 +105,7 @@ function PartyDetail() {
                 href={detail.openChatUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 rounded-full bg-ink/5 px-2 py-1 text-[11px] font-semibold text-ink hover:bg-ink/10"
+                className="btn-secondary px-2 py-1 text-[11px]"
               >
                 <ExternalLink size={12} />
                 열기
@@ -114,15 +115,15 @@ function PartyDetail() {
         </div>
       </div>
 
-      <div className="glass-panel rounded-2xl p-5 space-y-3">
-        <h2 className="text-lg font-semibold text-ink">참여</h2>
-        <p className="text-sm text-ink/60">
+      <div className="card-elevated p-5 space-y-3">
+        <h2 className="section-title">참여</h2>
+        <p className="section-subtitle">
           요청 수량을 선택하고 참여하세요. 남은 수량 {remaining}개 · 개당 {perUnit.toLocaleString()}원
         </p>
         {!fromMyParties && (
           <button
             onClick={() => navigate(`/parties/${detail.partyId}/join`, { state: { detail } })}
-            className="w-full rounded-xl bg-mint-500 px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-mint-600"
+            className="btn-primary w-full"
           >
             참여하기
           </button>

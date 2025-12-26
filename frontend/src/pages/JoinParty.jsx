@@ -48,12 +48,12 @@ function JoinParty() {
     <div className="space-y-4">
       <button
         onClick={() => navigate(-1)}
-        className="flex items-center gap-2 text-sm font-semibold text-mint-700"
+        className="btn-ghost px-0"
       >
         <ArrowLeft size={16} /> 뒤로
       </button>
 
-      <div className="glass-panel rounded-2xl p-5 space-y-3">
+      <div className="card-elevated p-5 space-y-3">
         <h1 className="text-xl font-semibold text-ink">참여하기</h1>
         {detail && (
           <div className="text-sm text-ink/70 space-y-1">
@@ -75,7 +75,7 @@ function JoinParty() {
               max={remaining || undefined}
               value={quantity}
               onChange={(e) => setQuantity(Number(e.target.value) || 1)}
-              className="mt-1 w-full rounded-xl border border-mint-100 bg-white px-4 py-3 text-sm shadow-sm outline-none ring-mint-200 focus:ring-2"
+              className="input mt-1"
             />
           </label>
           <div className="rounded-xl bg-mint-500/10 px-4 py-3 text-sm font-semibold text-mint-800 flex items-center justify-between">
@@ -86,7 +86,7 @@ function JoinParty() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-xl bg-mint-500 px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-mint-600 disabled:cursor-not-allowed disabled:bg-ink/20"
+            className="btn-primary w-full"
           >
             {submitting ? '참여중...' : '참여 확정'}
           </button>

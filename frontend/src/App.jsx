@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
+import AuthLayout from './components/AuthLayout';
 import Home from './pages/Home';
 import PartyList from './pages/PartyList';
 import CreateParty from './pages/CreateParty';
@@ -30,6 +31,8 @@ function App() {
         <Route path="/my-parties" element={<MyParties />} />
         <Route path="/chat" element={<Chat />} />
         <Route path="/me" element={<Profile />} />
+      </Route>
+      <Route element={<AuthLayout />}>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
       </Route>

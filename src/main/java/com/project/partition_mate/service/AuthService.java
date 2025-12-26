@@ -22,9 +22,7 @@ public class AuthService {
 
     @Transactional
     public User signUp(SignUpRequest signUpRequest) {
-        if (userRepository.findByEmail(signUpRequest.getEmail()).isPresent()) {
-            throw CustomAuthException.EMAIL_DUPLICATE;
-        }
+        checkEmailAvailability(signUpRequest.getEmail());
         checkUsernameAvailability(signUpRequest.getUsername());
 
         String encodedPassword = passwordEncoder.encode(signUpRequest.getPassword());
@@ -63,6 +61,12 @@ public class AuthService {
     public void checkUsernameAvailability(String username) {
         if (userRepository.findByUsername(username).isPresent()) {
             throw new CustomAuthException("Username already exists", org.springframework.http.HttpStatus.CONFLICT);
+        }
+    }
+
+    public void checkEmailAvailability(String email) {
+        if (userRepository.findByEmail(email).isPresent()) {
+            throw CustomAuthException.EMAIL_DUPLICATE;
         }
     }
 }

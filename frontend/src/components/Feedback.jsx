@@ -4,7 +4,7 @@ export function LoadingState({ message = '불러오는 중...' }) {
 
 export function EmptyState({ title, description, action }) {
   return (
-    <div className="glass-panel rounded-2xl p-5 text-center text-sm text-ink/60 space-y-2">
+    <div className="card p-5 text-center text-sm text-ink/60 space-y-2">
       <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-mint-500/15 text-mint-700">
         <svg
           xmlns="http://www.w3.org/2000/svg"

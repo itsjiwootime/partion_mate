@@ -118,7 +118,7 @@ function CreateParty() {
 
   return (
     <div className="space-y-5">
-      <section className="glass-panel rounded-2xl p-4 space-y-3">
+      <section className="card-elevated p-4 space-y-3">
         <div className="flex items-center gap-2 text-sm font-semibold text-mint-700">
           <MapPin size={18} />
           <span>지점 선택</span>
@@ -129,7 +129,7 @@ function CreateParty() {
             <button
               type="button"
               onClick={requestBrowserLocation}
-              className="text-xs font-semibold text-mint-700"
+              className="btn-ghost text-xs"
             >
               내 위치로 갱신
             </button>
@@ -138,7 +138,7 @@ function CreateParty() {
             <select
               value={form.branchId}
               onChange={handleChange('branchId')}
-              className="w-full appearance-none rounded-xl border border-mint-100 bg-white px-4 py-3 text-sm font-medium text-ink shadow-sm outline-none ring-mint-200 focus:ring-2"
+              className="input appearance-none text-sm font-medium"
             >
               {branches.map((branch) => (
                 <option key={branch.id} value={branch.id}>
@@ -152,8 +152,8 @@ function CreateParty() {
         </div>
       </section>
 
-      <section className="glass-panel rounded-2xl p-4 space-y-3">
-        <h2 className="text-sm font-semibold text-ink">제품 정보</h2>
+      <section className="card-elevated p-4 space-y-3">
+        <h2 className="section-title">제품 정보</h2>
         <div className="space-y-2">
           <label className="block text-sm text-ink/70">파티 제목</label>
           <input
@@ -161,7 +161,7 @@ function CreateParty() {
             value={form.title}
             onChange={handleChange('title')}
             placeholder="예) 비타민 B 소분 모임"
-            className="w-full rounded-xl border border-mint-100 bg-white px-4 py-3 text-sm shadow-sm outline-none ring-mint-200 focus:ring-2"
+            className="input"
           />
         </div>
         <div className="space-y-2">
@@ -171,7 +171,7 @@ function CreateParty() {
             value={form.productName}
             onChange={handleChange('productName')}
             placeholder="예) 올리브 오일 2L"
-            className="w-full rounded-xl border border-mint-100 bg-white px-4 py-3 text-sm shadow-sm outline-none ring-mint-200 focus:ring-2"
+            className="input"
           />
         </div>
         <div className="space-y-2">
@@ -180,7 +180,7 @@ function CreateParty() {
             <select
               value={form.category}
               onChange={handleChange('category')}
-              className="w-full appearance-none rounded-xl border border-mint-100 bg-white px-4 py-3 text-sm font-medium text-ink shadow-sm outline-none ring-mint-200 focus:ring-2"
+              className="input appearance-none text-sm font-medium"
             >
               {categories.map((cat) => (
                 <option key={cat}>{cat}</option>
@@ -191,11 +191,11 @@ function CreateParty() {
         </div>
       </section>
 
-      <section className="glass-panel rounded-2xl p-4 space-y-4">
-        <h2 className="text-sm font-semibold text-ink">가격 및 수량 설정</h2>
+      <section className="card-elevated p-4 space-y-4">
+        <h2 className="section-title">가격 및 수량 설정</h2>
         <div className="space-y-2">
           <label className="block text-sm text-ink/70">제품 총 가격</label>
-          <div className="flex items-center gap-2 rounded-xl border border-mint-100 bg-white px-4 py-3 shadow-sm">
+          <div className="input-row">
             <Coins size={16} className="text-mint-700" />
             <input
               type="number"
@@ -204,7 +204,7 @@ function CreateParty() {
               value={form.totalPrice}
               onChange={handleChange('totalPrice')}
               placeholder="숫자만 입력"
-              className="w-full bg-transparent text-sm outline-none"
+              className="input-control"
             />
             <span className="text-xs font-semibold text-ink/60">원</span>
           </div>
@@ -254,39 +254,39 @@ function CreateParty() {
             max={form.totalQuantity}
             value={form.hostRequestedQuantity}
             onChange={handleChange('hostRequestedQuantity')}
-            className="w-full rounded-xl border border-mint-100 bg-white px-4 py-3 text-sm shadow-sm outline-none ring-mint-200 focus:ring-2"
+            className="input"
           />
-          <p className="text-xs text-ink/60">생성자가 가져갈 수량입니다.</p>
+          <p className="helper-text">생성자가 가져갈 수량입니다.</p>
         </div>
         <div className="rounded-xl bg-ink/5 px-4 py-3 text-sm font-semibold text-ink">
           호스트 예상 부담금: <span className="text-lg font-bold text-ink">{hostExpected.toLocaleString()}원</span>
         </div>
       </section>
 
-      <section className="glass-panel rounded-2xl p-4 space-y-4">
-        <h2 className="text-sm font-semibold text-ink">추가 정보</h2>
+      <section className="card-elevated p-4 space-y-4">
+        <h2 className="section-title">추가 정보</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-2">
             <label className="block text-sm text-ink/70">모임 날짜</label>
-            <div className="flex items-center gap-2 rounded-xl border border-mint-100 bg-white px-4 py-3 shadow-sm">
+            <div className="input-row">
               <Calendar size={16} className="text-mint-700" />
               <input
                 type="date"
                 value={form.date}
                 onChange={handleChange('date')}
-                className="w-full bg-transparent text-sm outline-none"
+                className="input-control"
               />
             </div>
           </div>
           <div className="space-y-2">
             <label className="block text-sm text-ink/70">모임 시간</label>
-            <div className="flex items-center gap-2 rounded-xl border border-mint-100 bg-white px-4 py-3 shadow-sm">
+            <div className="input-row">
               <Calendar size={16} className="text-mint-700" />
               <input
                 type="time"
                 value={form.time}
                 onChange={handleChange('time')}
-                className="w-full bg-transparent text-sm outline-none"
+                className="input-control"
               />
             </div>
           </div>
@@ -298,7 +298,7 @@ function CreateParty() {
             value={form.description}
             onChange={handleChange('description')}
             placeholder="예) 현장에서 소분 예정, 비닐/지퍼백 제공합니다."
-            className="w-full rounded-xl border border-mint-100 bg-white px-4 py-3 text-sm shadow-sm outline-none ring-mint-200 focus:ring-2"
+            className="input"
           />
         </div>
         <div className="space-y-2">
@@ -308,9 +308,9 @@ function CreateParty() {
             value={form.openChatUrl}
             onChange={handleChange('openChatUrl')}
             placeholder="https://open.kakao.com/..."
-            className="w-full rounded-xl border border-mint-100 bg-white px-4 py-3 text-sm shadow-sm outline-none ring-mint-200 focus:ring-2"
+            className="input"
           />
-          <p className="text-xs text-ink/60">참여자들이 바로 입장할 수 있도록 오픈채팅 링크를 입력하세요.</p>
+          <p className="helper-text">참여자들이 바로 입장할 수 있도록 오픈채팅 링크를 입력하세요.</p>
         </div>
       </section>
 
@@ -319,7 +319,7 @@ function CreateParty() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-xl bg-mint-500 px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-mint-600 disabled:cursor-not-allowed disabled:bg-ink/20"
+          className="btn-primary w-full"
         >
           {submitting ? '생성 중...' : '파티 생성하기'}
         </button>

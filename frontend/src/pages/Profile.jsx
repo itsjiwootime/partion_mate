@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { LoadingState } from '../components/Feedback';
 import { Mail, MapPin, User } from 'lucide-react';
 
 function Profile() {
@@ -33,10 +34,10 @@ function Profile() {
 
   return (
     <div className="space-y-4">
-      <div className="glass-panel rounded-2xl p-4 space-y-3">
-        <h2 className="text-lg font-semibold text-ink">내 정보</h2>
+      <div className="card-elevated p-4 space-y-3">
+        <h2 className="section-title">내 정보</h2>
         {error && <p className="text-sm text-red-600">{error}</p>}
-        {!user && !error && <p className="text-sm text-ink/60">불러오는 중...</p>}
+        {!user && !error && <LoadingState />}
         {user && (
           <div className="space-y-2 text-sm text-ink">
             <p className="flex items-center gap-2">
@@ -55,7 +56,7 @@ function Profile() {
         )}
         <button
           onClick={logout}
-          className="w-full rounded-xl bg-ink/10 px-4 py-2 text-sm font-semibold text-ink hover:bg-ink/15"
+          className="btn-secondary w-full"
         >
           로그아웃
         </button>

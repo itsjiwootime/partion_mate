@@ -7,9 +7,7 @@ import { useAuth } from '../context/AuthContext';
 const BrandBadge = ({ brand }) => {
   const isCostco = brand.includes('코스트코');
   const tone = isCostco ? 'bg-mint-500/15 text-mint-700' : 'bg-ink/5 text-ink';
-  return (
-    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${tone}`}>{brand}</span>
-  );
+  return <span className={`badge ${tone}`}>{brand}</span>;
 };
 
 function Home() {
@@ -114,30 +112,27 @@ function Home() {
 
   return (
     <div className="space-y-5">
-      <section className="glass-panel rounded-2xl p-4">
+      <section className="card-elevated p-4">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-sm font-semibold text-mint-700">
             <MapPin size={18} />
             <span>{currentLocation}</span>
             {coordNote && <span className="text-ink/50">{coordNote}</span>}
           </div>
-          <button
-            onClick={handleLocationToggle}
-            className="flex items-center gap-1 rounded-full bg-mint-500 px-3 py-1 text-xs font-medium text-white transition hover:bg-mint-600"
-          >
+          <button onClick={handleLocationToggle} className="btn-primary px-3 py-1 text-xs">
             {useBrowserLocation ? '저장 위치로' : '내 위치 기반'}
             <ChevronDown size={14} />
           </button>
         </div>
-        <p className="mt-2 text-sm text-ink/60">
+        <p className="mt-2 section-subtitle">
           가까운 지점에서 함께 구매할 수 있는 파티를 찾아보세요.
         </p>
       </section>
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-ink">내 주변 지점</h2>
-          <button className="flex items-center gap-1 text-xs font-semibold text-mint-700">
+          <h2 className="section-title">내 주변 지점</h2>
+          <button className="btn-ghost text-xs">
             <Navigation size={14} />
             거리순
           </button>
@@ -150,7 +145,7 @@ function Home() {
             <button
               key={branch.id}
               onClick={() => handleBranchClick(branch.id)}
-              className="glass-panel flex w-full items-center justify-between rounded-xl p-4 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+              className="card card-hover flex w-full items-center justify-between rounded-xl p-4 text-left"
             >
               <div className="space-y-2">
                 <BrandBadge brand={branch.brand} />

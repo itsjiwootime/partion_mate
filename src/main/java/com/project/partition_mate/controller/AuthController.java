@@ -46,4 +46,10 @@ public class AuthController {
         authService.checkUsernameAvailability(username);
         return ResponseEntity.ok().build();
     }
+
+    @GetMapping("/check-email")
+    public ResponseEntity<Void> checkEmail(String email) {
+        authService.checkEmailAvailability(email);
+        return ResponseEntity.ok().build();
+    }
 }

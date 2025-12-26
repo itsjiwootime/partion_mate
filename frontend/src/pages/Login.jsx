@@ -27,37 +27,37 @@ function Login() {
   };
 
   return (
-    <div className="mx-auto max-w-md space-y-6">
+    <div className="space-y-6">
       <div className="text-center">
         <h1 className="text-2xl font-semibold text-ink">로그인</h1>
-        <p className="text-sm text-ink/60">이메일과 비밀번호로 로그인하세요.</p>
+        <p className="section-subtitle">이메일과 비밀번호로 로그인하세요.</p>
       </div>
-      <form onSubmit={handleSubmit} className="space-y-4 glass-panel rounded-2xl p-5">
+      <form onSubmit={handleSubmit} className="card-elevated space-y-4 p-5">
         {error && <p className="text-sm text-red-600">{error}</p>}
         <label className="block space-y-1 text-sm">
           <span className="text-ink/70">이메일</span>
-          <div className="flex items-center gap-2 rounded-xl border border-mint-100 bg-white px-4 py-3 shadow-sm">
+          <div className="input-row">
             <Mail size={16} className="text-mint-700" />
             <input
               type="email"
               required
               value={form.email}
               onChange={handleChange('email')}
-              className="w-full bg-transparent text-sm outline-none"
+              className="input-control"
               placeholder="you@example.com"
             />
           </div>
         </label>
         <label className="block space-y-1 text-sm">
           <span className="text-ink/70">비밀번호</span>
-          <div className="flex items-center gap-2 rounded-xl border border-mint-100 bg-white px-4 py-3 shadow-sm">
+          <div className="input-row">
             <Lock size={16} className="text-mint-700" />
             <input
               type="password"
               required
               value={form.password}
               onChange={handleChange('password')}
-              className="w-full bg-transparent text-sm outline-none"
+              className="input-control"
               placeholder="********"
             />
           </div>
@@ -65,7 +65,7 @@ function Login() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-xl bg-mint-500 px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-mint-600 disabled:cursor-not-allowed disabled:bg-ink/20"
+          className="btn-primary w-full"
         >
           {loading ? '로그인 중...' : '로그인'}
         </button>

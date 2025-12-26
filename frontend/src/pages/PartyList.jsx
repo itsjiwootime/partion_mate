@@ -67,6 +67,7 @@ function PartyList() {
   return (
     <div className="space-y-4">
       <SectionHeader
+        eyebrow={isAll ? '파티' : '지점'}
         title={storeInfo ? storeInfo.name : branchName}
         subtitle={isAll ? '모든 지점의 파티를 확인하세요.' : '해당 지점에서 진행 중인 파티를 확인하세요.'}
         meta={
@@ -83,7 +84,7 @@ function PartyList() {
           id && (
             <button
               onClick={() => navigate(`/parties/create?storeId=${id}`)}
-              className="whitespace-nowrap rounded-full bg-mint-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-mint-600"
+              className="btn-primary whitespace-nowrap px-4 py-2 text-sm"
             >
               파티 만들기
             </button>
@@ -101,7 +102,7 @@ function PartyList() {
             id && (
               <button
                 onClick={() => navigate(`/parties/create?storeId=${id}`)}
-                className="rounded-full bg-mint-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-mint-600"
+                className="btn-primary px-4 py-2 text-sm"
               >
                 파티 만들기
               </button>

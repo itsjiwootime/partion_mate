@@ -18,9 +18,9 @@ function Layout() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-mint-50 via-clean-white to-clean-white text-ink">
-      <div className="mx-auto flex min-h-screen max-w-4xl flex-col px-4 pb-20 pt-4 sm:px-6 md:px-8">
+      <div className="mx-auto flex min-h-screen max-w-4xl flex-col px-4 pb-24 pt-6 sm:px-6 md:px-8">
         <Header title={current.title} subtitle={current.subtitle} />
-        <main className="mt-4 flex-1 pb-6">
+        <main className="mt-6 flex-1 pb-6">
           <Outlet />
         </main>
       </div>

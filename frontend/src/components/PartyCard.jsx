@@ -30,7 +30,7 @@ function PartyCard({
   );
 
   return (
-    <article className="glass-panel rounded-xl p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
+    <article className="card card-hover p-4">
       <header className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-ink/60">공동구매</p>
@@ -38,7 +38,7 @@ function PartyCard({
         </div>
         <span
           className={[
-            'flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold',
+            'badge',
             isActive ? 'bg-mint-500/15 text-mint-700' : 'bg-ink/10 text-ink/60',
           ].join(' ')}
         >
@@ -89,10 +89,7 @@ function PartyCard({
           </div>
         </footer>
 
-        <button
-          onClick={onViewDetail}
-          className="flex items-center gap-2 rounded-full bg-mint-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-mint-600"
-        >
+        <button onClick={onViewDetail} className="btn-primary px-4 py-2 text-sm">
           상세보기
           <ArrowRight size={16} />
         </button>
