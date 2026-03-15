@@ -99,7 +99,7 @@ function CreateParty() {
       setSubmitting(true);
       await api.createParty({
         title: form.title || form.productName,
-        storeId: form.branchId,
+        storeId: Number(form.branchId),
         productName: form.productName,
         totalPrice: Number(form.totalPrice),
         totalQuantity: Number(form.totalQuantity),

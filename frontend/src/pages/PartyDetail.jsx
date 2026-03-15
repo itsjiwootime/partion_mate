@@ -3,12 +3,13 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { Package, Users, Clock3, ArrowLeft, Link as LinkIcon, Copy, ExternalLink } from 'lucide-react';
 import { LoadingState } from '../components/Feedback';
+import { normalizePartyDetail } from '../utils/party';
 
 function PartyDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const stateParty = location.state?.party;
+  const stateParty = useMemo(() => normalizePartyDetail(location.state?.party), [location.state]);
   const fromMyParties = location.state?.fromMyParties;
   const [detail, setDetail] = useState(stateParty || null);
   const [loading, setLoading] = useState(!stateParty);
@@ -20,18 +21,7 @@ function PartyDetail() {
       try {
         setLoading(true);
         const data = await api.getPartyDetail(id);
-        setDetail({
-          partyId: data.id,
-          title: data.title,
-          totalPrice: data.totalPrice,
-          currentQuantity: data.currentQuantity ?? 0,
-          targetQuantity: data.totalQuantity,
-          deadlineLabel: data.deadline ?? '미정',
-          rating: data.hostRating ?? 4.5,
-          status: data.status === 'FULL' ? 'full' : 'active',
-          storeName: data.storeName,
-          productName: data.productName ?? data.title,
-        });
+        setDetail(normalizePartyDetail(data));
       } catch (e) {
         setError('파티 정보를 불러오지 못했습니다.');
       } finally {
@@ -52,6 +42,9 @@ function PartyDetail() {
     if (!detail) return 0;
     return Math.max(0, (detail.targetQuantity ?? 0) - (detail.currentQuantity ?? 0));
   }, [detail]);
+  const isWaitingParty = detail.participationStatus === 'WAITING';
+
+  const isJoinable = !fromMyParties && detail.status !== 'full' && remaining > 0;
 
   if (loading) return <LoadingState />;
   if (error) return <p className="text-sm text-red-600">{error}</p>;
@@ -120,7 +113,7 @@ function PartyDetail() {
         <p className="section-subtitle">
           요청 수량을 선택하고 참여하세요. 남은 수량 {remaining}개 · 개당 {perUnit.toLocaleString()}원
         </p>
-        {!fromMyParties && (
+        {isJoinable && (
           <button
             onClick={() => navigate(`/parties/${detail.partyId}/join`, { state: { detail } })}
             className="btn-primary w-full"
@@ -128,9 +121,19 @@ function PartyDetail() {
             참여하기
           </button>
         )}
-        {fromMyParties && (
+        {!fromMyParties && !isJoinable && (
+          <div className="rounded-xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink/70">
+            모집이 마감된 파티입니다.
+          </div>
+        )}
+        {fromMyParties && !isWaitingParty && (
           <div className="rounded-xl border border-mint-100 bg-white px-4 py-3 text-sm text-ink/70">
             이미 참여 중인 파티입니다.
+          </div>
+        )}
+        {fromMyParties && isWaitingParty && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            대기열 {detail.waitingPosition ?? '-'}번입니다. 빈 자리가 생기면 자동으로 승격됩니다.
           </div>
         )}
       </div>

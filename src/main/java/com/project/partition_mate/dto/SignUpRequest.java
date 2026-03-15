@@ -19,7 +19,7 @@ public class SignUpRequest {
     private String email;
 
     @NotBlank(message = "비밀번호는 필수 입력 값입니다.")
-    @Size(min = 6, max = 20, message = "비밀번호는 8자 이상 20자 이하로 입력해주세요")
+    @Size(min = 6, max = 20, message = "비밀번호는 6자 이상 20자 이하로 입력해주세요")
     private String password;
 
     @NotBlank(message = "주소를 입력해 주세요")

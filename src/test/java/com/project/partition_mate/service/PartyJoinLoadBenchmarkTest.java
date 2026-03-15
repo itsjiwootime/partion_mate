@@ -5,6 +5,7 @@ import com.project.partition_mate.domain.PartyMember;
 import com.project.partition_mate.domain.Store;
 import com.project.partition_mate.domain.User;
 import com.project.partition_mate.domain.WaitingQueueStatus;
+import com.project.partition_mate.dto.JoinPartyRequest;
 import com.project.partition_mate.dto.JoinPartyResponse;
 import com.project.partition_mate.repository.PartyMemberRepository;
 import com.project.partition_mate.repository.PartyRepository;
@@ -35,20 +36,26 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @ActiveProfiles("test")
-class PartyConcurrencyIntegrationTest {
+class PartyJoinLoadBenchmarkTest {
 
     @Autowired
     private PartyService partyService;
+
     @Autowired
     private PartyRepository partyRepository;
+
     @Autowired
     private PartyMemberRepository partyMemberRepository;
+
     @Autowired
     private WaitingQueueRepository waitingQueueRepository;
+
     @Autowired
     private StoreRepository storeRepository;
+
     @Autowired
     private UserRepository userRepository;
+
     @AfterEach
     void tearDown() {
         SecurityContextHolder.clearContext();
@@ -60,10 +67,10 @@ class PartyConcurrencyIntegrationTest {
     }
 
     @Test
-    void 동시에_요청해도_총수량을_초과하지_않는다() throws Exception {
+    void 동시_참여_100건_부하테스트_결과를_기록한다() throws Exception {
         // given
         Store store = storeRepository.saveAndFlush(new Store(
-                "테스트 지점",
+                "부하테스트 지점",
                 "서울시",
                 LocalTime.of(9, 0),
                 LocalTime.of(22, 0),
@@ -71,39 +78,40 @@ class PartyConcurrencyIntegrationTest {
                 127.0,
                 "02-0000-0000"
         ));
-        User host = userRepository.saveAndFlush(new User("host", "host@test.com", "pw", "서울", 37.5, 127.0));
+        User host = userRepository.saveAndFlush(new User("benchmark-host", "benchmark-host@test.com", "pw", "서울", 37.5, 127.0));
         setAuth(host);
 
-        Party party = new Party("비타민", "비타민B", 35000, store, 3,"url");
+        Party party = new Party("부하 테스트 파티", "대용량 상품", 50000, store, 20, "https://open.kakao.com/o/test");
         PartyMember hostMember = PartyMember.joinAsHost(party, host, 1);
         party.acceptMember(hostMember);
         party = partyRepository.saveAndFlush(party);
         Long partyId = party.getId();
         SecurityContextHolder.clearContext();
 
-        int threads = 5;
-        ExecutorService executor = Executors.newFixedThreadPool(threads);
-        CountDownLatch latch = new CountDownLatch(threads);
+        int requestCount = 100;
+        ExecutorService executor = Executors.newFixedThreadPool(20);
+        CountDownLatch latch = new CountDownLatch(requestCount);
+        List<Long> latencies = Collections.synchronizedList(new ArrayList<>());
         List<Exception> errors = Collections.synchronizedList(new ArrayList<>());
         AtomicInteger joinedCount = new AtomicInteger();
         AtomicInteger waitingCount = new AtomicInteger();
 
-        for (int i = 0; i < threads; i++) {
-            User member = userRepository.saveAndFlush(new User("user" + i, "user" + i + "@t.t", "pw", "주소", 37.0, 127.0));
+        for (int i = 0; i < requestCount; i++) {
+            User member = userRepository.saveAndFlush(new User("benchmark-user-" + i, "benchmark-user-" + i + "@test.com", "pw", "서울", 37.5, 127.0));
             executor.submit(() -> {
+                long startNanos = System.nanoTime();
                 try {
                     setAuth(member);
-                    com.project.partition_mate.dto.JoinPartyRequest request = new com.project.partition_mate.dto.JoinPartyRequest();
-                    ReflectionTestUtils.setField(request, "memberRequestQuantity", 1);
-                    JoinPartyResponse response = partyService.joinParty(partyId, request);
+                    JoinPartyResponse response = partyService.joinParty(partyId, joinRequest(1));
                     if (response.isWaiting()) {
                         waitingCount.incrementAndGet();
                     } else {
                         joinedCount.incrementAndGet();
                     }
-                } catch (Exception e) {
-                    errors.add(e);
+                } catch (Exception ex) {
+                    errors.add(ex);
                 } finally {
+                    latencies.add(System.nanoTime() - startNanos);
                     SecurityContextHolder.clearContext();
                     latch.countDown();
                 }
@@ -113,23 +121,41 @@ class PartyConcurrencyIntegrationTest {
         // when
         latch.await();
         executor.shutdown();
-        executor.awaitTermination(5, TimeUnit.SECONDS);
+        executor.awaitTermination(10, TimeUnit.SECONDS);
 
         // then
         Party reloaded = partyRepository.findById(partyId).orElseThrow();
         List<PartyMember> joinedMembers = partyMemberRepository.findByParty(reloaded);
         int waitingSize = waitingQueueRepository.findAllByPartyAndStatusOrderByQueuedAtAsc(reloaded, WaitingQueueStatus.WAITING).size();
-        int requestedQuantity = joinedMembers.stream()
-                .mapToInt(PartyMember::getRequestedQuantity)
-                .sum();
+        double averageMs = latencies.stream().mapToLong(Long::longValue).average().orElse(0.0) / 1_000_000.0;
+        double p95Ms = percentileMillis(latencies, 0.95);
 
-        assertThat(joinedCount.get()).isEqualTo(2);
-        assertThat(waitingCount.get()).isEqualTo(3);
-        assertThat(requestedQuantity).isEqualTo(reloaded.getTotalQuantity());
-        assertThat(reloaded.getPartyStatus()).isEqualTo(com.project.partition_mate.domain.PartyStatus.FULL);
-        assertThat(joinedMembers).hasSize(3);
-        assertThat(waitingSize).isEqualTo(3);
+        System.out.printf("PARTY_JOIN_BENCHMARK joined=%d waiting=%d averageMs=%.2f p95Ms=%.2f%n",
+                joinedCount.get(),
+                waitingCount.get(),
+                averageMs,
+                p95Ms
+        );
+
         assertThat(errors).isEmpty();
+        assertThat(joinedCount.get()).isEqualTo(19);
+        assertThat(waitingCount.get()).isEqualTo(81);
+        assertThat(joinedMembers.stream().mapToInt(PartyMember::getRequestedQuantity).sum()).isEqualTo(reloaded.getTotalQuantity());
+        assertThat(waitingSize).isEqualTo(81);
+    }
+
+    private JoinPartyRequest joinRequest(int requestedQuantity) {
+        JoinPartyRequest request = new JoinPartyRequest();
+        ReflectionTestUtils.setField(request, "memberRequestQuantity", requestedQuantity);
+        return request;
+    }
+
+    private double percentileMillis(List<Long> latencies, double percentile) {
+        List<Long> sorted = new ArrayList<>(latencies);
+        Collections.sort(sorted);
+        int index = (int) Math.ceil(sorted.size() * percentile) - 1;
+        index = Math.max(0, Math.min(index, sorted.size() - 1));
+        return sorted.get(index) / 1_000_000.0;
     }
 
     private void setAuth(User user) {

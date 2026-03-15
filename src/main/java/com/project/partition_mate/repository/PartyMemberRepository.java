@@ -6,6 +6,7 @@ import com.project.partition_mate.domain.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface PartyMemberRepository extends JpaRepository<PartyMember, Long> {
 
@@ -14,4 +15,6 @@ public interface PartyMemberRepository extends JpaRepository<PartyMember, Long> 
     List<PartyMember> findByUser(User user);
 
     boolean existsByPartyAndUser(Party party, User user);
+
+    Optional<PartyMember> findByPartyAndUser(Party party, User user);
 }

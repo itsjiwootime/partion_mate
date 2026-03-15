@@ -3,14 +3,13 @@ package com.project.partition_mate.dto;
 import com.project.partition_mate.domain.Party;
 import com.project.partition_mate.domain.PartyStatus;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 
 @Getter
 public class PartyResponse {
 
     private final Long id;
     private final String title;
-    private final String product;
+    private final String productName;
     private final Integer totalPrice;
     private final Integer totalQuantity;
     private final PartyStatus status;
@@ -18,10 +17,10 @@ public class PartyResponse {
     private final Integer currentQuantity;
     private final String openChatUrl;
 
-    public PartyResponse(Long id, String title, String product, Integer totalPrice, Integer totalQuantity, PartyStatus status, String storeName, Integer currentQuantity, String openChatUrl) {
+    public PartyResponse(Long id, String title, String productName, Integer totalPrice, Integer totalQuantity, PartyStatus status, String storeName, Integer currentQuantity, String openChatUrl) {
         this.id = id;
         this.title = title;
-        this.product = product;
+        this.productName = productName;
         this.totalPrice = totalPrice;
         this.totalQuantity = totalQuantity;
         this.status = status;

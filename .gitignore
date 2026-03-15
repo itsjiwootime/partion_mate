@@ -28,6 +28,8 @@ target/
 build/
 !**/src/main/**/build/
 !**/src/test/**/build/
+frontend/node_modules/
+frontend/dist/
 
 ### VS Code ###
 .vscode/
@@ -46,3 +48,5 @@ ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 *.lnk
+src/main/resources/application-local.yml
+frontend/.env.local
