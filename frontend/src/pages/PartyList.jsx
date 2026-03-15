@@ -2,14 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import PartyCard from '../components/PartyCard';
 import { api } from '../api/client';
-import { useAuth } from '../context/AuthContext';
 import SectionHeader from '../components/SectionHeader';
 import { LoadingState, EmptyState } from '../components/Feedback';
+import { normalizePartySummary } from '../utils/party';
 
 function PartyList() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isAuthed } = useAuth();
   const isAll = id === undefined;
   const branchName = useMemo(() => (isAll ? '전체 파티' : id ?? '지점 선택'), [id, isAll]);
   const [storeInfo, setStoreInfo] = useState(null);
@@ -40,19 +39,7 @@ function PartyList() {
         setLoading(true);
         setError('');
         const data = isAll ? await api.getAllParties() : await api.getStoreParties(numericId);
-        // 백엔드 응답에 currentQuantity 정보가 없으면 0으로 표시
-        const normalized = data.map((p) => ({
-          partyId: p.id,
-          title: p.title,
-          totalPrice: p.totalPrice,
-          currentQuantity: p.currentQuantity ?? 0,
-          targetQuantity: p.totalQuantity,
-          deadlineLabel: p.deadline ?? '미정',
-          rating: p.hostRating ?? 4.5,
-          status: p.status === 'FULL' ? 'full' : 'active',
-          storeName: p.storeName,
-          raw: p,
-        }));
+        const normalized = data.map(normalizePartySummary);
         setParties(normalized);
       } catch (e) {
         setError('파티 목록을 불러오지 못했습니다.');

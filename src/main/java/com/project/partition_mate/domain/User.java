@@ -44,7 +44,7 @@ public class User {
         this.email = Objects.requireNonNull(email);
         this.password = Objects.requireNonNull(password);
         this.address = Objects.requireNonNull(address);
-        this.role = (role != null) ? role : UserRole.USER;
+        this.role = UserRole.USER;
         this.latitude = latitude;
         this.longitude = longitude;
     }
