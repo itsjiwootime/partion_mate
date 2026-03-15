@@ -80,6 +80,11 @@ export const api = {
       body: JSON.stringify({ memberRequestQuantity: quantity }),
     }),
 
+  cancelJoin: (partyId) =>
+    fetchJson(`/party/${partyId}/join`, {
+      method: 'DELETE',
+    }),
+
   createParty: (payload) =>
     fetchJson('/party', {
       method: 'POST',

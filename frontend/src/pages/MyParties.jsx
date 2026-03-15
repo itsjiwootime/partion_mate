@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { EmptyState, LoadingState } from '../components/Feedback';
 
 const roleLabel = {
@@ -12,9 +13,11 @@ const roleLabel = {
 function MyParties() {
   const { isAuthed } = useAuth();
   const navigate = useNavigate();
+  const { addToast } = useToast();
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [cancellingId, setCancellingId] = useState(null);
 
   useEffect(() => {
     if (!isAuthed) return;
@@ -32,6 +35,19 @@ function MyParties() {
     };
     fetchData();
   }, [isAuthed]);
+
+  const handleCancel = async (partyId) => {
+    try {
+      setCancellingId(partyId);
+      await api.cancelJoin(partyId);
+      setList((current) => current.filter((party) => party.id !== partyId));
+      addToast('참여 또는 대기 내역을 취소했습니다.', 'success');
+    } catch (e) {
+      addToast(e.message || '취소 중 오류가 발생했습니다.', 'error');
+    } finally {
+      setCancellingId(null);
+    }
+  };
 
   if (!isAuthed) {
     return (
@@ -65,27 +81,30 @@ function MyParties() {
       )}
 
       <div className="grid gap-3 md:grid-cols-2">
-        {list.map((p) => (
-          <button
-            key={p.id}
-            onClick={() =>
-              navigate(`/parties/${p.id}`, {
-                state: { party: p, fromMyParties: true },
-              })
-            }
-            className="card card-hover w-full rounded-xl p-4 text-left"
-          >
+        {list.map((p) => {
+          const isWaiting = p.participationStatus === 'WAITING';
+          const canCancel = isWaiting || p.userRole === 'MEMBER';
+
+          return (
+            <div
+              key={p.id}
+              className="card w-full rounded-xl p-4 text-left space-y-3"
+            >
             <div className="flex items-center justify-between">
               <div className="text-xs font-semibold text-mint-700">
-                {roleLabel[p.userRole] ?? p.userRole}
+                {isWaiting ? '대기 중' : roleLabel[p.userRole] ?? p.userRole}
               </div>
               <div
                 className={[
                   'badge',
-                  p.status === 'FULL' ? 'bg-ink/10 text-ink/50' : 'bg-mint-500/15 text-mint-700',
+                  isWaiting
+                    ? 'bg-amber-100 text-amber-900'
+                    : p.status === 'FULL'
+                      ? 'bg-ink/10 text-ink/50'
+                      : 'bg-mint-500/15 text-mint-700',
                 ].join(' ')}
               >
-                {p.status === 'FULL' ? '마감' : '모집 중'}
+                {isWaiting ? `대기열 ${p.waitingPosition ?? '-'}번` : p.status === 'FULL' ? '마감' : '모집 중'}
               </div>
             </div>
             <h3 className="mt-1 text-lg font-semibold text-ink">{p.title}</h3>
@@ -94,8 +113,33 @@ function MyParties() {
             <div className="mt-2 text-sm text-ink/80">
               {p.currentQuantity ?? 0} / {p.totalQuantity}개
             </div>
-          </button>
-        ))}
+            <div className="text-xs text-ink/60">
+              {isWaiting ? `대기 요청 수량 ${p.requestedQuantity ?? 0}개` : `내 참여 수량 ${p.requestedQuantity ?? 0}개`}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() =>
+                  navigate(`/parties/${p.id}`, {
+                    state: { party: p, fromMyParties: true },
+                  })
+                }
+                className="btn-secondary flex-1"
+              >
+                상세 보기
+              </button>
+              {canCancel && (
+                <button
+                  onClick={() => handleCancel(p.id)}
+                  disabled={cancellingId === p.id}
+                  className="btn-ghost flex-1"
+                >
+                  {cancellingId === p.id ? '취소중...' : '취소'}
+                </button>
+              )}
+            </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

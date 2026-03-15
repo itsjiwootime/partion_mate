@@ -58,7 +58,7 @@ public class Party {
         this.store = Objects.requireNonNull(store, "지점 정보는 필수입니다.");
         this.openChatUrl = openChatUrl;
 
-        validateTotqlPrice(totalPrice);
+        validateTotalPrice(totalPrice);
         validateTotalQuantity(totalQuantity);
 
         this.partyStatus = PartyStatus.RECRUITING;
@@ -69,17 +69,30 @@ public class Party {
         validateAcceptable(member);
 
         this.members.add(member);
-        updateStatusIfQuantityFull();
+        refreshStatusByQuantity();
     }
 
     public boolean isRecruiting() {
         return this.partyStatus == PartyStatus.RECRUITING;
     }
 
-    public void updateStatusIfQuantityFull() {
-        if(this.totalQuantity == getRequestedQuantity()) {
+    public void removeMember(PartyMember member) {
+        Objects.requireNonNull(member, "파티 멤버는 필수입니다.");
+        this.members.removeIf(existingMember -> Objects.equals(existingMember.getId(), member.getId()));
+        refreshStatusByQuantity();
+    }
+
+    public void refreshStatusByQuantity() {
+        if (getRequestedQuantity() >= this.totalQuantity) {
             this.partyStatus = PartyStatus.FULL;
+            return;
         }
+
+        this.partyStatus = PartyStatus.RECRUITING;
+    }
+
+    public int getRemainingQuantity() {
+        return Math.max(this.totalQuantity - getRequestedQuantity(), 0);
     }
 
     public int getRequestedQuantity() {
@@ -90,28 +103,26 @@ public class Party {
 
     private void validateAcceptable(PartyMember member) {
         if (!isRecruiting()) {
-            throw new IllegalStateException("모집 중인 파티가 아닙니다.");
+            throw com.project.partition_mate.exception.BusinessException.notRecruiting();
         }
 
-        int currentRequested = getRequestedQuantity(); // 현재까지 요청된 총 수량
-        int remainingQuantity = this.totalQuantity - currentRequested; // 남은 수량
+        int remainingQuantity = getRemainingQuantity();
         int newMemberRequested = member.getRequestedQuantity();
 
-        // 💡 새로운 멤버의 요청 수량이 남은 수량보다 많다면 실패
         if (newMemberRequested > remainingQuantity) {
             throw com.project.partition_mate.exception.BusinessException.insufficientQuantity(remainingQuantity);
         }
     }
 
-    private void validateTotqlPrice(Integer totalPrice) {
+    private void validateTotalPrice(Integer totalPrice) {
         if (totalPrice < 0) {
-            throw new IllegalArgumentException("가격이 0 보다 커야합니다.");
+            throw new IllegalArgumentException("가격은 0 이상이어야 합니다.");
         }
     }
 
     private void validateTotalQuantity(Integer totalQuantity) {
         if (totalQuantity == null || totalQuantity <= 0) {
-            throw new IllegalArgumentException("총 수량은 1보다 커야합니다.");
+            throw new IllegalArgumentException("총 수량은 1개 이상이어야 합니다.");
         }
     }
 

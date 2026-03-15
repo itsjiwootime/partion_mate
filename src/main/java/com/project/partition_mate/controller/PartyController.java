@@ -2,6 +2,7 @@ package com.project.partition_mate.controller;
 
 import com.project.partition_mate.domain.Party;
 import com.project.partition_mate.dto.CreatePartyRequest;
+import com.project.partition_mate.dto.JoinPartyResponse;
 import com.project.partition_mate.dto.PartyDetailResponse;
 import com.project.partition_mate.dto.PartyResponse;
 import com.project.partition_mate.dto.JoinPartyRequest;
@@ -30,13 +31,18 @@ public class PartyController {
     }
 
     @PostMapping("/{id}/join")
-    public ResponseEntity<PartyResponse> joinParty(@PathVariable Long id,
-                                                   @RequestBody @Valid JoinPartyRequest joinPartyRequest) {
-        Party party = partyService.joinParty(id, joinPartyRequest);
+    public ResponseEntity<JoinPartyResponse> joinParty(@PathVariable Long id,
+                                                       @RequestBody @Valid JoinPartyRequest joinPartyRequest) {
+        JoinPartyResponse joinPartyResponse = partyService.joinParty(id, joinPartyRequest);
 
-        PartyResponse partyResponse = PartyResponse.from(party);
+        HttpStatus status = joinPartyResponse.isWaiting() ? HttpStatus.ACCEPTED : HttpStatus.CREATED;
+        return ResponseEntity.status(status).body(joinPartyResponse);
+    }
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(partyResponse);
+    @DeleteMapping("/{id}/join")
+    public ResponseEntity<Void> cancelJoin(@PathVariable Long id) {
+        partyService.cancelJoin(id);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/all")
