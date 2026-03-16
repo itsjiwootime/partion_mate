@@ -163,6 +163,21 @@ function MyParties() {
             <div className="text-xs text-ink/60">
               {isWaiting ? `대기 요청 수량 ${p.requestedQuantity ?? 0}개` : `내 참여 수량 ${p.requestedQuantity ?? 0}개`}
             </div>
+            {!isWaiting && (
+              <>
+                <div className="text-xs text-ink/60">
+                  정산: {p.actualAmount != null ? `${p.actualAmount.toLocaleString()}원` : '확정 전'} · {p.paymentStatusLabel ?? '정산 대기'}
+                </div>
+                <div className="text-xs text-ink/60">
+                  거래 상태: {p.tradeStatusLabel ?? '거래 전'}
+                </div>
+                {p.pickupPlace && (
+                  <div className="text-xs text-ink/60">
+                    픽업: {p.pickupPlace} · {p.pickupTimeLabel ?? '미정'}
+                  </div>
+                )}
+              </>
+            )}
             <div className="text-xs text-ink/60">
               마감: {p.deadlineLabel ?? p.deadline ?? '미정'}
             </div>

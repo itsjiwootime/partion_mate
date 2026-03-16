@@ -39,6 +39,8 @@ class PartyProductMetadataTest {
                 false,
                 "용기 세척 후 소분합니다.",
                 null,
+                null,
+                null,
                 null
         );
 
@@ -82,6 +84,8 @@ class PartyProductMetadataTest {
                 true,
                 true,
                 "행사 가격 적용 예정",
+                null,
+                null,
                 null,
                 null
         );

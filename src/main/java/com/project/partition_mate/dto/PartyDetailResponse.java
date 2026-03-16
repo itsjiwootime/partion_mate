@@ -2,12 +2,17 @@ package com.project.partition_mate.dto;
 
 import com.project.partition_mate.domain.Party;
 import com.project.partition_mate.domain.PartyCloseReason;
+import com.project.partition_mate.domain.PartyMemberRole;
 import com.project.partition_mate.domain.PartyStatus;
 import com.project.partition_mate.domain.PackagingType;
+import com.project.partition_mate.domain.ParticipationStatus;
+import com.project.partition_mate.domain.PaymentStatus;
 import com.project.partition_mate.domain.StorageType;
+import com.project.partition_mate.domain.TradeStatus;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 public class PartyDetailResponse {
@@ -33,10 +38,27 @@ public class PartyDetailResponse {
     private final boolean onSiteSplit;
     private final String guideNote;
     private final String receiptNote;
+    private final String pickupPlace;
+    private final LocalDateTime pickupTime;
+    private final String pickupTimeLabel;
     private final LocalDateTime deadline;
     private final String deadlineLabel;
     private final LocalDateTime closedAt;
     private final PartyCloseReason closeReason;
+    private final Long memberId;
+    private final PartyMemberRole userRole;
+    private final ParticipationStatus participationStatus;
+    private final Integer waitingPosition;
+    private final Integer requestedQuantity;
+    private final Integer expectedAmount;
+    private final Integer actualAmount;
+    private final PaymentStatus paymentStatus;
+    private final String paymentStatusLabel;
+    private final TradeStatus tradeStatus;
+    private final String tradeStatusLabel;
+    private final boolean pickupAcknowledged;
+    private final boolean reviewEligible;
+    private final List<PartySettlementMemberResponse> settlementMembers;
 
     private PartyDetailResponse(Long id,
                                 String title,
@@ -57,9 +79,23 @@ public class PartyDetailResponse {
                                 boolean onSiteSplit,
                                 String guideNote,
                                 String receiptNote,
+                                String pickupPlace,
+                                LocalDateTime pickupTime,
                                 LocalDateTime deadline,
                                 LocalDateTime closedAt,
-                                PartyCloseReason closeReason) {
+                                PartyCloseReason closeReason,
+                                Long memberId,
+                                PartyMemberRole userRole,
+                                ParticipationStatus participationStatus,
+                                Integer waitingPosition,
+                                Integer requestedQuantity,
+                                Integer expectedAmount,
+                                Integer actualAmount,
+                                PaymentStatus paymentStatus,
+                                TradeStatus tradeStatus,
+                                boolean pickupAcknowledged,
+                                boolean reviewEligible,
+                                List<PartySettlementMemberResponse> settlementMembers) {
         this.id = id;
         this.title = title;
         this.productName = productName;
@@ -81,13 +117,42 @@ public class PartyDetailResponse {
         this.onSiteSplit = onSiteSplit;
         this.guideNote = guideNote;
         this.receiptNote = receiptNote;
+        this.pickupPlace = pickupPlace;
+        this.pickupTime = pickupTime;
+        this.pickupTimeLabel = DateTimeLabelFormatter.format(pickupTime);
         this.deadline = deadline;
         this.deadlineLabel = DateTimeLabelFormatter.format(deadline);
         this.closedAt = closedAt;
         this.closeReason = closeReason;
+        this.memberId = memberId;
+        this.userRole = userRole;
+        this.participationStatus = participationStatus;
+        this.waitingPosition = waitingPosition;
+        this.requestedQuantity = requestedQuantity;
+        this.expectedAmount = expectedAmount;
+        this.actualAmount = actualAmount;
+        this.paymentStatus = paymentStatus;
+        this.paymentStatusLabel = paymentStatus != null ? paymentStatus.getLabel() : null;
+        this.tradeStatus = tradeStatus;
+        this.tradeStatusLabel = tradeStatus != null ? tradeStatus.getLabel() : null;
+        this.pickupAcknowledged = pickupAcknowledged;
+        this.reviewEligible = reviewEligible;
+        this.settlementMembers = settlementMembers;
     }
 
-    public static PartyDetailResponse from(Party party) {
+    public static PartyDetailResponse from(Party party,
+                                           Long memberId,
+                                           PartyMemberRole userRole,
+                                           ParticipationStatus participationStatus,
+                                           Integer waitingPosition,
+                                           Integer requestedQuantity,
+                                           Integer expectedAmount,
+                                           Integer actualAmount,
+                                           PaymentStatus paymentStatus,
+                                           TradeStatus tradeStatus,
+                                           boolean pickupAcknowledged,
+                                           boolean reviewEligible,
+                                           List<PartySettlementMemberResponse> settlementMembers) {
         return new PartyDetailResponse(
                 party.getId(),
                 party.getTitle(),
@@ -108,9 +173,23 @@ public class PartyDetailResponse {
                 party.isOnSiteSplit(),
                 party.getGuideNote(),
                 party.getReceiptNote(),
+                party.getPickupPlace(),
+                party.getPickupTime(),
                 party.getDeadline(),
                 party.getClosedAt(),
-                party.getCloseReason()
+                party.getCloseReason(),
+                memberId,
+                userRole,
+                participationStatus,
+                waitingPosition,
+                requestedQuantity,
+                expectedAmount,
+                actualAmount,
+                paymentStatus,
+                tradeStatus,
+                pickupAcknowledged,
+                reviewEligible,
+                settlementMembers
         );
     }
 }

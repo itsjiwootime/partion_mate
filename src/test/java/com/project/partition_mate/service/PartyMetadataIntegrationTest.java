@@ -113,6 +113,8 @@ class PartyMetadataIntegrationTest {
                 false,
                 "영수증 확인 후 정산합니다.",
                 null,
+                null,
+                null,
                 null
         ));
         party.updateActualPurchase(26500, "행사 할인가 적용");

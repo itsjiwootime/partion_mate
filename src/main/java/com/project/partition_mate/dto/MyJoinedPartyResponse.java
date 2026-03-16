@@ -5,7 +5,9 @@ import com.project.partition_mate.domain.ParticipationStatus;
 import com.project.partition_mate.domain.PartyCloseReason;
 import com.project.partition_mate.domain.PartyMemberRole;
 import com.project.partition_mate.domain.PartyStatus;
+import com.project.partition_mate.domain.PaymentStatus;
 import com.project.partition_mate.domain.StorageType;
+import com.project.partition_mate.domain.TradeStatus;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
@@ -20,6 +22,7 @@ public class MyJoinedPartyResponse {
     private final PartyStatus status;
     private final Integer totalQuantity;
     private final Integer currentQuantity;
+    private final Long memberId;
     private final PartyMemberRole userRole;
     private final Integer totalPrice;
     private final Integer expectedTotalPrice;
@@ -28,6 +31,12 @@ public class MyJoinedPartyResponse {
     private final ParticipationStatus participationStatus;
     private final Integer waitingPosition;
     private final Integer requestedQuantity;
+    private final Integer expectedAmount;
+    private final Integer actualAmount;
+    private final PaymentStatus paymentStatus;
+    private final String paymentStatusLabel;
+    private final TradeStatus tradeStatus;
+    private final String tradeStatusLabel;
     private final String unitLabel;
     private final Integer minimumShareUnit;
     private final StorageType storageType;
@@ -38,6 +47,11 @@ public class MyJoinedPartyResponse {
     private final boolean onSiteSplit;
     private final String guideNote;
     private final String receiptNote;
+    private final String pickupPlace;
+    private final LocalDateTime pickupTime;
+    private final String pickupTimeLabel;
+    private final boolean pickupAcknowledged;
+    private final boolean reviewEligible;
     private final LocalDateTime deadline;
     private final String deadlineLabel;
     private final LocalDateTime closedAt;
@@ -50,6 +64,7 @@ public class MyJoinedPartyResponse {
                                   PartyStatus status,
                                   Integer totalQuantity,
                                   Integer currentQuantity,
+                                  Long memberId,
                                   PartyMemberRole userRole,
                                   Integer totalPrice,
                                   Integer expectedTotalPrice,
@@ -58,6 +73,10 @@ public class MyJoinedPartyResponse {
                                   ParticipationStatus participationStatus,
                                   Integer waitingPosition,
                                   Integer requestedQuantity,
+                                  Integer expectedAmount,
+                                  Integer actualAmount,
+                                  PaymentStatus paymentStatus,
+                                  TradeStatus tradeStatus,
                                   String unitLabel,
                                   Integer minimumShareUnit,
                                   StorageType storageType,
@@ -66,6 +85,10 @@ public class MyJoinedPartyResponse {
                                   boolean onSiteSplit,
                                   String guideNote,
                                   String receiptNote,
+                                  String pickupPlace,
+                                  LocalDateTime pickupTime,
+                                  boolean pickupAcknowledged,
+                                  boolean reviewEligible,
                                   LocalDateTime deadline,
                                   LocalDateTime closedAt,
                                   PartyCloseReason closeReason) {
@@ -76,6 +99,7 @@ public class MyJoinedPartyResponse {
         this.status = status;
         this.totalQuantity = totalQuantity;
         this.currentQuantity = currentQuantity;
+        this.memberId = memberId;
         this.userRole = userRole;
         this.totalPrice = totalPrice;
         this.expectedTotalPrice = expectedTotalPrice;
@@ -84,6 +108,12 @@ public class MyJoinedPartyResponse {
         this.participationStatus = participationStatus;
         this.waitingPosition = waitingPosition;
         this.requestedQuantity = requestedQuantity;
+        this.expectedAmount = expectedAmount;
+        this.actualAmount = actualAmount;
+        this.paymentStatus = paymentStatus;
+        this.paymentStatusLabel = paymentStatus != null ? paymentStatus.getLabel() : null;
+        this.tradeStatus = tradeStatus;
+        this.tradeStatusLabel = tradeStatus != null ? tradeStatus.getLabel() : null;
         this.unitLabel = unitLabel;
         this.minimumShareUnit = minimumShareUnit;
         this.storageType = storageType;
@@ -94,6 +124,11 @@ public class MyJoinedPartyResponse {
         this.onSiteSplit = onSiteSplit;
         this.guideNote = guideNote;
         this.receiptNote = receiptNote;
+        this.pickupPlace = pickupPlace;
+        this.pickupTime = pickupTime;
+        this.pickupTimeLabel = DateTimeLabelFormatter.format(pickupTime);
+        this.pickupAcknowledged = pickupAcknowledged;
+        this.reviewEligible = reviewEligible;
         this.deadline = deadline;
         this.deadlineLabel = DateTimeLabelFormatter.format(deadline);
         this.closedAt = closedAt;
@@ -107,12 +142,17 @@ public class MyJoinedPartyResponse {
                                                PartyStatus status,
                                                Integer totalQuantity,
                                                Integer currentQuantity,
+                                               Long memberId,
                                                PartyMemberRole userRole,
                                                Integer totalPrice,
                                                Integer expectedTotalPrice,
                                                Integer actualTotalPrice,
                                                String openChatUrl,
                                                Integer requestedQuantity,
+                                               Integer expectedAmount,
+                                               Integer actualAmount,
+                                               PaymentStatus paymentStatus,
+                                               TradeStatus tradeStatus,
                                                String unitLabel,
                                                Integer minimumShareUnit,
                                                StorageType storageType,
@@ -121,6 +161,10 @@ public class MyJoinedPartyResponse {
                                                boolean onSiteSplit,
                                                String guideNote,
                                                String receiptNote,
+                                               String pickupPlace,
+                                               LocalDateTime pickupTime,
+                                               boolean pickupAcknowledged,
+                                               boolean reviewEligible,
                                                LocalDateTime deadline,
                                                LocalDateTime closedAt,
                                                PartyCloseReason closeReason) {
@@ -132,6 +176,7 @@ public class MyJoinedPartyResponse {
                 status,
                 totalQuantity,
                 currentQuantity,
+                memberId,
                 userRole,
                 totalPrice,
                 expectedTotalPrice,
@@ -140,6 +185,10 @@ public class MyJoinedPartyResponse {
                 ParticipationStatus.JOINED,
                 null,
                 requestedQuantity,
+                expectedAmount,
+                actualAmount,
+                paymentStatus,
+                tradeStatus,
                 unitLabel,
                 minimumShareUnit,
                 storageType,
@@ -148,6 +197,10 @@ public class MyJoinedPartyResponse {
                 onSiteSplit,
                 guideNote,
                 receiptNote,
+                pickupPlace,
+                pickupTime,
+                pickupAcknowledged,
+                reviewEligible,
                 deadline,
                 closedAt,
                 closeReason
@@ -175,6 +228,8 @@ public class MyJoinedPartyResponse {
                                                 boolean onSiteSplit,
                                                 String guideNote,
                                                 String receiptNote,
+                                                String pickupPlace,
+                                                LocalDateTime pickupTime,
                                                 LocalDateTime deadline,
                                                 LocalDateTime closedAt,
                                                 PartyCloseReason closeReason) {
@@ -187,6 +242,7 @@ public class MyJoinedPartyResponse {
                 totalQuantity,
                 currentQuantity,
                 null,
+                null,
                 totalPrice,
                 expectedTotalPrice,
                 actualTotalPrice,
@@ -194,6 +250,10 @@ public class MyJoinedPartyResponse {
                 ParticipationStatus.WAITING,
                 waitingPosition,
                 requestedQuantity,
+                null,
+                null,
+                null,
+                null,
                 unitLabel,
                 minimumShareUnit,
                 storageType,
@@ -202,6 +262,10 @@ public class MyJoinedPartyResponse {
                 onSiteSplit,
                 guideNote,
                 receiptNote,
+                pickupPlace,
+                pickupTime,
+                false,
+                false,
                 deadline,
                 closedAt,
                 closeReason

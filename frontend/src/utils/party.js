@@ -43,6 +43,20 @@ export function normalizePartyDetail(input) {
     onSiteSplit: input.onSiteSplit ?? false,
     guideNote: input.guideNote ?? '',
     receiptNote: input.receiptNote ?? '',
+    pickupPlace: input.pickupPlace ?? '',
+    pickupTime: input.pickupTime ?? null,
+    pickupTimeLabel: input.pickupTimeLabel ?? input.pickupTime ?? '미정',
+    expectedAmount: input.expectedAmount ?? null,
+    actualAmount: input.actualAmount ?? null,
+    paymentStatus: input.paymentStatus ?? null,
+    paymentStatusLabel: input.paymentStatusLabel ?? null,
+    tradeStatus: input.tradeStatus ?? null,
+    tradeStatusLabel: input.tradeStatusLabel ?? null,
+    memberId: input.memberId ?? null,
+    pickupAcknowledged: input.pickupAcknowledged ?? false,
+    reviewEligible: input.reviewEligible ?? false,
+    userRole: input.userRole ?? null,
+    settlementMembers: input.settlementMembers ?? [],
   };
 }
 

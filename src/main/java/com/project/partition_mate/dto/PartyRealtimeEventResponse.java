@@ -36,6 +36,9 @@ public class PartyRealtimeEventResponse {
     private final boolean onSiteSplit;
     private final String guideNote;
     private final String receiptNote;
+    private final String pickupPlace;
+    private final LocalDateTime pickupTime;
+    private final String pickupTimeLabel;
     private final LocalDateTime deadline;
     private final String deadlineLabel;
     private final LocalDateTime closedAt;
@@ -65,6 +68,8 @@ public class PartyRealtimeEventResponse {
                                        boolean onSiteSplit,
                                        String guideNote,
                                        String receiptNote,
+                                       String pickupPlace,
+                                       LocalDateTime pickupTime,
                                        LocalDateTime deadline,
                                        LocalDateTime closedAt,
                                        PartyCloseReason closeReason,
@@ -94,6 +99,9 @@ public class PartyRealtimeEventResponse {
         this.onSiteSplit = onSiteSplit;
         this.guideNote = guideNote;
         this.receiptNote = receiptNote;
+        this.pickupPlace = pickupPlace;
+        this.pickupTime = pickupTime;
+        this.pickupTimeLabel = DateTimeLabelFormatter.format(pickupTime);
         this.deadline = deadline;
         this.deadlineLabel = DateTimeLabelFormatter.format(deadline);
         this.closedAt = closedAt;
@@ -128,6 +136,8 @@ public class PartyRealtimeEventResponse {
                 party.isOnSiteSplit(),
                 party.getGuideNote(),
                 party.getReceiptNote(),
+                party.getPickupPlace(),
+                party.getPickupTime(),
                 party.getDeadline(),
                 party.getClosedAt(),
                 party.getCloseReason(),

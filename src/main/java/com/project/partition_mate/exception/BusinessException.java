@@ -43,4 +43,44 @@ public class BusinessException extends RuntimeException {
     public static BusinessException partyClosed() {
         return new BusinessException("이미 종료된 파티입니다.", HttpStatus.CONFLICT);
     }
+
+    public static BusinessException onlyHostCanManageSettlement() {
+        return new BusinessException("정산 확정은 호스트만 처리할 수 있습니다.", HttpStatus.FORBIDDEN);
+    }
+
+    public static BusinessException onlyHostCanManagePickup() {
+        return new BusinessException("픽업 일정 확정은 호스트만 처리할 수 있습니다.", HttpStatus.FORBIDDEN);
+    }
+
+    public static BusinessException onlyHostCanManageTradeStatus() {
+        return new BusinessException("거래 완료와 노쇼 처리는 호스트만 할 수 있습니다.", HttpStatus.FORBIDDEN);
+    }
+
+    public static BusinessException onlyParticipantCanMarkPaid() {
+        return new BusinessException("참여자 본인만 송금 완료를 표시할 수 있습니다.", HttpStatus.FORBIDDEN);
+    }
+
+    public static BusinessException onlyParticipantCanAcknowledgePickup() {
+        return new BusinessException("참여자만 픽업 일정을 확인할 수 있습니다.", HttpStatus.FORBIDDEN);
+    }
+
+    public static BusinessException settlementNotConfirmed() {
+        return new BusinessException("아직 정산이 확정되지 않았습니다.", HttpStatus.CONFLICT);
+    }
+
+    public static BusinessException pickupNotScheduled() {
+        return new BusinessException("아직 픽업 일정이 확정되지 않았습니다.", HttpStatus.CONFLICT);
+    }
+
+    public static BusinessException invalidPaymentStatusTransition() {
+        return new BusinessException("허용되지 않는 송금 상태 변경입니다.", HttpStatus.CONFLICT);
+    }
+
+    public static BusinessException invalidTradeStatusTransition() {
+        return new BusinessException("허용되지 않는 거래 상태 변경입니다.", HttpStatus.CONFLICT);
+    }
+
+    public static BusinessException hostMemberCannotBeManaged() {
+        return new BusinessException("호스트 계정에는 참여자용 거래 상태를 적용할 수 없습니다.", HttpStatus.CONFLICT);
+    }
 }

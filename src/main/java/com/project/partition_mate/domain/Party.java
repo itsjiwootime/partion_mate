@@ -73,6 +73,10 @@ public class Party {
     @Column(length = 500)
     private String receiptNote;
 
+    private String pickupPlace;
+
+    private LocalDateTime pickupTime;
+
     @Column(nullable = false)
     private LocalDateTime deadline;
 
@@ -110,6 +114,8 @@ public class Party {
                 false,
                 null,
                 null,
+                null,
+                null,
                 null
         );
     }
@@ -137,6 +143,8 @@ public class Party {
                 false,
                 null,
                 null,
+                null,
+                null,
                 null
         );
     }
@@ -156,7 +164,9 @@ public class Party {
                  boolean onSiteSplit,
                  String guideNote,
                  Integer actualTotalPrice,
-                 String receiptNote) {
+                 String receiptNote,
+                 String pickupPlace,
+                 LocalDateTime pickupTime) {
 
         this.title = Objects.requireNonNull(title, "파티 제목은 필수입니다.");
         this.productName = Objects.requireNonNull(productName, "제품명은 필수입니다.");
@@ -174,6 +184,8 @@ public class Party {
         this.guideNote = guideNote;
         this.actualTotalPrice = actualTotalPrice;
         this.receiptNote = receiptNote;
+        this.pickupPlace = pickupPlace;
+        this.pickupTime = pickupTime;
 
         validateTotalPrice(totalPrice);
         validateTotalQuantity(totalQuantity);
@@ -181,6 +193,7 @@ public class Party {
         validateUnitLabel(unitLabel);
         validateMinimumShareUnit(minimumShareUnit);
         validateActualTotalPrice(actualTotalPrice);
+        validatePickupSchedule(pickupPlace, pickupTime);
 
         this.partyStatus = PartyStatus.RECRUITING;
     }
@@ -254,6 +267,16 @@ public class Party {
         this.receiptNote = receiptNote;
     }
 
+    public void updatePickupSchedule(String pickupPlace, LocalDateTime pickupTime) {
+        validatePickupSchedule(pickupPlace, pickupTime);
+        this.pickupPlace = pickupPlace;
+        this.pickupTime = pickupTime;
+    }
+
+    public boolean hasPickupSchedule() {
+        return this.pickupPlace != null && !this.pickupPlace.isBlank() && this.pickupTime != null;
+    }
+
     private void validateAcceptable(PartyMember member) {
         if (!isRecruiting()) {
             throw com.project.partition_mate.exception.BusinessException.notRecruiting();
@@ -300,6 +323,20 @@ public class Party {
     private void validateActualTotalPrice(Integer actualTotalPrice) {
         if (actualTotalPrice != null && actualTotalPrice < 0) {
             throw new IllegalArgumentException("실구매 가격은 0 이상이어야 합니다.");
+        }
+    }
+
+    private void validatePickupSchedule(String pickupPlace, LocalDateTime pickupTime) {
+        if (pickupPlace == null && pickupTime == null) {
+            return;
+        }
+
+        if (pickupPlace == null || pickupPlace.isBlank()) {
+            throw new IllegalArgumentException("픽업 장소는 비어 있을 수 없습니다.");
+        }
+
+        if (pickupTime == null) {
+            throw new IllegalArgumentException("픽업 시간은 필수입니다.");
         }
     }
 

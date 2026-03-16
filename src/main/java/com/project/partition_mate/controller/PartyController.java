@@ -1,14 +1,17 @@
 package com.project.partition_mate.controller;
 
 import com.project.partition_mate.domain.Party;
+import com.project.partition_mate.dto.ConfirmPickupScheduleRequest;
+import com.project.partition_mate.dto.ConfirmSettlementRequest;
 import com.project.partition_mate.dto.CreatePartyRequest;
 import com.project.partition_mate.dto.JoinPartyResponse;
 import com.project.partition_mate.dto.PartyDetailResponse;
 import com.project.partition_mate.dto.PartyResponse;
 import com.project.partition_mate.dto.JoinPartyRequest;
+import com.project.partition_mate.dto.UpdatePaymentStatusRequest;
+import com.project.partition_mate.dto.UpdateTradeStatusRequest;
 import com.project.partition_mate.service.PartyService;
 import jakarta.validation.Valid;
-import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -43,6 +46,37 @@ public class PartyController {
     public ResponseEntity<Void> cancelJoin(@PathVariable Long id) {
         partyService.cancelJoin(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}/settlement")
+    public ResponseEntity<PartyDetailResponse> confirmSettlement(@PathVariable Long id,
+                                                                 @RequestBody @Valid ConfirmSettlementRequest request) {
+        return ResponseEntity.ok(partyService.confirmSettlement(id, request));
+    }
+
+    @PutMapping("/{id}/pickup")
+    public ResponseEntity<PartyDetailResponse> confirmPickupSchedule(@PathVariable Long id,
+                                                                     @RequestBody @Valid ConfirmPickupScheduleRequest request) {
+        return ResponseEntity.ok(partyService.confirmPickupSchedule(id, request));
+    }
+
+    @PostMapping("/{id}/pickup/acknowledge")
+    public ResponseEntity<PartyDetailResponse> acknowledgePickup(@PathVariable Long id) {
+        return ResponseEntity.ok(partyService.acknowledgePickup(id));
+    }
+
+    @PutMapping("/{partyId}/members/{memberId}/payment")
+    public ResponseEntity<PartyDetailResponse> updatePaymentStatus(@PathVariable Long partyId,
+                                                                   @PathVariable Long memberId,
+                                                                   @RequestBody @Valid UpdatePaymentStatusRequest request) {
+        return ResponseEntity.ok(partyService.updatePaymentStatus(partyId, memberId, request));
+    }
+
+    @PutMapping("/{partyId}/members/{memberId}/trade-status")
+    public ResponseEntity<PartyDetailResponse> updateTradeStatus(@PathVariable Long partyId,
+                                                                 @PathVariable Long memberId,
+                                                                 @RequestBody @Valid UpdateTradeStatusRequest request) {
+        return ResponseEntity.ok(partyService.updateTradeStatus(partyId, memberId, request));
     }
 
     @GetMapping("/all")

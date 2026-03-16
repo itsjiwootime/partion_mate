@@ -33,6 +33,9 @@ public class PartyResponse {
     private final boolean onSiteSplit;
     private final String guideNote;
     private final String receiptNote;
+    private final String pickupPlace;
+    private final LocalDateTime pickupTime;
+    private final String pickupTimeLabel;
     private final LocalDateTime deadline;
     private final String deadlineLabel;
     private final LocalDateTime closedAt;
@@ -69,6 +72,8 @@ public class PartyResponse {
                 null,
                 null,
                 null,
+                null,
+                null,
                 null
         );
     }
@@ -92,6 +97,8 @@ public class PartyResponse {
                          boolean onSiteSplit,
                          String guideNote,
                          String receiptNote,
+                         String pickupPlace,
+                         LocalDateTime pickupTime,
                          LocalDateTime deadline,
                          LocalDateTime closedAt,
                          PartyCloseReason closeReason) {
@@ -115,6 +122,8 @@ public class PartyResponse {
                 onSiteSplit,
                 guideNote,
                 receiptNote,
+                pickupPlace,
+                pickupTime,
                 deadline,
                 closedAt,
                 closeReason
@@ -152,6 +161,8 @@ public class PartyResponse {
                 null,
                 null,
                 null,
+                null,
+                null,
                 null
         );
     }
@@ -175,6 +186,8 @@ public class PartyResponse {
                          boolean onSiteSplit,
                          String guideNote,
                          String receiptNote,
+                         String pickupPlace,
+                         LocalDateTime pickupTime,
                          LocalDateTime deadline,
                          LocalDateTime closedAt,
                          PartyCloseReason closeReason) {
@@ -199,6 +212,9 @@ public class PartyResponse {
         this.onSiteSplit = onSiteSplit;
         this.guideNote = guideNote;
         this.receiptNote = receiptNote;
+        this.pickupPlace = pickupPlace;
+        this.pickupTime = pickupTime;
+        this.pickupTimeLabel = DateTimeLabelFormatter.format(pickupTime);
         this.deadline = deadline;
         this.deadlineLabel = DateTimeLabelFormatter.format(deadline);
         this.closedAt = closedAt;
@@ -226,6 +242,8 @@ public class PartyResponse {
                 party.isOnSiteSplit(),
                 party.getGuideNote(),
                 party.getReceiptNote(),
+                party.getPickupPlace(),
+                party.getPickupTime(),
                 party.getDeadline(),
                 party.getClosedAt(),
                 party.getCloseReason()

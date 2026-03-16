@@ -43,6 +43,8 @@ public interface PartyRepository extends JpaRepository<Party, Long> {
                 p.onSiteSplit,
                 p.guideNote,
                 p.receiptNote,
+                p.pickupPlace,
+                p.pickupTime,
                 p.deadline,
                 p.closedAt,
                 p.closeReason
@@ -51,7 +53,7 @@ public interface PartyRepository extends JpaRepository<Party, Long> {
             join p.store s
             left join p.members pm
             where s.id = :storeId
-            group by p.id, p.title, p.productName, p.totalPrice, p.actualTotalPrice, p.totalQuantity, p.partyStatus, s.name, p.openChatUrl, p.unitLabel, p.minimumShareUnit, p.storageType, p.packagingType, p.hostProvidesPackaging, p.onSiteSplit, p.guideNote, p.receiptNote, p.deadline, p.closedAt, p.closeReason
+            group by p.id, p.title, p.productName, p.totalPrice, p.actualTotalPrice, p.totalQuantity, p.partyStatus, s.name, p.openChatUrl, p.unitLabel, p.minimumShareUnit, p.storageType, p.packagingType, p.hostProvidesPackaging, p.onSiteSplit, p.guideNote, p.receiptNote, p.pickupPlace, p.pickupTime, p.deadline, p.closedAt, p.closeReason
             order by p.id desc
             """)
     List<PartyResponse> findResponsesByStoreId(@Param("storeId") Long storeId);
@@ -62,7 +64,8 @@ public interface PartyRepository extends JpaRepository<Party, Long> {
             select distinct p
             from Party p
             join fetch p.store
-            left join fetch p.members
+            left join fetch p.members m
+            left join fetch m.user
             where p.id = :id
             """)
     Optional<Party> findDetailById(@Param("id") Long id);

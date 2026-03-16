@@ -86,6 +86,35 @@ export const api = {
       method: 'DELETE',
     }),
 
+  confirmSettlement: ({ partyId, actualTotalPrice, receiptNote }) =>
+    fetchJson(`/party/${partyId}/settlement`, {
+      method: 'PUT',
+      body: JSON.stringify({ actualTotalPrice, receiptNote }),
+    }),
+
+  confirmPickupSchedule: ({ partyId, pickupPlace, pickupTime }) =>
+    fetchJson(`/party/${partyId}/pickup`, {
+      method: 'PUT',
+      body: JSON.stringify({ pickupPlace, pickupTime }),
+    }),
+
+  acknowledgePickup: (partyId) =>
+    fetchJson(`/party/${partyId}/pickup/acknowledge`, {
+      method: 'POST',
+    }),
+
+  updatePaymentStatus: ({ partyId, memberId, paymentStatus }) =>
+    fetchJson(`/party/${partyId}/members/${memberId}/payment`, {
+      method: 'PUT',
+      body: JSON.stringify({ paymentStatus }),
+    }),
+
+  updateTradeStatus: ({ partyId, memberId, tradeStatus }) =>
+    fetchJson(`/party/${partyId}/members/${memberId}/trade-status`, {
+      method: 'PUT',
+      body: JSON.stringify({ tradeStatus }),
+    }),
+
   createParty: (payload) =>
     fetchJson('/party', {
       method: 'POST',

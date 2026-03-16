@@ -1,28 +1,58 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client';
-import { Package, Users, Clock3, ArrowLeft, Link as LinkIcon, Copy, ExternalLink } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
+import { Package, Users, Clock3, ArrowLeft, Link as LinkIcon, Copy, ExternalLink, MapPin, Wallet } from 'lucide-react';
 import { LoadingState } from '../components/Feedback';
 import { mergeRealtimeParty, normalizePartyDetail } from '../utils/party';
 import { subscribeToPartyStream } from '../utils/partyRealtime';
+
+function toDateTimeLocalValue(value) {
+  if (!value) return '';
+  return value.slice(0, 16);
+}
+
+function formatCurrency(value) {
+  if (value == null) return '미정';
+  return `${value.toLocaleString()}원`;
+}
 
 function PartyDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { isAuthed } = useAuth();
+  const { addToast } = useToast();
   const stateParty = useMemo(() => normalizePartyDetail(location.state?.party), [location.state]);
-  const fromMyParties = location.state?.fromMyParties;
   const [detail, setDetail] = useState(stateParty || null);
   const [loading, setLoading] = useState(!stateParty);
   const [error, setError] = useState('');
   const [realtimeState, setRealtimeState] = useState('connecting');
+  const [actionLoading, setActionLoading] = useState('');
+  const [settlementForm, setSettlementForm] = useState({ actualTotalPrice: '', receiptNote: '' });
+  const [pickupForm, setPickupForm] = useState({ pickupPlace: '', pickupTime: '' });
+
+  useEffect(() => {
+    setSettlementForm({
+      actualTotalPrice: detail?.actualTotalPrice != null ? String(detail.actualTotalPrice) : '',
+      receiptNote: detail?.receiptNote ?? '',
+    });
+    setPickupForm({
+      pickupPlace: detail?.pickupPlace ?? '',
+      pickupTime: toDateTimeLocalValue(detail?.pickupTime),
+    });
+  }, [detail?.actualTotalPrice, detail?.receiptNote, detail?.pickupPlace, detail?.pickupTime]);
 
   useEffect(() => {
     let active = true;
-    const fetchDetail = async () => {
+
+    const fetchDetail = async ({ showLoading = false } = {}) => {
       if (!id) return;
       try {
-        setLoading(true);
+        if (showLoading) {
+          setLoading(true);
+        }
         setError('');
         const data = await api.getPartyDetail(id);
         if (active) {
@@ -33,14 +63,13 @@ function PartyDetail() {
           setError('파티 정보를 불러오지 못했습니다.');
         }
       } finally {
-        if (active) {
+        if (active && showLoading) {
           setLoading(false);
         }
       }
     };
-    if (!stateParty) {
-      fetchDetail();
-    }
+
+    fetchDetail({ showLoading: !stateParty });
 
     const unsubscribe = subscribeToPartyStream({
       partyId: id ? Number(id) : null,
@@ -56,6 +85,10 @@ function PartyDetail() {
       },
       onPartyUpdated: (event) => {
         if (!active) return;
+        if (isAuthed) {
+          fetchDetail();
+          return;
+        }
         setDetail((current) => mergeRealtimeParty(current, event));
       },
       onFallback: () => {
@@ -69,7 +102,7 @@ function PartyDetail() {
       active = false;
       unsubscribe?.();
     };
-  }, [id, stateParty]);
+  }, [id, isAuthed, stateParty]);
 
   const perUnit = useMemo(() => {
     if (!detail) return 0;
@@ -82,9 +115,57 @@ function PartyDetail() {
     if (!detail) return 0;
     return Math.max(0, (detail.targetQuantity ?? 0) - (detail.currentQuantity ?? 0));
   }, [detail]);
-  const isWaitingParty = detail.participationStatus === 'WAITING';
-  const isClosedParty = detail.status === 'closed';
-  const isJoinable = !fromMyParties && detail.status !== 'full' && !isClosedParty && remaining > 0;
+
+  const isWaitingParty = detail?.participationStatus === 'WAITING';
+  const isClosedParty = detail?.status === 'closed';
+  const isHost = detail?.userRole === 'LEADER';
+  const isJoinedMember = detail?.userRole === 'MEMBER';
+  const isJoinable = !detail?.participationStatus && detail?.status !== 'full' && !isClosedParty && remaining > 0;
+
+  const runAction = async (key, action, successMessage) => {
+    try {
+      setActionLoading(key);
+      const next = await action();
+      if (next) {
+        setDetail(normalizePartyDetail(next));
+      }
+      if (successMessage) {
+        addToast(successMessage, 'success');
+      }
+    } catch (e) {
+      addToast(e.message || '작업 중 오류가 발생했습니다.', 'error');
+    } finally {
+      setActionLoading('');
+    }
+  };
+
+  const handleSettlementSubmit = async (e) => {
+    e.preventDefault();
+    await runAction(
+      'settlement',
+      () =>
+        api.confirmSettlement({
+          partyId: detail.partyId,
+          actualTotalPrice: Number(settlementForm.actualTotalPrice),
+          receiptNote: settlementForm.receiptNote,
+        }),
+      '실구매 총액을 확정했습니다.',
+    );
+  };
+
+  const handlePickupSubmit = async (e) => {
+    e.preventDefault();
+    await runAction(
+      'pickup',
+      () =>
+        api.confirmPickupSchedule({
+          partyId: detail.partyId,
+          pickupPlace: pickupForm.pickupPlace,
+          pickupTime: pickupForm.pickupTime,
+        }),
+      '픽업 일정을 확정했습니다.',
+    );
+  };
 
   if (loading) return <LoadingState />;
   if (error) return <p className="text-sm text-red-600">{error}</p>;
@@ -92,10 +173,7 @@ function PartyDetail() {
 
   return (
     <div className="space-y-4">
-      <button
-        onClick={() => navigate(-1)}
-        className="btn-ghost px-0"
-      >
+      <button onClick={() => navigate(-1)} className="btn-ghost px-0">
         <ArrowLeft size={16} /> 뒤로
       </button>
 
@@ -126,6 +204,14 @@ function PartyDetail() {
             <Clock3 size={16} className="text-mint-700" />
             <span>마감: {detail.deadlineLabel}</span>
           </div>
+          {detail.pickupPlace && (
+            <div className="flex items-center gap-2">
+              <MapPin size={16} className="text-mint-700" />
+              <span>
+                픽업: {detail.pickupPlace} · {detail.pickupTimeLabel}
+              </span>
+            </div>
+          )}
           {detail.openChatUrl && (
             <div className="flex items-center gap-2">
               <LinkIcon size={16} className="text-mint-700" />
@@ -185,13 +271,11 @@ function PartyDetail() {
         <div className="grid gap-2 text-sm text-ink/75">
           <div className="flex items-center justify-between gap-4">
             <span>예상 총액</span>
-            <span className="font-semibold text-ink">{detail.expectedTotalPrice?.toLocaleString()}원</span>
+            <span className="font-semibold text-ink">{formatCurrency(detail.expectedTotalPrice)}</span>
           </div>
           <div className="flex items-center justify-between gap-4">
             <span>실구매 총액</span>
-            <span className="font-semibold text-ink">
-              {detail.actualTotalPrice != null ? `${detail.actualTotalPrice.toLocaleString()}원` : '미확정'}
-            </span>
+            <span className="font-semibold text-ink">{formatCurrency(detail.actualTotalPrice)}</span>
           </div>
           {detail.receiptNote && <p className="text-xs text-ink/60">실구매 메모: {detail.receiptNote}</p>}
         </div>
@@ -201,6 +285,224 @@ function PartyDetail() {
         <div className="card-elevated p-5 space-y-2">
           <h2 className="section-title">거래 안내</h2>
           <p className="text-sm leading-6 text-ink/75 whitespace-pre-line">{detail.guideNote}</p>
+        </div>
+      )}
+
+      {isHost && (
+        <>
+          <div className="card-elevated p-5 space-y-4">
+            <h2 className="section-title">호스트 운영</h2>
+
+            <form onSubmit={handleSettlementSubmit} className="space-y-3 rounded-2xl border border-ink/10 p-4">
+              <h3 className="text-sm font-semibold text-ink">정산 확정</h3>
+              <label className="block text-sm text-ink/75">
+                <span className="mb-1 block">실구매 총액</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={settlementForm.actualTotalPrice}
+                  onChange={(e) => setSettlementForm((current) => ({ ...current, actualTotalPrice: e.target.value }))}
+                  className="input-field"
+                  required
+                />
+              </label>
+              <label className="block text-sm text-ink/75">
+                <span className="mb-1 block">영수증 메모</span>
+                <textarea
+                  rows="3"
+                  value={settlementForm.receiptNote}
+                  onChange={(e) => setSettlementForm((current) => ({ ...current, receiptNote: e.target.value }))}
+                  className="input-field min-h-[96px]"
+                  placeholder="예) 행사 카드 할인 적용, 현장 가격 변동"
+                />
+              </label>
+              <button disabled={actionLoading === 'settlement'} className="btn-primary">
+                <Wallet size={16} />
+                {actionLoading === 'settlement' ? '저장 중...' : '정산 확정'}
+              </button>
+            </form>
+
+            <form onSubmit={handlePickupSubmit} className="space-y-3 rounded-2xl border border-ink/10 p-4">
+              <h3 className="text-sm font-semibold text-ink">픽업 일정</h3>
+              <label className="block text-sm text-ink/75">
+                <span className="mb-1 block">픽업 장소</span>
+                <input
+                  type="text"
+                  value={pickupForm.pickupPlace}
+                  onChange={(e) => setPickupForm((current) => ({ ...current, pickupPlace: e.target.value }))}
+                  className="input-field"
+                  required
+                />
+              </label>
+              <label className="block text-sm text-ink/75">
+                <span className="mb-1 block">픽업 시간</span>
+                <input
+                  type="datetime-local"
+                  value={pickupForm.pickupTime}
+                  onChange={(e) => setPickupForm((current) => ({ ...current, pickupTime: e.target.value }))}
+                  className="input-field"
+                  required
+                />
+              </label>
+              <button disabled={actionLoading === 'pickup'} className="btn-primary">
+                <MapPin size={16} />
+                {actionLoading === 'pickup' ? '저장 중...' : '픽업 일정 확정'}
+              </button>
+            </form>
+          </div>
+
+          <div className="card-elevated p-5 space-y-3">
+            <h2 className="section-title">참여자 정산 현황</h2>
+            <div className="space-y-3">
+              {detail.settlementMembers.map((member) => (
+                <div key={member.memberId} className="rounded-2xl border border-ink/10 p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-semibold text-ink">{member.username}</p>
+                      <p className="text-xs text-ink/55">
+                        {member.role === 'LEADER' ? '호스트' : '참여자'} · 요청 {member.requestedQuantity}
+                        {detail.unitLabel}
+                      </p>
+                    </div>
+                    <div className="text-right text-xs text-ink/55">
+                      <p>예상 {formatCurrency(member.expectedAmount)}</p>
+                      <p>확정 {formatCurrency(member.actualAmount)}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2 text-xs text-ink/60 md:grid-cols-3">
+                    <p>송금 상태: {member.paymentStatusLabel ?? '미정'}</p>
+                    <p>거래 상태: {member.tradeStatusLabel ?? '미정'}</p>
+                    <p>픽업 확인: {member.pickupAcknowledged ? '확인함' : '미확인'}</p>
+                  </div>
+
+                  {member.role !== 'LEADER' && (
+                    <div className="flex flex-wrap gap-2">
+                      {member.paymentStatus === 'PAID' && (
+                        <button
+                          onClick={() =>
+                            runAction(
+                              `payment-confirm-${member.memberId}`,
+                              () => api.updatePaymentStatus({ partyId: detail.partyId, memberId: member.memberId, paymentStatus: 'CONFIRMED' }),
+                              '송금 확인을 완료했습니다.',
+                            )
+                          }
+                          className="btn-secondary px-3 py-2 text-xs"
+                          disabled={actionLoading === `payment-confirm-${member.memberId}`}
+                        >
+                          송금 확인
+                        </button>
+                      )}
+                      {(member.paymentStatus === 'PAID' || member.paymentStatus === 'CONFIRMED') && (
+                        <button
+                          onClick={() =>
+                            runAction(
+                              `payment-refund-${member.memberId}`,
+                              () => api.updatePaymentStatus({ partyId: detail.partyId, memberId: member.memberId, paymentStatus: 'REFUNDED' }),
+                              '환불 상태로 변경했습니다.',
+                            )
+                          }
+                          className="btn-ghost px-3 py-2 text-xs"
+                          disabled={actionLoading === `payment-refund-${member.memberId}`}
+                        >
+                          환불 처리
+                        </button>
+                      )}
+                      {member.paymentStatus === 'CONFIRMED' && member.tradeStatus === 'PENDING' && (
+                        <button
+                          onClick={() =>
+                            runAction(
+                              `trade-complete-${member.memberId}`,
+                              () => api.updateTradeStatus({ partyId: detail.partyId, memberId: member.memberId, tradeStatus: 'COMPLETED' }),
+                              '거래 완료로 처리했습니다.',
+                            )
+                          }
+                          className="btn-primary px-3 py-2 text-xs"
+                          disabled={actionLoading === `trade-complete-${member.memberId}`}
+                        >
+                          거래 완료
+                        </button>
+                      )}
+                      {member.tradeStatus === 'PENDING' && (
+                        <button
+                          onClick={() =>
+                            runAction(
+                              `trade-noshow-${member.memberId}`,
+                              () => api.updateTradeStatus({ partyId: detail.partyId, memberId: member.memberId, tradeStatus: 'NO_SHOW' }),
+                              '노쇼로 기록했습니다.',
+                            )
+                          }
+                          className="btn-ghost px-3 py-2 text-xs"
+                          disabled={actionLoading === `trade-noshow-${member.memberId}`}
+                        >
+                          노쇼 처리
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {isJoinedMember && (
+        <div className="card-elevated p-5 space-y-3">
+          <h2 className="section-title">내 거래 상태</h2>
+          <div className="grid gap-2 text-sm text-ink/75">
+            <div className="flex items-center justify-between gap-4">
+              <span>예상 분담금</span>
+              <span className="font-semibold text-ink">{formatCurrency(detail.expectedAmount)}</span>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span>확정 분담금</span>
+              <span className="font-semibold text-ink">{formatCurrency(detail.actualAmount)}</span>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span>송금 상태</span>
+              <span className="font-semibold text-ink">{detail.paymentStatusLabel ?? '정산 대기'}</span>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span>거래 상태</span>
+              <span className="font-semibold text-ink">{detail.tradeStatusLabel ?? '거래 전'}</span>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span>픽업 일정 확인</span>
+              <span className="font-semibold text-ink">{detail.pickupAcknowledged ? '확인 완료' : '미확인'}</span>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {detail.actualAmount != null && detail.paymentStatus === 'PENDING' && (
+              <button
+                onClick={() =>
+                  runAction(
+                    'mark-paid-self',
+                    () => api.updatePaymentStatus({ partyId: detail.partyId, memberId: detail.memberId, paymentStatus: 'PAID' }),
+                    '송금 완료로 표시했습니다.',
+                  )
+                }
+                className="btn-primary px-4 py-2 text-sm"
+                disabled={!detail.memberId || actionLoading === 'mark-paid-self'}
+              >
+                송금 완료 표시
+              </button>
+            )}
+            {detail.pickupPlace && !detail.pickupAcknowledged && (
+              <button
+                onClick={() => runAction('pickup-ack', () => api.acknowledgePickup(detail.partyId), '픽업 일정을 확인했습니다.')}
+                className="btn-secondary px-4 py-2 text-sm"
+                disabled={actionLoading === 'pickup-ack'}
+              >
+                픽업 일정 확인
+              </button>
+            )}
+          </div>
+          {detail.reviewEligible && (
+            <p className="rounded-xl border border-mint-100 bg-mint-50 px-4 py-3 text-sm text-mint-900">
+              거래 완료 상태입니다. 다음 에픽에서 후기 작성이 가능한 상태입니다.
+            </p>
+          )}
         </div>
       )}
 
@@ -218,17 +520,17 @@ function PartyDetail() {
             참여하기
           </button>
         )}
-        {!fromMyParties && !isJoinable && (
+        {!detail.participationStatus && !isJoinable && (
           <div className="rounded-xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink/70">
             {isClosedParty ? '이미 종료된 파티입니다.' : '모집이 마감된 파티입니다.'}
           </div>
         )}
-        {fromMyParties && !isWaitingParty && (
+        {detail.userRole && !isWaitingParty && (
           <div className="rounded-xl border border-mint-100 bg-white px-4 py-3 text-sm text-ink/70">
             이미 참여 중인 파티입니다.
           </div>
         )}
-        {fromMyParties && isWaitingParty && (
+        {isWaitingParty && (
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             대기열 {detail.waitingPosition ?? '-'}번입니다. 빈 자리가 생기면 자동으로 승격됩니다.
           </div>

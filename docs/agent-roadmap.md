@@ -236,33 +236,37 @@
 
 ## Epic 6. 정산 및 픽업 운영
 
-### [ ] E6-1 정산 모델 및 1인당 금액 확정
+### [x] E6-1 정산 모델 및 1인당 금액 확정
 - 목표: 참여 수량 기준 예상 금액과 실제 결제 기준 확정 금액을 관리한다.
 - 범위: 정산 엔티티/DTO, 참여자별 부담금 계산, 호스트 확정 흐름.
 - 완료 조건: 호스트가 실제 총액을 확정하면 참여자별 금액이 계산된다.
 - 검증: 금액 계산 테스트, 확정 API 테스트.
 - ADR: 정산 모델, 계산 기준, 반올림 정책을 문서화한다.
+- 구현 메모(2026-03-16): `PartyMember`에 `expectedAmount`, `actualAmount`를 추가하고, `PUT /party/{id}/settlement`에서 호스트가 실구매 총액을 확정하면 참여자별 금액을 배분하도록 구현했다. 잔여 1원은 요청 수량이 큰 참여자부터 우선 배분하는 정책을 사용했고, 결과는 `PartyDetailResponse.settlementMembers`와 `MyJoinedPartyResponse`에 함께 노출된다. `PartySettlementFlowIntegrationTest`로 금액 계산과 호스트 상세 응답을 검증했다.
 
-### [ ] E6-2 송금 상태 관리
+### [x] E6-2 송금 상태 관리
 - 목표: 참여자별 송금 진행 상태를 서비스 안에서 추적한다.
 - 범위: `PENDING`, `PAID`, `CONFIRMED`, `REFUNDED` 또는 동등한 상태 모델.
 - 완료 조건: 참여자별 정산 상태를 조회하고 갱신할 수 있다.
 - 검증: 상태 전이 테스트, 내 파티/상세 API 응답 검증.
 - ADR: 송금 상태 모델과 권한 규칙을 문서화한다.
+- 구현 메모(2026-03-16): `PaymentStatus`를 `NOT_REQUIRED`, `PENDING`, `PAID`, `CONFIRMED`, `REFUNDED`로 정의하고 `PUT /party/{partyId}/members/{memberId}/payment` API를 추가했다. 참여자는 본인 상태를 `PAID`로만 올릴 수 있고, 호스트는 `CONFIRMED`와 `REFUNDED`만 처리할 수 있게 제한했다. `MyParties.jsx`와 `PartyDetail.jsx`에서 내 정산 금액과 송금 상태를 확인할 수 있고, `PartySettlementFlowIntegrationTest`로 송금 완료 -> 확인 -> 환불 전이를 검증했다.
 
-### [ ] E6-3 픽업 일정 및 장소 확정
+### [x] E6-3 픽업 일정 및 장소 확정
 - 목표: 거래 완료를 위한 만남 장소와 시간을 파티 안에서 확정한다.
 - 범위: `pickupPlace`, `pickupTime`, 확정/변경 이력, 참여자 확인 흐름.
 - 완료 조건: 호스트가 픽업 정보를 확정하고 참여자가 확인할 수 있다.
 - 검증: 일정 확정 API 테스트, 화면 렌더링 확인.
 - ADR: 픽업 확정 흐름과 변경 정책을 문서화한다.
+- 구현 메모(2026-03-16): `Party`에 `pickupPlace`, `pickupTime`을 추가하고 `PUT /party/{id}/pickup`, `POST /party/{id}/pickup/acknowledge` API를 만들었다. 호스트는 상세 화면에서 픽업 장소/시간을 확정하고, 참여자는 같은 화면에서 픽업 일정 확인을 남길 수 있다. `PartyDetail.jsx`와 `MyParties.jsx`에 픽업 정보와 확인 상태를 노출했고, `PartySettlementFlowIntegrationTest`와 `npm run build`로 흐름을 검증했다.
 
-### [ ] E6-4 거래 완료 및 노쇼 처리
+### [x] E6-4 거래 완료 및 노쇼 처리
 - 목표: 실제 거래가 끝났는지와 노쇼 여부를 구분해 처리한다.
 - 범위: 완료 처리, 노쇼 상태, 미수령 처리, 대기열/정산과의 연결 규칙.
 - 완료 조건: 거래 완료와 노쇼를 별도 상태로 기록할 수 있다.
 - 검증: 상태 전이 테스트, 후기 가능 조건 테스트.
 - ADR: 거래 완료/노쇼 상태 모델과 후속 처리 규칙을 문서화한다.
+- 구현 메모(2026-03-16): `TradeStatus`를 `PENDING`, `COMPLETED`, `NO_SHOW`로 추가하고 `PUT /party/{partyId}/members/{memberId}/trade-status` API를 구현했다. 거래 완료는 `CONFIRMED` 결제 상태와 픽업 일정이 있는 경우에만 허용하고, `reviewEligible` 플래그로 후기 가능 조건을 미리 노출한다. 호스트는 상세 화면의 참여자 목록에서 거래 완료/노쇼를 처리할 수 있고, `PartySettlementFlowIntegrationTest`로 거래 완료와 노쇼의 후기 가능 여부 차이를 검증했다.
 
 ## Epic 7. 후기 및 신뢰도
 

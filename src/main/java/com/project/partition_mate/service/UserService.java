@@ -3,6 +3,7 @@ package com.project.partition_mate.service;
 import com.project.partition_mate.domain.WaitingQueueEntry;
 import com.project.partition_mate.domain.WaitingQueueStatus;
 import com.project.partition_mate.domain.User;
+import com.project.partition_mate.domain.PartyMember;
 import com.project.partition_mate.dto.UserNotificationResponse;
 import com.project.partition_mate.dto.MyJoinedPartyResponse;
 import com.project.partition_mate.repository.PartyMemberRepository;
@@ -14,7 +15,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Comparator;
 
 @Service
 @RequiredArgsConstructor
@@ -45,12 +49,17 @@ public class UserService {
                         pm.getParty().getPartyStatus(),
                         pm.getParty().getTotalQuantity(),
                         pm.getParty().getRequestedQuantity(),
+                        pm.getId(),
                         pm.getRole(),
                         pm.getParty().getDisplayTotalPrice(),
                         pm.getParty().getExpectedTotalPrice(),
                         pm.getParty().getActualTotalPrice(),
                         pm.getParty().getOpenChatUrl(),
                         pm.getRequestedQuantity(),
+                        resolveExpectedAmount(pm),
+                        pm.getActualAmount(),
+                        pm.getPaymentStatus(),
+                        pm.getTradeStatus(),
                         pm.getParty().getUnitLabel(),
                         pm.getParty().getMinimumShareUnit(),
                         pm.getParty().getStorageType(),
@@ -59,6 +68,10 @@ public class UserService {
                         pm.getParty().isOnSiteSplit(),
                         pm.getParty().getGuideNote(),
                         pm.getParty().getReceiptNote(),
+                        pm.getParty().getPickupPlace(),
+                        pm.getParty().getPickupTime(),
+                        pm.isPickupAcknowledged(),
+                        pm.isReviewEligible(),
                         pm.getParty().getDeadline(),
                         pm.getParty().getClosedAt(),
                         pm.getParty().getCloseReason()
@@ -108,10 +121,45 @@ public class UserService {
                 waitingQueueEntry.getParty().isOnSiteSplit(),
                 waitingQueueEntry.getParty().getGuideNote(),
                 waitingQueueEntry.getParty().getReceiptNote(),
+                waitingQueueEntry.getParty().getPickupPlace(),
+                waitingQueueEntry.getParty().getPickupTime(),
                 waitingQueueEntry.getParty().getDeadline(),
                 waitingQueueEntry.getParty().getClosedAt(),
                 waitingQueueEntry.getParty().getCloseReason()
         );
+    }
+
+    private Integer resolveExpectedAmount(PartyMember partyMember) {
+        if (partyMember.getExpectedAmount() != null) {
+            return partyMember.getExpectedAmount();
+        }
+
+        List<PartyMember> joinedMembers = partyMember.getParty().getMembers().stream()
+                .filter(member -> member.getRequestedQuantity() > 0)
+                .sorted(Comparator
+                        .comparing(PartyMember::getRequestedQuantity, Comparator.reverseOrder())
+                        .thenComparing(PartyMember::getId))
+                .toList();
+
+        int totalRequestedQuantity = joinedMembers.stream()
+                .mapToInt(PartyMember::getRequestedQuantity)
+                .sum();
+
+        if (totalRequestedQuantity <= 0) {
+            return null;
+        }
+
+        int baseUnitAmount = partyMember.getParty().getExpectedTotalPrice() / totalRequestedQuantity;
+        int remainder = partyMember.getParty().getExpectedTotalPrice() % totalRequestedQuantity;
+
+        Map<Long, Integer> allocations = new HashMap<>();
+        for (PartyMember member : joinedMembers) {
+            int bonus = Math.min(remainder, member.getRequestedQuantity());
+            allocations.put(member.getId(), baseUnitAmount * member.getRequestedQuantity() + bonus);
+            remainder -= bonus;
+        }
+
+        return allocations.get(partyMember.getId());
     }
 
     public List<UserNotificationResponse> getNotifications(User user) {
