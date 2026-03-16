@@ -1,3 +1,58 @@
+function normalizeTrustSummary(input) {
+  if (!input) return null;
+
+  return {
+    userId: input.userId ?? null,
+    username: input.username ?? '',
+    averageRating: input.averageRating ?? 0,
+    reviewCount: input.reviewCount ?? 0,
+    completedTradeCount: input.completedTradeCount ?? 0,
+    noShowCount: input.noShowCount ?? 0,
+    completionRate: input.completionRate ?? 0,
+    trustScore: input.trustScore ?? 0,
+    trustLevel: input.trustLevel ?? 'NEW',
+    trustLevelLabel: input.trustLevelLabel ?? '신규 사용자',
+  };
+}
+
+function normalizeReview(input) {
+  if (!input) return null;
+
+  return {
+    reviewId: input.reviewId ?? null,
+    partyId: input.partyId ?? null,
+    partyTitle: input.partyTitle ?? '',
+    reviewerId: input.reviewerId ?? null,
+    reviewerName: input.reviewerName ?? '',
+    revieweeId: input.revieweeId ?? null,
+    rating: input.rating ?? 0,
+    comment: input.comment ?? '',
+    createdAt: input.createdAt ?? null,
+    createdAtLabel: input.createdAtLabel ?? input.createdAt ?? '',
+  };
+}
+
+function normalizeSettlementMember(input) {
+  if (!input) return null;
+
+  return {
+    memberId: input.memberId ?? null,
+    userId: input.userId ?? null,
+    username: input.username ?? '',
+    role: input.role ?? null,
+    requestedQuantity: input.requestedQuantity ?? 0,
+    expectedAmount: input.expectedAmount ?? null,
+    actualAmount: input.actualAmount ?? null,
+    paymentStatus: input.paymentStatus ?? null,
+    paymentStatusLabel: input.paymentStatusLabel ?? null,
+    tradeStatus: input.tradeStatus ?? null,
+    tradeStatusLabel: input.tradeStatusLabel ?? null,
+    pickupAcknowledged: input.pickupAcknowledged ?? false,
+    reviewEligible: input.reviewEligible ?? false,
+    reviewWritten: input.reviewWritten ?? false,
+  };
+}
+
 export function normalizePartyDetail(input) {
   if (!input) return null;
 
@@ -26,7 +81,7 @@ export function normalizePartyDetail(input) {
     status: normalizedStatus,
     storeName: input.storeName ?? '',
     openChatUrl: input.openChatUrl ?? '',
-    participationStatus: input.participationStatus ?? 'JOINED',
+    participationStatus: input.participationStatus ?? null,
     waitingPosition: input.waitingPosition ?? null,
     requestedQuantity: input.requestedQuantity ?? null,
     closeReason: input.closeReason ?? null,
@@ -55,8 +110,14 @@ export function normalizePartyDetail(input) {
     memberId: input.memberId ?? null,
     pickupAcknowledged: input.pickupAcknowledged ?? false,
     reviewEligible: input.reviewEligible ?? false,
+    canReviewHost: input.canReviewHost ?? false,
+    hasReviewedHost: input.hasReviewedHost ?? false,
     userRole: input.userRole ?? null,
-    settlementMembers: input.settlementMembers ?? [],
+    hostTrust: normalizeTrustSummary(input.hostTrust),
+    hostReviews: Array.isArray(input.hostReviews) ? input.hostReviews.map(normalizeReview).filter(Boolean) : [],
+    settlementMembers: Array.isArray(input.settlementMembers)
+      ? input.settlementMembers.map(normalizeSettlementMember).filter(Boolean)
+      : [],
   };
 }
 

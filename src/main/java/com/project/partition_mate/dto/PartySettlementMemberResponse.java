@@ -22,6 +22,7 @@ public class PartySettlementMemberResponse {
     private final String tradeStatusLabel;
     private final boolean pickupAcknowledged;
     private final boolean reviewEligible;
+    private final boolean reviewWritten;
 
     private PartySettlementMemberResponse(Long memberId,
                                           Long userId,
@@ -33,7 +34,8 @@ public class PartySettlementMemberResponse {
                                           PaymentStatus paymentStatus,
                                           TradeStatus tradeStatus,
                                           boolean pickupAcknowledged,
-                                          boolean reviewEligible) {
+                                          boolean reviewEligible,
+                                          boolean reviewWritten) {
         this.memberId = memberId;
         this.userId = userId;
         this.username = username;
@@ -47,9 +49,13 @@ public class PartySettlementMemberResponse {
         this.tradeStatusLabel = tradeStatus != null ? tradeStatus.getLabel() : null;
         this.pickupAcknowledged = pickupAcknowledged;
         this.reviewEligible = reviewEligible;
+        this.reviewWritten = reviewWritten;
     }
 
-    public static PartySettlementMemberResponse from(PartyMember partyMember, Integer expectedAmount, Integer actualAmount) {
+    public static PartySettlementMemberResponse from(PartyMember partyMember,
+                                                     Integer expectedAmount,
+                                                     Integer actualAmount,
+                                                     boolean reviewWritten) {
         return new PartySettlementMemberResponse(
                 partyMember.getId(),
                 partyMember.getUser().getId(),
@@ -61,7 +67,8 @@ public class PartySettlementMemberResponse {
                 partyMember.getPaymentStatus(),
                 partyMember.getTradeStatus(),
                 partyMember.isPickupAcknowledged(),
-                partyMember.isReviewEligible()
+                partyMember.isReviewEligible(),
+                reviewWritten
         );
     }
 }

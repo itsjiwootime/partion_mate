@@ -6,6 +6,9 @@ import com.project.partition_mate.domain.User;
 import com.project.partition_mate.domain.PartyMember;
 import com.project.partition_mate.dto.UserNotificationResponse;
 import com.project.partition_mate.dto.MyJoinedPartyResponse;
+import com.project.partition_mate.dto.ReviewResponse;
+import com.project.partition_mate.dto.TrustSummaryResponse;
+import com.project.partition_mate.dto.UserResponse;
 import com.project.partition_mate.repository.PartyMemberRepository;
 import com.project.partition_mate.repository.UserNotificationRepository;
 import com.project.partition_mate.repository.UserRepository;
@@ -28,6 +31,7 @@ public class UserService {
     private final PartyMemberRepository partyMemberRepository;
     private final WaitingQueueRepository waitingQueueRepository;
     private final UserNotificationRepository userNotificationRepository;
+    private final TrustScoreService trustScoreService;
 
     public User getUserByEmail(String email) {
 
@@ -35,6 +39,14 @@ public class UserService {
                 .orElseThrow(() -> new EntityNotFoundException("해당 이메일을 가진 사용자를  찾을 수 없습니다."));
 
         return user;
+    }
+
+    public UserResponse getProfile(User user) {
+        return UserResponse.from(
+                user,
+                trustScoreService.getTrustSummary(user),
+                trustScoreService.getRecentReviews(user, 5)
+        );
     }
 
     public List<MyJoinedPartyResponse> getMyParties(User user) {
@@ -166,5 +178,13 @@ public class UserService {
         return userNotificationRepository.findAllByUserOrderByCreatedAtDesc(user).stream()
                 .map(UserNotificationResponse::from)
                 .toList();
+    }
+
+    public TrustSummaryResponse getTrustSummary(User user) {
+        return trustScoreService.getTrustSummary(user);
+    }
+
+    public List<ReviewResponse> getRecentReviews(User user, int limit) {
+        return trustScoreService.getRecentReviews(user, limit);
     }
 }

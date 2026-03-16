@@ -83,4 +83,16 @@ public class BusinessException extends RuntimeException {
     public static BusinessException hostMemberCannotBeManaged() {
         return new BusinessException("호스트 계정에는 참여자용 거래 상태를 적용할 수 없습니다.", HttpStatus.CONFLICT);
     }
+
+    public static BusinessException reviewNotEligible() {
+        return new BusinessException("거래 완료된 상대에게만 후기를 작성할 수 있습니다.", HttpStatus.CONFLICT);
+    }
+
+    public static BusinessException reviewDuplicate() {
+        return new BusinessException("같은 파티에서 이미 작성한 후기입니다.", HttpStatus.CONFLICT);
+    }
+
+    public static BusinessException invalidReviewTarget() {
+        return new BusinessException("후기 대상 사용자가 올바르지 않습니다.", HttpStatus.BAD_REQUEST);
+    }
 }

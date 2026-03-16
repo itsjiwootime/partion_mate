@@ -115,6 +115,12 @@ export const api = {
       body: JSON.stringify({ tradeStatus }),
     }),
 
+  submitReview: ({ partyId, targetUserId, rating, comment }) =>
+    fetchJson(`/party/${partyId}/reviews`, {
+      method: 'POST',
+      body: JSON.stringify({ targetUserId, rating, comment }),
+    }),
+
   createParty: (payload) =>
     fetchJson('/party', {
       method: 'POST',

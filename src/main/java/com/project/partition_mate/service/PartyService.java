@@ -5,6 +5,7 @@ import com.project.partition_mate.domain.Party;
 import com.project.partition_mate.domain.PartyMember;
 import com.project.partition_mate.domain.PartyStatus;
 import com.project.partition_mate.domain.PaymentStatus;
+import com.project.partition_mate.domain.Review;
 import com.project.partition_mate.domain.Store;
 import com.project.partition_mate.domain.TradeStatus;
 import com.project.partition_mate.domain.User;
@@ -13,16 +14,20 @@ import com.project.partition_mate.domain.WaitingQueueStatus;
 import com.project.partition_mate.dto.ConfirmPickupScheduleRequest;
 import com.project.partition_mate.dto.ConfirmSettlementRequest;
 import com.project.partition_mate.dto.CreatePartyRequest;
+import com.project.partition_mate.dto.CreateReviewRequest;
 import com.project.partition_mate.dto.JoinPartyResponse;
 import com.project.partition_mate.dto.JoinPartyRequest;
 import com.project.partition_mate.dto.PartyDetailResponse;
 import com.project.partition_mate.dto.PartySettlementMemberResponse;
 import com.project.partition_mate.dto.PartyRealtimeTrigger;
+import com.project.partition_mate.dto.ReviewResponse;
+import com.project.partition_mate.dto.TrustSummaryResponse;
 import com.project.partition_mate.dto.UpdatePaymentStatusRequest;
 import com.project.partition_mate.dto.UpdateTradeStatusRequest;
 import com.project.partition_mate.exception.BusinessException;
 import com.project.partition_mate.repository.PartyMemberRepository;
 import com.project.partition_mate.repository.PartyRepository;
+import com.project.partition_mate.repository.ReviewRepository;
 import com.project.partition_mate.repository.StoreRepository;
 import com.project.partition_mate.repository.WaitingQueueRepository;
 import com.project.partition_mate.security.CustomUserDetails;
@@ -40,6 +45,8 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -49,9 +56,11 @@ public class PartyService {
     private final PartyMemberRepository partyMemberRepository;
     private final WaitingQueueRepository waitingQueueRepository;
     private final StoreRepository storeRepository;
+    private final ReviewRepository reviewRepository;
     private final StoreQueryCacheSupport storeQueryCacheSupport;
     private final NotificationOutboxService notificationOutboxService;
     private final PartyRealtimeService partyRealtimeService;
+    private final TrustScoreService trustScoreService;
     private final Clock clock;
 
     @Transactional
@@ -298,6 +307,36 @@ public class PartyService {
         return buildPartyDetailResponse(party, currentUser);
     }
 
+    @Transactional
+    public PartyDetailResponse submitReview(Long partyId, CreateReviewRequest request) {
+        User currentUser = getCurrentUser();
+        Party party = partyRepository.findDetailById(partyId)
+                .orElseThrow(() -> new EntityNotFoundException("파티가 존재하지 않습니다"));
+
+        PartyMember actorMember = getRequiredPartyMember(party, currentUser);
+        PartyMember hostMember = getRequiredHostMember(party);
+        User reviewee = resolveReviewee(party, actorMember, hostMember, request.getTargetUserId());
+
+        if (reviewRepository.existsByPartyAndReviewerAndReviewee(party, currentUser, reviewee)) {
+            throw BusinessException.reviewDuplicate();
+        }
+
+        try {
+            reviewRepository.saveAndFlush(Review.create(
+                    party,
+                    currentUser,
+                    reviewee,
+                    request.getRating(),
+                    request.getComment(),
+                    LocalDateTime.now(clock)
+            ));
+        } catch (DataIntegrityViolationException ex) {
+            throw BusinessException.reviewDuplicate();
+        }
+
+        return buildPartyDetailResponse(party, currentUser);
+    }
+
     private JoinPartyResponse joinImmediately(Party party, User member, Integer requestedQuantity) {
         PartyMember newMember = PartyMember.joinAsMember(
                 party,
@@ -435,9 +474,16 @@ public class PartyService {
         }
 
         List<PartyMember> joinedMembers = getJoinedMembers(party);
+        PartyMember hostMember = findHostMember(party);
+        User hostUser = hostMember != null ? hostMember.getUser() : null;
         Map<Long, Integer> previewExpectedAmounts = joinedMembers.isEmpty()
                 ? Map.of()
                 : allocateAmounts(party.getExpectedTotalPrice(), joinedMembers);
+        Set<Long> reviewedUserIds = currentUser != null && joinedMember != null && joinedMember.isHost()
+                ? reviewRepository.findAllByPartyAndReviewer(party, currentUser).stream()
+                .map(review -> review.getReviewee().getId())
+                .collect(Collectors.toSet())
+                : Set.of();
 
         List<PartySettlementMemberResponse> settlementMembers = joinedMember != null && joinedMember.isHost()
                 ? joinedMembers.stream()
@@ -448,12 +494,21 @@ public class PartyService {
                 .map(member -> PartySettlementMemberResponse.from(
                         member,
                         previewExpectedAmounts.get(member.getId()),
-                        member.getActualAmount()
+                        member.getActualAmount(),
+                        member.isMember() && reviewedUserIds.contains(member.getUser().getId())
                 ))
                 .toList()
                 : List.of();
 
         Integer waitingPosition = waitingEntry != null ? resolveWaitingPosition(waitingEntry) : null;
+        boolean canReviewHost = joinedMember != null
+                && joinedMember.isMember()
+                && joinedMember.isReviewEligible()
+                && hostUser != null;
+        boolean hasReviewedHost = canReviewHost
+                && reviewRepository.existsByPartyAndReviewerAndReviewee(party, currentUser, hostUser);
+        TrustSummaryResponse hostTrust = hostUser != null ? trustScoreService.getTrustSummary(hostUser) : null;
+        List<ReviewResponse> hostReviews = hostUser != null ? trustScoreService.getRecentReviews(hostUser, 3) : List.of();
 
         return PartyDetailResponse.from(
                 party,
@@ -468,8 +523,56 @@ public class PartyService {
                 joinedMember != null ? joinedMember.getTradeStatus() : null,
                 joinedMember != null && joinedMember.isPickupAcknowledged(),
                 joinedMember != null && joinedMember.isReviewEligible(),
+                canReviewHost,
+                hasReviewedHost,
+                hostTrust,
+                hostReviews,
                 settlementMembers
         );
+    }
+
+    private PartyMember findHostMember(Party party) {
+        return party.getMembers().stream()
+                .filter(PartyMember::isHost)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private PartyMember getRequiredHostMember(Party party) {
+        return party.getMembers().stream()
+                .filter(PartyMember::isHost)
+                .findFirst()
+                .orElseThrow(() -> new EntityNotFoundException("호스트 정보를 찾을 수 없습니다."));
+    }
+
+    private User resolveReviewee(Party party,
+                                 PartyMember actorMember,
+                                 PartyMember hostMember,
+                                 Long targetUserId) {
+        if (targetUserId == null || actorMember.getUser().getId().equals(targetUserId)) {
+            throw BusinessException.invalidReviewTarget();
+        }
+
+        if (actorMember.isHost()) {
+            PartyMember targetMember = party.getMembers().stream()
+                    .filter(PartyMember::isMember)
+                    .filter(member -> member.getUser().getId().equals(targetUserId))
+                    .findFirst()
+                    .orElseThrow(BusinessException::invalidReviewTarget);
+
+            if (!targetMember.isReviewEligible()) {
+                throw BusinessException.reviewNotEligible();
+            }
+            return targetMember.getUser();
+        }
+
+        if (!actorMember.isReviewEligible()) {
+            throw BusinessException.reviewNotEligible();
+        }
+        if (!hostMember.getUser().getId().equals(targetUserId)) {
+            throw BusinessException.invalidReviewTarget();
+        }
+        return hostMember.getUser();
     }
 
     private PartyMember getRequiredPartyMember(Party party, User currentUser) {

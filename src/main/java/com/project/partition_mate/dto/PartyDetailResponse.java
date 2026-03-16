@@ -58,6 +58,10 @@ public class PartyDetailResponse {
     private final String tradeStatusLabel;
     private final boolean pickupAcknowledged;
     private final boolean reviewEligible;
+    private final boolean canReviewHost;
+    private final boolean hasReviewedHost;
+    private final TrustSummaryResponse hostTrust;
+    private final List<ReviewResponse> hostReviews;
     private final List<PartySettlementMemberResponse> settlementMembers;
 
     private PartyDetailResponse(Long id,
@@ -95,6 +99,10 @@ public class PartyDetailResponse {
                                 TradeStatus tradeStatus,
                                 boolean pickupAcknowledged,
                                 boolean reviewEligible,
+                                boolean canReviewHost,
+                                boolean hasReviewedHost,
+                                TrustSummaryResponse hostTrust,
+                                List<ReviewResponse> hostReviews,
                                 List<PartySettlementMemberResponse> settlementMembers) {
         this.id = id;
         this.title = title;
@@ -137,6 +145,10 @@ public class PartyDetailResponse {
         this.tradeStatusLabel = tradeStatus != null ? tradeStatus.getLabel() : null;
         this.pickupAcknowledged = pickupAcknowledged;
         this.reviewEligible = reviewEligible;
+        this.canReviewHost = canReviewHost;
+        this.hasReviewedHost = hasReviewedHost;
+        this.hostTrust = hostTrust;
+        this.hostReviews = hostReviews;
         this.settlementMembers = settlementMembers;
     }
 
@@ -152,6 +164,10 @@ public class PartyDetailResponse {
                                            TradeStatus tradeStatus,
                                            boolean pickupAcknowledged,
                                            boolean reviewEligible,
+                                           boolean canReviewHost,
+                                           boolean hasReviewedHost,
+                                           TrustSummaryResponse hostTrust,
+                                           List<ReviewResponse> hostReviews,
                                            List<PartySettlementMemberResponse> settlementMembers) {
         return new PartyDetailResponse(
                 party.getId(),
@@ -189,6 +205,10 @@ public class PartyDetailResponse {
                 tradeStatus,
                 pickupAcknowledged,
                 reviewEligible,
+                canReviewHost,
+                hasReviewedHost,
+                hostTrust,
+                hostReviews,
                 settlementMembers
         );
     }

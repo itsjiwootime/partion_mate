@@ -3,6 +3,7 @@ package com.project.partition_mate.controller;
 import com.project.partition_mate.domain.Party;
 import com.project.partition_mate.dto.ConfirmPickupScheduleRequest;
 import com.project.partition_mate.dto.ConfirmSettlementRequest;
+import com.project.partition_mate.dto.CreateReviewRequest;
 import com.project.partition_mate.dto.CreatePartyRequest;
 import com.project.partition_mate.dto.JoinPartyResponse;
 import com.project.partition_mate.dto.PartyDetailResponse;
@@ -77,6 +78,12 @@ public class PartyController {
                                                                  @PathVariable Long memberId,
                                                                  @RequestBody @Valid UpdateTradeStatusRequest request) {
         return ResponseEntity.ok(partyService.updateTradeStatus(partyId, memberId, request));
+    }
+
+    @PostMapping("/{id}/reviews")
+    public ResponseEntity<PartyDetailResponse> submitReview(@PathVariable Long id,
+                                                            @RequestBody @Valid CreateReviewRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(partyService.submitReview(id, request));
     }
 
     @GetMapping("/all")

@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { Package, Users, Clock3, ArrowLeft, Link as LinkIcon, Copy, ExternalLink, MapPin, Wallet } from 'lucide-react';
+import { Package, Users, Clock3, ArrowLeft, Link as LinkIcon, Copy, ExternalLink, MapPin, Wallet, ShieldCheck, Star, MessageSquareText } from 'lucide-react';
 import { LoadingState } from '../components/Feedback';
 import { mergeRealtimeParty, normalizePartyDetail } from '../utils/party';
 import { subscribeToPartyStream } from '../utils/partyRealtime';
@@ -16,6 +16,14 @@ function toDateTimeLocalValue(value) {
 function formatCurrency(value) {
   if (value == null) return '미정';
   return `${value.toLocaleString()}원`;
+}
+
+function createReviewFormState() {
+  return { rating: '5', comment: '' };
+}
+
+function formatRating(value) {
+  return Number(value ?? 0).toFixed(1);
 }
 
 function PartyDetail() {
@@ -32,6 +40,8 @@ function PartyDetail() {
   const [actionLoading, setActionLoading] = useState('');
   const [settlementForm, setSettlementForm] = useState({ actualTotalPrice: '', receiptNote: '' });
   const [pickupForm, setPickupForm] = useState({ pickupPlace: '', pickupTime: '' });
+  const [hostReviewForm, setHostReviewForm] = useState(createReviewFormState);
+  const [memberReviewForms, setMemberReviewForms] = useState({});
 
   useEffect(() => {
     setSettlementForm({
@@ -43,6 +53,24 @@ function PartyDetail() {
       pickupTime: toDateTimeLocalValue(detail?.pickupTime),
     });
   }, [detail?.actualTotalPrice, detail?.receiptNote, detail?.pickupPlace, detail?.pickupTime]);
+
+  useEffect(() => {
+    if (!detail?.partyId) return;
+    setHostReviewForm(createReviewFormState());
+  }, [detail?.partyId]);
+
+  useEffect(() => {
+    if (!detail?.settlementMembers?.length) return;
+    setMemberReviewForms((current) => {
+      const next = {};
+      detail.settlementMembers
+        .filter((member) => member.role !== 'LEADER')
+        .forEach((member) => {
+          next[member.memberId] = current[member.memberId] ?? createReviewFormState();
+        });
+      return next;
+    });
+  }, [detail?.settlementMembers]);
 
   useEffect(() => {
     let active = true;
@@ -167,6 +195,20 @@ function PartyDetail() {
     );
   };
 
+  const handleReviewSubmit = async ({ targetUserId, rating, comment, actionKey, successMessage }) => {
+    await runAction(
+      actionKey,
+      () =>
+        api.submitReview({
+          partyId: detail.partyId,
+          targetUserId,
+          rating: Number(rating),
+          comment: comment.trim(),
+        }),
+      successMessage,
+    );
+  };
+
   if (loading) return <LoadingState />;
   if (error) return <p className="text-sm text-red-600">{error}</p>;
   if (!detail) return <p className="text-sm text-ink/60">파티 정보를 찾을 수 없습니다.</p>;
@@ -237,6 +279,44 @@ function PartyDetail() {
         </div>
       </div>
 
+      {detail.hostTrust && (
+        <div className="card-elevated p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <ShieldCheck size={18} className="text-mint-700" />
+            <h2 className="section-title">호스트 신뢰도</h2>
+          </div>
+          <div className="grid gap-3 md:grid-cols-[1.2fr_1fr]">
+            <div className="rounded-2xl border border-mint-100 bg-mint-50 px-4 py-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-mint-700">신뢰 등급</p>
+              <p className="mt-1 text-lg font-semibold text-ink">{detail.hostTrust.trustLevelLabel}</p>
+              <p className="text-sm text-ink/60">신뢰 점수 {detail.hostTrust.trustScore}점</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-sm text-ink/75">
+              <div className="rounded-2xl border border-ink/10 px-4 py-3">
+                <p className="text-xs text-ink/50">평균 평점</p>
+                <p className="mt-1 flex items-center gap-1 font-semibold text-ink">
+                  <Star size={14} className="fill-amber-400 text-amber-400" />
+                  {formatRating(detail.hostTrust.averageRating)}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-ink/10 px-4 py-3">
+                <p className="text-xs text-ink/50">후기 수</p>
+                <p className="mt-1 font-semibold text-ink">{detail.hostTrust.reviewCount}개</p>
+              </div>
+              <div className="rounded-2xl border border-ink/10 px-4 py-3">
+                <p className="text-xs text-ink/50">거래 완료</p>
+                <p className="mt-1 font-semibold text-ink">{detail.hostTrust.completedTradeCount}건</p>
+              </div>
+              <div className="rounded-2xl border border-ink/10 px-4 py-3">
+                <p className="text-xs text-ink/50">노쇼 기록</p>
+                <p className="mt-1 font-semibold text-ink">{detail.hostTrust.noShowCount}건</p>
+              </div>
+            </div>
+          </div>
+          <p className="text-xs text-ink/55">거래 완료율 {detail.hostTrust.completionRate}%</p>
+        </div>
+      )}
+
       <div className="card-elevated p-5 space-y-3">
         <h2 className="section-title">소분 정보</h2>
         <div className="grid gap-2 text-sm text-ink/75">
@@ -287,6 +367,36 @@ function PartyDetail() {
           <p className="text-sm leading-6 text-ink/75 whitespace-pre-line">{detail.guideNote}</p>
         </div>
       )}
+
+      <div className="card-elevated p-5 space-y-3">
+        <div className="flex items-center gap-2">
+          <MessageSquareText size={18} className="text-mint-700" />
+          <h2 className="section-title">최근 호스트 후기</h2>
+        </div>
+        {!detail.hostReviews.length && (
+          <p className="text-sm text-ink/60">아직 공개된 후기가 없습니다. 거래가 완료되면 후기가 쌓입니다.</p>
+        )}
+        <div className="space-y-3">
+          {detail.hostReviews.map((review) => (
+            <div key={review.reviewId} className="rounded-2xl border border-ink/10 px-4 py-3">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold text-ink">{review.reviewerName}</p>
+                  <p className="text-xs text-ink/50">{review.partyTitle}</p>
+                </div>
+                <div className="text-right text-xs text-ink/55">
+                  <p className="flex items-center justify-end gap-1 font-semibold text-ink">
+                    <Star size={13} className="fill-amber-400 text-amber-400" />
+                    {review.rating}점
+                  </p>
+                  <p>{review.createdAtLabel}</p>
+                </div>
+              </div>
+              {review.comment && <p className="mt-3 text-sm leading-6 text-ink/75">{review.comment}</p>}
+            </div>
+          ))}
+        </div>
+      </div>
 
       {isHost && (
         <>
@@ -440,6 +550,75 @@ function PartyDetail() {
                       )}
                     </div>
                   )}
+
+                  {member.role !== 'LEADER' && member.reviewEligible && (
+                    <div className="rounded-2xl border border-mint-100 bg-mint-50/60 p-4 space-y-3">
+                      <p className="text-sm font-semibold text-ink">참여자 후기</p>
+                      {member.reviewWritten ? (
+                        <p className="text-sm text-mint-900">이미 이 참여자에 대한 후기를 작성했습니다.</p>
+                      ) : (
+                        <>
+                          <div className="grid gap-3 md:grid-cols-[120px_1fr]">
+                            <label className="block text-sm text-ink/75">
+                              <span className="mb-1 block">평점</span>
+                              <select
+                                value={memberReviewForms[member.memberId]?.rating ?? '5'}
+                                onChange={(e) =>
+                                  setMemberReviewForms((current) => ({
+                                    ...current,
+                                    [member.memberId]: {
+                                      ...(current[member.memberId] ?? createReviewFormState()),
+                                      rating: e.target.value,
+                                    },
+                                  }))
+                                }
+                                className="input-field"
+                              >
+                                {[5, 4, 3, 2, 1].map((score) => (
+                                  <option key={score} value={String(score)}>
+                                    {score}점
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                            <label className="block text-sm text-ink/75">
+                              <span className="mb-1 block">후기</span>
+                              <textarea
+                                rows="3"
+                                value={memberReviewForms[member.memberId]?.comment ?? ''}
+                                onChange={(e) =>
+                                  setMemberReviewForms((current) => ({
+                                    ...current,
+                                    [member.memberId]: {
+                                      ...(current[member.memberId] ?? createReviewFormState()),
+                                      comment: e.target.value,
+                                    },
+                                  }))
+                                }
+                                className="input-field min-h-[96px]"
+                                placeholder="정산 속도, 약속 준수, 응답 매너를 남겨주세요."
+                              />
+                            </label>
+                          </div>
+                          <button
+                            onClick={() =>
+                              handleReviewSubmit({
+                                targetUserId: member.userId,
+                                rating: memberReviewForms[member.memberId]?.rating ?? '5',
+                                comment: memberReviewForms[member.memberId]?.comment ?? '',
+                                actionKey: `review-member-${member.memberId}`,
+                                successMessage: '참여자 후기를 등록했습니다.',
+                              })
+                            }
+                            className="btn-secondary px-4 py-2 text-sm"
+                            disabled={actionLoading === `review-member-${member.memberId}`}
+                          >
+                            {actionLoading === `review-member-${member.memberId}` ? '등록 중...' : '참여자 후기 등록'}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -498,10 +677,56 @@ function PartyDetail() {
               </button>
             )}
           </div>
-          {detail.reviewEligible && (
+          {detail.hasReviewedHost && (
             <p className="rounded-xl border border-mint-100 bg-mint-50 px-4 py-3 text-sm text-mint-900">
-              거래 완료 상태입니다. 다음 에픽에서 후기 작성이 가능한 상태입니다.
+              호스트 후기를 이미 작성했습니다.
             </p>
+          )}
+          {detail.canReviewHost && !detail.hasReviewedHost && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleReviewSubmit({
+                  targetUserId: detail.hostTrust?.userId,
+                  rating: hostReviewForm.rating,
+                  comment: hostReviewForm.comment,
+                  actionKey: 'review-host',
+                  successMessage: '호스트 후기를 등록했습니다.',
+                });
+              }}
+              className="space-y-3 rounded-2xl border border-mint-100 bg-mint-50/60 p-4"
+            >
+              <h3 className="text-sm font-semibold text-ink">호스트 후기 작성</h3>
+              <div className="grid gap-3 md:grid-cols-[120px_1fr]">
+                <label className="block text-sm text-ink/75">
+                  <span className="mb-1 block">평점</span>
+                  <select
+                    value={hostReviewForm.rating}
+                    onChange={(e) => setHostReviewForm((current) => ({ ...current, rating: e.target.value }))}
+                    className="input-field"
+                  >
+                    {[5, 4, 3, 2, 1].map((score) => (
+                      <option key={score} value={String(score)}>
+                        {score}점
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block text-sm text-ink/75">
+                  <span className="mb-1 block">후기</span>
+                  <textarea
+                    rows="3"
+                    value={hostReviewForm.comment}
+                    onChange={(e) => setHostReviewForm((current) => ({ ...current, comment: e.target.value }))}
+                    className="input-field min-h-[96px]"
+                    placeholder="분배 정확도, 약속 준수, 응답 속도를 남겨주세요."
+                  />
+                </label>
+              </div>
+              <button className="btn-primary px-4 py-2 text-sm" disabled={actionLoading === 'review-host' || !detail.hostTrust?.userId}>
+                {actionLoading === 'review-host' ? '등록 중...' : '호스트 후기 등록'}
+              </button>
+            </form>
           )}
         </div>
       )}

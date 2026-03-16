@@ -30,7 +30,7 @@ public class UserController {
         CustomUserDetails principal = (CustomUserDetails) authentication.getPrincipal();
         User user = principal.getUser();
 
-        UserResponse response = UserResponse.from(user);
+        UserResponse response = userService.getProfile(user);
 
         return ResponseEntity.ok(response);
     }
