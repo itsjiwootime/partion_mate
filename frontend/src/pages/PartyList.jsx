@@ -4,7 +4,8 @@ import PartyCard from '../components/PartyCard';
 import { api } from '../api/client';
 import SectionHeader from '../components/SectionHeader';
 import { LoadingState, EmptyState } from '../components/Feedback';
-import { normalizePartySummary } from '../utils/party';
+import { applyPartyListRealtimeUpdate, normalizePartySummary } from '../utils/party';
+import { subscribeToPartyStream } from '../utils/partyRealtime';
 
 function PartyList() {
   const { id } = useParams();
@@ -15,8 +16,10 @@ function PartyList() {
   const [parties, setParties] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [realtimeState, setRealtimeState] = useState('connecting');
 
   useEffect(() => {
+    let active = true;
     const numericId = id ? Number(id) : null;
     if (id && Number.isNaN(numericId)) {
       setError('유효하지 않은 지점 ID입니다.');
@@ -29,9 +32,13 @@ function PartyList() {
       }
       try {
         const data = await api.getStoreDetail(numericId);
-        setStoreInfo(data);
+        if (active) {
+          setStoreInfo(data);
+        }
       } catch {
-        setStoreInfo(null);
+        if (active) {
+          setStoreInfo(null);
+        }
       }
     };
     const fetchParties = async () => {
@@ -40,15 +47,53 @@ function PartyList() {
         setError('');
         const data = isAll ? await api.getAllParties() : await api.getStoreParties(numericId);
         const normalized = data.map(normalizePartySummary);
-        setParties(normalized);
+        if (active) {
+          setParties(normalized);
+        }
       } catch (e) {
-        setError('파티 목록을 불러오지 못했습니다.');
+        if (active) {
+          setError('파티 목록을 불러오지 못했습니다.');
+        }
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     };
     fetchStore();
     fetchParties();
+
+    const unsubscribe = subscribeToPartyStream({
+      storeId: isAll ? null : numericId,
+      onConnected: () => {
+        if (active) {
+          setRealtimeState('live');
+        }
+      },
+      onReconnectStateChange: (state) => {
+        if (active) {
+          setRealtimeState(state);
+        }
+      },
+      onPartyUpdated: (event) => {
+        if (!active) return;
+        setParties((current) =>
+          applyPartyListRealtimeUpdate(current, event, {
+            storeId: isAll ? null : numericId,
+          }),
+        );
+      },
+      onFallback: () => {
+        if (active) {
+          fetchParties();
+        }
+      },
+    });
+
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
   }, [id, isAll]);
 
   return (
@@ -78,6 +123,10 @@ function PartyList() {
           )
         }
       />
+
+      <p className="text-xs text-ink/50">
+        {realtimeState === 'reconnecting' ? '실시간 연결을 다시 시도하는 중입니다.' : '실시간 모집 현황을 반영하고 있습니다.'}
+      </p>
 
       {loading && <LoadingState />}
       {error && <p className="text-sm text-red-600">{error}</p>}

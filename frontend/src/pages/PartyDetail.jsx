@@ -3,7 +3,8 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { Package, Users, Clock3, ArrowLeft, Link as LinkIcon, Copy, ExternalLink } from 'lucide-react';
 import { LoadingState } from '../components/Feedback';
-import { normalizePartyDetail } from '../utils/party';
+import { mergeRealtimeParty, normalizePartyDetail } from '../utils/party';
+import { subscribeToPartyStream } from '../utils/partyRealtime';
 
 function PartyDetail() {
   const { id } = useParams();
@@ -14,21 +15,60 @@ function PartyDetail() {
   const [detail, setDetail] = useState(stateParty || null);
   const [loading, setLoading] = useState(!stateParty);
   const [error, setError] = useState('');
+  const [realtimeState, setRealtimeState] = useState('connecting');
 
   useEffect(() => {
+    let active = true;
     const fetchDetail = async () => {
-      if (!id || stateParty) return;
+      if (!id) return;
       try {
         setLoading(true);
+        setError('');
         const data = await api.getPartyDetail(id);
-        setDetail(normalizePartyDetail(data));
+        if (active) {
+          setDetail(normalizePartyDetail(data));
+        }
       } catch (e) {
-        setError('파티 정보를 불러오지 못했습니다.');
+        if (active) {
+          setError('파티 정보를 불러오지 못했습니다.');
+        }
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     };
-    fetchDetail();
+    if (!stateParty) {
+      fetchDetail();
+    }
+
+    const unsubscribe = subscribeToPartyStream({
+      partyId: id ? Number(id) : null,
+      onConnected: () => {
+        if (active) {
+          setRealtimeState('live');
+        }
+      },
+      onReconnectStateChange: (state) => {
+        if (active) {
+          setRealtimeState(state);
+        }
+      },
+      onPartyUpdated: (event) => {
+        if (!active) return;
+        setDetail((current) => mergeRealtimeParty(current, event));
+      },
+      onFallback: () => {
+        if (active) {
+          fetchDetail();
+        }
+      },
+    });
+
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
   }, [id, stateParty]);
 
   const perUnit = useMemo(() => {
@@ -62,6 +102,9 @@ function PartyDetail() {
       <div className="card-elevated p-5 space-y-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-mint-700">
           {detail.status === 'closed' ? '거래 종료' : detail.status === 'full' ? '모집 완료' : '모집 중'}
+        </p>
+        <p className="text-xs text-ink/50">
+          {realtimeState === 'reconnecting' ? '실시간 연결을 다시 시도하는 중입니다.' : '실시간 모집 현황을 반영하고 있습니다.'}
         </p>
         <h1 className="text-xl font-semibold text-ink">{detail.title}</h1>
         <p className="section-subtitle">{detail.storeName}</p>

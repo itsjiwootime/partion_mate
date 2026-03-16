@@ -6,6 +6,7 @@ import com.project.partition_mate.domain.PartyMember;
 import com.project.partition_mate.domain.PartyStatus;
 import com.project.partition_mate.domain.WaitingQueueEntry;
 import com.project.partition_mate.domain.WaitingQueueStatus;
+import com.project.partition_mate.dto.PartyRealtimeTrigger;
 import com.project.partition_mate.repository.PartyMemberRepository;
 import com.project.partition_mate.repository.PartyRepository;
 import com.project.partition_mate.repository.WaitingQueueRepository;
@@ -23,6 +24,7 @@ public class PartyLifecycleService {
     private final PartyMemberRepository partyMemberRepository;
     private final WaitingQueueRepository waitingQueueRepository;
     private final NotificationOutboxService notificationOutboxService;
+    private final PartyRealtimeService partyRealtimeService;
     private final StoreQueryCacheSupport storeQueryCacheSupport;
     private final Clock clock;
 
@@ -30,12 +32,14 @@ public class PartyLifecycleService {
                                  PartyMemberRepository partyMemberRepository,
                                  WaitingQueueRepository waitingQueueRepository,
                                  NotificationOutboxService notificationOutboxService,
+                                 PartyRealtimeService partyRealtimeService,
                                  StoreQueryCacheSupport storeQueryCacheSupport,
                                  Clock clock) {
         this.partyRepository = partyRepository;
         this.partyMemberRepository = partyMemberRepository;
         this.waitingQueueRepository = waitingQueueRepository;
         this.notificationOutboxService = notificationOutboxService;
+        this.partyRealtimeService = partyRealtimeService;
         this.storeQueryCacheSupport = storeQueryCacheSupport;
         this.clock = clock;
     }
@@ -80,5 +84,6 @@ public class PartyLifecycleService {
 
         notificationOutboxService.publishPartyClosed(party, joinedUserIds, expiredWaitingUserIds);
         storeQueryCacheSupport.evictStoreQueries(party.getStore().getId());
+        partyRealtimeService.publishPartyUpdatedAfterCommit(party, PartyRealtimeTrigger.PARTY_CLOSED);
     }
 }

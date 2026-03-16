@@ -11,6 +11,7 @@ import com.project.partition_mate.dto.CreatePartyRequest;
 import com.project.partition_mate.dto.JoinPartyResponse;
 import com.project.partition_mate.dto.JoinPartyRequest;
 import com.project.partition_mate.dto.PartyDetailResponse;
+import com.project.partition_mate.dto.PartyRealtimeTrigger;
 import com.project.partition_mate.exception.BusinessException;
 import com.project.partition_mate.repository.PartyMemberRepository;
 import com.project.partition_mate.repository.PartyRepository;
@@ -38,6 +39,7 @@ public class PartyService {
     private final StoreRepository storeRepository;
     private final StoreQueryCacheSupport storeQueryCacheSupport;
     private final NotificationOutboxService notificationOutboxService;
+    private final PartyRealtimeService partyRealtimeService;
     private final Clock clock;
 
     @Transactional
@@ -69,6 +71,7 @@ public class PartyService {
 
         Party savedParty = partyRepository.save(party);
         storeQueryCacheSupport.evictStoreQueries(store.getId());
+        partyRealtimeService.publishPartyUpdatedAfterCommit(savedParty, PartyRealtimeTrigger.PARTY_CREATED);
         return savedParty;
     }
 
@@ -145,6 +148,7 @@ public class PartyService {
 
         notificationOutboxService.publishJoinConfirmed(party, member);
         storeQueryCacheSupport.evictStoreQueries(party.getStore().getId());
+        partyRealtimeService.publishPartyUpdatedAfterCommit(party, PartyRealtimeTrigger.JOIN_CONFIRMED);
 
         return JoinPartyResponse.joined(party);
     }
@@ -174,16 +178,20 @@ public class PartyService {
         party.removeMember(joinedMember);
         partyMemberRepository.delete(joinedMember);
         partyMemberRepository.flush();
-        promoteWaitingMembers(party);
+        boolean promoted = promoteWaitingMembers(party);
         storeQueryCacheSupport.evictStoreQueries(party.getStore().getId());
+        if (!promoted) {
+            partyRealtimeService.publishPartyUpdatedAfterCommit(party, PartyRealtimeTrigger.MEMBER_CANCELLED);
+        }
     }
 
-    private void promoteWaitingMembers(Party party) {
+    private boolean promoteWaitingMembers(Party party) {
         List<WaitingQueueEntry> waitingEntries = waitingQueueRepository.findAllByPartyAndStatusOrderByQueuedAtAsc(
                 party,
                 WaitingQueueStatus.WAITING
         );
 
+        boolean promoted = false;
         for (WaitingQueueEntry waitingEntry : waitingEntries) {
             if (party.getRemainingQuantity() < waitingEntry.getRequestedQuantity()) {
                 break;
@@ -199,11 +207,18 @@ public class PartyService {
             partyMemberRepository.saveAndFlush(promotedMember);
             waitingEntry.promote();
             notificationOutboxService.publishWaitingPromoted(party, waitingEntry.getUser(), waitingEntry.getRequestedQuantity());
+            promoted = true;
 
             if (!party.isRecruiting()) {
                 break;
             }
         }
+
+        if (promoted) {
+            partyRealtimeService.publishPartyUpdatedAfterCommit(party, PartyRealtimeTrigger.WAITING_PROMOTED);
+        }
+
+        return promoted;
     }
 
     private void validateNotAlreadyJoinedOrWaiting(Party party, User member) {

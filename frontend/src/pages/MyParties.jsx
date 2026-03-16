@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { EmptyState, LoadingState } from '../components/Feedback';
+import { subscribeToPartyStream } from '../utils/partyRealtime';
 
 const roleLabel = {
   LEADER: '호스트',
@@ -18,22 +19,63 @@ function MyParties() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [cancellingId, setCancellingId] = useState(null);
+  const [realtimeState, setRealtimeState] = useState('connecting');
+  const partyIdsRef = useRef(new Set());
+
+  useEffect(() => {
+    partyIdsRef.current = new Set(list.map((party) => party.id));
+  }, [list]);
 
   useEffect(() => {
     if (!isAuthed) return;
+    let active = true;
     const fetchData = async () => {
       try {
         setLoading(true);
         setError('');
         const data = await api.getMyParties();
-        setList(data);
+        if (active) {
+          setList(data);
+        }
       } catch (e) {
-        setError('내 파티를 불러오지 못했습니다.');
+        if (active) {
+          setError('내 파티를 불러오지 못했습니다.');
+        }
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     };
     fetchData();
+
+    const unsubscribe = subscribeToPartyStream({
+      onConnected: () => {
+        if (active) {
+          setRealtimeState('live');
+        }
+      },
+      onReconnectStateChange: (state) => {
+        if (active) {
+          setRealtimeState(state);
+        }
+      },
+      onPartyUpdated: (event) => {
+        if (!active) return;
+        if (!partyIdsRef.current.has(event.id)) return;
+        fetchData();
+      },
+      onFallback: () => {
+        if (active && partyIdsRef.current.size > 0) {
+          fetchData();
+        }
+      },
+    });
+
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
   }, [isAuthed]);
 
   const handleCancel = async (partyId) => {
@@ -68,6 +110,9 @@ function MyParties() {
       <div className="card-elevated p-4">
         <h2 className="text-xl font-semibold text-ink">내 파티</h2>
         <p className="section-subtitle">내가 만든/참여 중인 파티 목록</p>
+        <p className="mt-2 text-xs text-ink/50">
+          {realtimeState === 'reconnecting' ? '실시간 연결을 다시 시도하는 중입니다.' : '실시간 상태를 자동으로 동기화하고 있습니다.'}
+        </p>
       </div>
 
       {loading && <LoadingState />}

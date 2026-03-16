@@ -176,33 +176,37 @@
 
 ## Epic 4. 실시간 모집 현황 반영
 
-### [ ] E4-1 실시간 이벤트 규격 정의
+### [x] E4-1 실시간 이벤트 규격 정의
 - 목표: 어떤 이벤트를 어떤 형식으로 보낼지 정한다.
 - 범위: SSE 또는 WebSocket 선택, payload 스펙 정의.
 - 완료 조건: 파티 상태 변경 이벤트 규격 문서가 존재한다.
 - 검증: 스펙 문서와 샘플 payload 확인.
 - ADR: SSE와 WebSocket 중 어떤 방식을 선택했는지 문서화한다.
+- 구현 메모(2026-03-16): `docs/specs/E4-party-realtime-events.md`를 추가했다. 채널은 `GET /party/stream` 공개 SSE로 고정했고, 이벤트는 `connected`, `party-updated` 두 가지로 정의했다. payload는 파티 스냅샷과 `realtimeTrigger`를 포함하며 `storeId`, `partyId` query filter를 지원한다.
 
-### [ ] E4-2 백엔드 실시간 발행
+### [x] E4-2 백엔드 실시간 발행
 - 목표: 참여/승격/마감 시 실시간 이벤트를 발행한다.
 - 범위: 이벤트 브로드캐스트, 연결 관리, 발행 트리거.
 - 완료 조건: 상태 변경 시 구독자에게 이벤트가 전송된다.
 - 검증: 수동 테스트 또는 통합 테스트.
 - ADR: 실시간 발행 구조와 연결 관리 방식을 문서화한다.
+- 구현 메모(2026-03-16): `PartyRealtimeService`와 `PartyRealtimeController`를 추가해 메모리 기반 `SseEmitter` 레지스트리와 공개 SSE 엔드포인트를 구현했다. 파티 생성, 즉시 참여, 취소, 대기열 승격, 자동 마감은 `afterCommit` 시점에 `party-updated` 이벤트를 브로드캐스트한다. `PartyRealtimeServiceIntegrationTest`로 `connected` 이벤트와 `storeId/partyId` 필터 전달을 검증했다.
 
-### [ ] E4-3 프론트 실시간 구독
+### [x] E4-3 프론트 실시간 구독
 - 목표: 파티 목록, 상세, 내 파티 화면이 실시간으로 갱신되게 한다.
 - 범위: 구독 연결, 상태 반영, 화면 보정.
 - 완료 조건: 새로고침 없이 수량과 상태가 갱신된다.
 - 검증: 다중 클라이언트 수동 테스트.
 - ADR: 프론트 상태 동기화 전략을 문서화한다.
+- 구현 메모(2026-03-16): `frontend/src/utils/partyRealtime.js`를 추가해 SSE 구독을 공통화했다. 파티 목록과 상세는 이벤트 payload를 바로 병합하고, 내 파티 화면은 관련 파티 이벤트가 오면 `/api/users/me/parties`를 다시 조회한다. 각 화면에 실시간 연결 상태 문구도 함께 노출한다.
 
-### [ ] E4-4 재연결 및 fallback
+### [x] E4-4 재연결 및 fallback
 - 목표: 연결 끊김 상황에서도 최종 상태를 맞춘다.
 - 범위: 재연결 정책, API 재조회 fallback, 누락 복구.
 - 완료 조건: 실시간 연결 장애 후에도 최종 상태가 일관된다.
 - 검증: 연결 끊김 테스트, fallback 테스트.
 - ADR: 재연결 정책과 fallback 전략을 문서화한다.
+- 구현 메모(2026-03-16): 클라이언트는 SSE 오류 시 연결을 닫고 최대 5초까지 선형 backoff로 재연결한다. 오류 직후 화면별 기존 조회 API를 한 번 다시 호출해 누락된 상태를 보정한다. 프론트엔드 테스트 러너는 아직 없어 자동 검증은 `PartyRealtimeServiceIntegrationTest`와 `npm run build` 기준으로 마무리했고, 재연결 규칙은 `docs/specs/E4-party-realtime-events.md`와 ADR에 문서화했다.
 
 ## Epic 5. 소분 도메인 상세화
 
