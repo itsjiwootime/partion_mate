@@ -9,6 +9,9 @@ function PartyCard({
   partyId,
   title,
   totalPrice,
+  unitLabel = '개',
+  minimumShareUnit = 1,
+  storageTypeLabel = '상온',
   currentQuantity,
   targetQuantity,
   deadlineLabel,
@@ -58,6 +61,13 @@ function PartyCard({
           <span className="font-semibold text-ink">{formatCurrency(totalPrice)}</span>
         </div>
         <div className="flex items-center justify-between">
+          <span>최소 소분 단위</span>
+          <span className="font-semibold text-ink">
+            {minimumShareUnit}
+            {unitLabel}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
           <span>수량(요청/총)</span>
           <span className="font-semibold text-ink">
             {currentQuantity} / {targetQuantity}개
@@ -88,6 +98,7 @@ function PartyCard({
             <Clock3 size={14} />
             <span>마감: {deadlineLabel}</span>
           </div>
+          <div>{storageTypeLabel}</div>
           <div className="flex items-center gap-1 font-semibold text-ink">
             <Star size={14} className="text-mint-600" />
             <span>{rating.toFixed(1)}</span>

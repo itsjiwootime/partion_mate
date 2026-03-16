@@ -6,6 +6,17 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 
 const categories = ['식품', '건강/의약', '생활용품', '주방', '기타'];
+const storageOptions = [
+  { value: 'ROOM_TEMPERATURE', label: '상온' },
+  { value: 'REFRIGERATED', label: '냉장' },
+  { value: 'FROZEN', label: '냉동' },
+];
+const packagingOptions = [
+  { value: 'ORIGINAL_PACKAGE', label: '원포장' },
+  { value: 'ZIP_BAG', label: '지퍼백' },
+  { value: 'CONTAINER', label: '용기' },
+  { value: 'OTHER', label: '기타' },
+];
 
 function CreateParty() {
   const navigate = useNavigate();
@@ -27,6 +38,12 @@ function CreateParty() {
     title: '',
     hostRequestedQuantity: 1,
     openChatUrl: '',
+    unitLabel: '개',
+    minimumShareUnit: 1,
+    storageType: storageOptions[0].value,
+    packagingType: packagingOptions[0].value,
+    hostProvidesPackaging: true,
+    onSiteSplit: false,
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -112,6 +129,13 @@ function CreateParty() {
         hostRequestedQuantity: Number(form.hostRequestedQuantity) || 1,
         openChatUrl: form.openChatUrl,
         deadline: `${form.date}T${form.time}`,
+        unitLabel: form.unitLabel,
+        minimumShareUnit: Number(form.minimumShareUnit),
+        storageType: form.storageType,
+        packagingType: form.packagingType,
+        hostProvidesPackaging: Boolean(form.hostProvidesPackaging),
+        onSiteSplit: Boolean(form.onSiteSplit),
+        guideNote: form.description || '',
       });
       addToast('파티가 생성되었습니다.', 'success');
       navigate(`/branch/${form.branchId}`);
@@ -271,6 +295,92 @@ function CreateParty() {
       </section>
 
       <section className="card-elevated p-4 space-y-4">
+        <h2 className="section-title">소분 방식</h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-2">
+            <label className="block text-sm text-ink/70">단위 표기</label>
+            <input
+              type="text"
+              value={form.unitLabel}
+              onChange={handleChange('unitLabel')}
+              placeholder="예) 개, 팩, g, ml"
+              className="input"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="block text-sm text-ink/70">최소 소분 단위</label>
+            <input
+              type="number"
+              min="1"
+              value={form.minimumShareUnit}
+              onChange={handleChange('minimumShareUnit')}
+              className="input"
+            />
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-2">
+            <label className="block text-sm text-ink/70">보관 방식</label>
+            <div className="relative">
+              <select
+                value={form.storageType}
+                onChange={handleChange('storageType')}
+                className="input appearance-none text-sm font-medium"
+              >
+                {storageOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={16} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-ink/50" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <label className="block text-sm text-ink/70">포장 방식</label>
+            <div className="relative">
+              <select
+                value={form.packagingType}
+                onChange={handleChange('packagingType')}
+                className="input appearance-none text-sm font-medium"
+              >
+                {packagingOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={16} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-ink/50" />
+            </div>
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="flex items-center justify-between rounded-xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink">
+            <span>호스트가 포장재 제공</span>
+            <input
+              type="checkbox"
+              checked={form.hostProvidesPackaging}
+              onChange={(e) => setForm((prev) => ({ ...prev, hostProvidesPackaging: e.target.checked }))}
+              className="h-4 w-4 accent-mint-500"
+            />
+          </label>
+          <label className="flex items-center justify-between rounded-xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink">
+            <span>현장 소분 진행</span>
+            <input
+              type="checkbox"
+              checked={form.onSiteSplit}
+              onChange={(e) => setForm((prev) => ({ ...prev, onSiteSplit: e.target.checked }))}
+              className="h-4 w-4 accent-mint-500"
+            />
+          </label>
+        </div>
+        <div className="rounded-xl bg-mint-500/10 px-4 py-3 text-sm text-mint-800">
+          최소 참여 기준: {Number(form.minimumShareUnit) || 1}
+          {form.unitLabel || '개'} 단위로 참여하게 됩니다.
+        </div>
+      </section>
+
+      <section className="card-elevated p-4 space-y-4">
         <h2 className="section-title">추가 정보</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-2">
@@ -304,7 +414,7 @@ function CreateParty() {
             rows="4"
             value={form.description}
             onChange={handleChange('description')}
-            placeholder="예) 현장에서 소분 예정, 비닐/지퍼백 제공합니다."
+            placeholder="예) 행사 가격 기준이라 실제 결제 후 정산 예정, 냉장 보관 필수, 지퍼백 제공합니다."
             className="input"
           />
         </div>

@@ -16,6 +16,8 @@ export function normalizePartyDetail(input) {
     title: input.title ?? '',
     productName: input.productName ?? input.product ?? input.title ?? '',
     totalPrice: input.totalPrice ?? 0,
+    expectedTotalPrice: input.expectedTotalPrice ?? input.totalPrice ?? 0,
+    actualTotalPrice: input.actualTotalPrice ?? null,
     currentQuantity,
     targetQuantity,
     deadlineLabel: input.deadlineLabel ?? input.deadline ?? '미정',
@@ -31,6 +33,16 @@ export function normalizePartyDetail(input) {
     closedAt: input.closedAt ?? null,
     storeId: input.storeId ?? null,
     realtimeTrigger: input.realtimeTrigger ?? null,
+    unitLabel: input.unitLabel ?? '개',
+    minimumShareUnit: input.minimumShareUnit ?? 1,
+    storageType: input.storageType ?? 'ROOM_TEMPERATURE',
+    storageTypeLabel: input.storageTypeLabel ?? '상온',
+    packagingType: input.packagingType ?? 'ORIGINAL_PACKAGE',
+    packagingTypeLabel: input.packagingTypeLabel ?? '원포장',
+    hostProvidesPackaging: input.hostProvidesPackaging ?? false,
+    onSiteSplit: input.onSiteSplit ?? false,
+    guideNote: input.guideNote ?? '',
+    receiptNote: input.receiptNote ?? '',
   };
 }
 

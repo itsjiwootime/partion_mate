@@ -58,7 +58,16 @@ public class PartyService {
                 store,
                 request.getTotalQuantity(),
                 request.getOpenChatUrl(),
-                resolveDeadline(request.getDeadline())
+                resolveDeadline(request.getDeadline()),
+                request.getUnitLabel(),
+                request.getMinimumShareUnit(),
+                request.getStorageType(),
+                request.getPackagingType(),
+                Boolean.TRUE.equals(request.getHostProvidesPackaging()),
+                Boolean.TRUE.equals(request.getOnSiteSplit()),
+                request.getGuideNote(),
+                null,
+                null
         );
 
         PartyMember hostMember = PartyMember.joinAsHost(
@@ -119,7 +128,7 @@ public class PartyService {
 
     public PartyDetailResponse detailsParty(Long partyId) {
 
-        Party party = partyRepository.findById(partyId)
+        Party party = partyRepository.findDetailById(partyId)
                 .orElseThrow(() -> new EntityNotFoundException("파티가 존재하지 않습니다"));
 
         return PartyDetailResponse.from(party);

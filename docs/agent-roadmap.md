@@ -210,26 +210,29 @@
 
 ## Epic 5. 소분 도메인 상세화
 
-### [ ] E5-1 소분 단위 및 상품 메타데이터 확장
+### [x] E5-1 소분 단위 및 상품 메타데이터 확장
 - 목표: 단순 수량 기반 파티를 실제 소분 거래에 맞는 상품 모델로 확장한다.
 - 범위: `unitLabel`, `minimumShareUnit`, `storageType`, `packagingType` 또는 동등한 필드 설계.
 - 완료 조건: 파티 생성 시 소분 기준 단위와 보관/포장 정보를 저장할 수 있다.
 - 검증: 엔티티/DTO 테스트, 생성 API 테스트.
 - ADR: 소분 단위 모델과 상품 메타데이터 구조를 문서화한다.
+- 구현 메모(2026-03-16): `Party`에 `unitLabel`, `minimumShareUnit`, `storageType`, `packagingType` 필드를 추가하고 생성자 기본값과 검증 로직을 정리했다. `CreatePartyRequest`, `PartyResponse`, `PartyDetailResponse`, `PartyRealtimeEventResponse`, `MyJoinedPartyResponse`까지 확장해 API 전 구간에서 같은 메타데이터를 전달하도록 맞췄다. `PartyProductMetadataTest`, `PartyMetadataIntegrationTest`로 엔티티와 생성/상세 응답을 검증했다.
 
-### [ ] E5-2 호스트 준비물 및 거래 안내 정보 추가
+### [x] E5-2 호스트 준비물 및 거래 안내 정보 추가
 - 목표: 참여자가 소분 방식과 준비 상태를 파티 상세에서 이해할 수 있게 한다.
 - 범위: 봉투 제공 여부, 냉장/냉동 여부, 현장 소분 여부, 추가 안내 메모.
 - 완료 조건: 파티 생성/상세 화면에서 거래 안내 정보를 입력·조회할 수 있다.
 - 검증: 프론트 폼 검증, 상세 화면 렌더링 확인.
 - ADR: 호스트 안내 정보 범위와 저장 방식을 문서화한다.
+- 구현 메모(2026-03-16): `hostProvidesPackaging`, `onSiteSplit`, `guideNote`를 `Party`와 관련 DTO에 추가했다. 프론트 `CreateParty.jsx`에는 소분 정보 폼과 체크박스를 넣고, `PartyDetail.jsx`에는 소분 정보/거래 안내/가격 정보 섹션을 추가했다. `npm run build`로 폼과 상세 화면 통합을 확인했다.
 
-### [ ] E5-3 실구매 정보 반영 준비
+### [x] E5-3 실구매 정보 반영 준비
 - 목표: 행사 가격, 영수증 기준 금액 등 실제 구매 이후 금액 조정을 반영할 수 있는 구조를 만든다.
 - 범위: `expectedTotalPrice`와 `actualTotalPrice` 구분, 영수증 메모 또는 증빙 참조 필드 설계.
 - 완료 조건: 예상 가격과 실제 구매 가격을 구분 저장할 수 있다.
 - 검증: 정산 전 상태 테스트, 금액 전이 테스트.
 - ADR: 예상 금액과 확정 금액을 분리하는 이유와 전이 규칙을 문서화한다.
+- 구현 메모(2026-03-16): 기존 `Party.totalPrice`를 예상가로 유지하고 `actualTotalPrice`, `receiptNote`를 추가했다. 응답에는 `totalPrice`를 화면 표시용 금액으로 유지하되 `expectedTotalPrice`/`actualTotalPrice`를 함께 내려 후속 정산 에픽과의 호환성을 확보했다. `Party.updateActualPurchase(...)`와 통합 테스트로 예상가에서 실구매가로 전이되는 구조를 검증했다.
 
 ## Epic 6. 정산 및 픽업 운영
 

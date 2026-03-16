@@ -101,6 +101,13 @@ class StoreQueryCacheIntegrationTest {
         ReflectionTestUtils.setField(request, "totalQuantity", 5);
         ReflectionTestUtils.setField(request, "hostRequestedQuantity", 1);
         ReflectionTestUtils.setField(request, "openChatUrl", "https://open.kakao.com/o/test");
+        ReflectionTestUtils.setField(request, "unitLabel", "개");
+        ReflectionTestUtils.setField(request, "minimumShareUnit", 1);
+        ReflectionTestUtils.setField(request, "storageType", com.project.partition_mate.domain.StorageType.ROOM_TEMPERATURE);
+        ReflectionTestUtils.setField(request, "packagingType", com.project.partition_mate.domain.PackagingType.ORIGINAL_PACKAGE);
+        ReflectionTestUtils.setField(request, "hostProvidesPackaging", true);
+        ReflectionTestUtils.setField(request, "onSiteSplit", false);
+        ReflectionTestUtils.setField(request, "guideNote", "기본 안내");
 
         // when
         partyService.createParty(request);

@@ -120,7 +120,7 @@ function PartyDetail() {
           </div>
           <div className="flex items-center gap-2">
             <Users size={16} className="text-mint-700" />
-            <span>개당 가격 {perUnit.toLocaleString()}원</span>
+            <span>개당 예상 가격 {perUnit.toLocaleString()}원</span>
           </div>
           <div className="flex items-center gap-2">
             <Clock3 size={16} className="text-mint-700" />
@@ -152,9 +152,63 @@ function PartyDetail() {
       </div>
 
       <div className="card-elevated p-5 space-y-3">
+        <h2 className="section-title">소분 정보</h2>
+        <div className="grid gap-2 text-sm text-ink/75">
+          <div className="flex items-center justify-between gap-4">
+            <span>최소 소분 단위</span>
+            <span className="font-semibold text-ink">
+              {detail.minimumShareUnit}
+              {detail.unitLabel}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <span>보관 방식</span>
+            <span className="font-semibold text-ink">{detail.storageTypeLabel}</span>
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <span>포장 방식</span>
+            <span className="font-semibold text-ink">{detail.packagingTypeLabel}</span>
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <span>포장재 제공</span>
+            <span className="font-semibold text-ink">{detail.hostProvidesPackaging ? '제공' : '미제공'}</span>
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <span>현장 소분</span>
+            <span className="font-semibold text-ink">{detail.onSiteSplit ? '진행' : '미진행'}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="card-elevated p-5 space-y-3">
+        <h2 className="section-title">가격 정보</h2>
+        <div className="grid gap-2 text-sm text-ink/75">
+          <div className="flex items-center justify-between gap-4">
+            <span>예상 총액</span>
+            <span className="font-semibold text-ink">{detail.expectedTotalPrice?.toLocaleString()}원</span>
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <span>실구매 총액</span>
+            <span className="font-semibold text-ink">
+              {detail.actualTotalPrice != null ? `${detail.actualTotalPrice.toLocaleString()}원` : '미확정'}
+            </span>
+          </div>
+          {detail.receiptNote && <p className="text-xs text-ink/60">실구매 메모: {detail.receiptNote}</p>}
+        </div>
+      </div>
+
+      {detail.guideNote && (
+        <div className="card-elevated p-5 space-y-2">
+          <h2 className="section-title">거래 안내</h2>
+          <p className="text-sm leading-6 text-ink/75 whitespace-pre-line">{detail.guideNote}</p>
+        </div>
+      )}
+
+      <div className="card-elevated p-5 space-y-3">
         <h2 className="section-title">참여</h2>
         <p className="section-subtitle">
-          요청 수량을 선택하고 참여하세요. 남은 수량 {remaining}개 · 개당 {perUnit.toLocaleString()}원
+          요청 수량을 선택하고 참여하세요. 최소 {detail.minimumShareUnit}
+          {detail.unitLabel} 단위 · 남은 수량 {remaining}개 · 개당 {perUnit.toLocaleString()}원
         </p>
         {isJoinable && (
           <button
