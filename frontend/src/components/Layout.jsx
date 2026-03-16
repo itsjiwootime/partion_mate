@@ -6,6 +6,7 @@ const pageMeta = {
   '/': { title: 'Partition Mate', subtitle: '대용량도 함께 사면 부담 0%' },
   '/parties': { title: '파티 목록', subtitle: '모집 중인 파티를 확인해요' },
   '/parties/create': { title: '파티 생성', subtitle: '새로운 소분 모임을 만들어보세요' },
+  '/notifications': { title: '알림', subtitle: '파티 상태 변경과 승격 내역을 확인해요' },
   '/chat': { title: '채팅', subtitle: '나눔을 위한 대화방' },
   '/me': { title: '내 정보', subtitle: '즐겨찾는 지점과 프로필' },
   branch: { title: '지점 파티', subtitle: '선택한 지점의 파티 목록' },

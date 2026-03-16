@@ -16,8 +16,9 @@ function PartyCard({
   status = 'active',
   onViewDetail,
 }) {
+  const isClosed = status === 'closed';
   const isFull = status === 'full' || currentQuantity >= targetQuantity;
-  const isActive = !isFull;
+  const isActive = !isFull && !isClosed;
 
   const perPerson = useMemo(
     () => (targetQuantity > 0 ? Math.round(totalPrice / targetQuantity) : 0),
@@ -39,11 +40,15 @@ function PartyCard({
         <span
           className={[
             'badge',
-            isActive ? 'bg-mint-500/15 text-mint-700' : 'bg-ink/10 text-ink/60',
+            isActive
+              ? 'bg-mint-500/15 text-mint-700'
+              : isClosed
+                ? 'bg-red-50 text-red-700'
+                : 'bg-ink/10 text-ink/60',
           ].join(' ')}
         >
           <CircleDot size={14} />
-          {isActive ? '모집 중' : '마감'}
+          {isActive ? '모집 중' : isClosed ? '종료' : '마감'}
         </span>
       </header>
 
@@ -66,7 +71,7 @@ function PartyCard({
 
       <div className="mt-3 h-2 overflow-hidden rounded-full bg-ink/10">
         <div
-          className={`h-full ${isActive ? 'bg-mint-500' : 'bg-ink/30'}`}
+          className={`h-full ${isActive ? 'bg-mint-500' : isClosed ? 'bg-red-300' : 'bg-ink/30'}`}
           style={{ width: `${progress}%` }}
         />
       </div>

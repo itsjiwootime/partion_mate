@@ -73,6 +73,7 @@ export const api = {
   getPartyDetail: (partyId) => fetchJson(`/party/${partyId}`),
 
   getMyParties: () => fetchJson('/api/users/me/parties'),
+  getMyNotifications: () => fetchJson('/api/users/me/notifications'),
 
   joinParty: ({ partyId, quantity = 1 }) =>
     fetchJson(`/party/${partyId}/join`, {

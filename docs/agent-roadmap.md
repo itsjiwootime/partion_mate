@@ -92,77 +92,87 @@
 
 ## Epic 2. 위치 기반 조회 최적화
 
-### [ ] E2-1 조회 성능 베이스라인 측정
+### [x] E2-1 조회 성능 베이스라인 측정
 - 목표: 현재 지점/파티 조회 성능의 기준값을 확보한다.
 - 범위: 조회 API 테스트 데이터, 측정 스크립트, 결과 기록.
 - 완료 조건: 평균 응답시간, P95, 테스트 조건이 정리된다.
 - 검증: 동일 조건에서 재실행 가능한 측정 결과.
 - ADR: 성능 측정 기준과 데이터셋 구성 이유를 문서화한다.
+- 구현 메모(2026-03-15): `StoreQueryBaselineBenchmarkTest`와 실행 스크립트를 추가했고, `docs/benchmarks/E2-1-store-query-baseline.md`에 주변 지점 조회 평균 71.78ms / P95 81.07ms, 지점별 파티 조회 평균 1.78ms / P95 2.69ms를 기록했다.
 
-### [ ] E2-2 거리 기반 조회 쿼리화
+### [x] E2-2 거리 기반 조회 쿼리화
 - 목표: 애플리케이션 메모리 계산을 줄이고 DB 조회 중심으로 바꾼다.
 - 범위: 거리 계산 쿼리, bounding box 필터, 정렬 로직.
 - 완료 조건: 기존 정렬 정확성을 유지하면서 응답시간을 줄인다.
 - 검증: 조회 결과 비교 테스트, 성능 재측정.
 - ADR: 거리 계산 위치를 애플리케이션이 아닌 DB로 옮긴 이유를 문서화한다.
+- 구현 메모(2026-03-15): `StoreRepository`에 native SQL projection 쿼리를 추가해 거리 계산과 모집 중 파티 수 집계를 DB에서 수행하도록 변경했다. 기본 조회는 반경 50km `bounding box`를 사용하고, 결과가 없을 때만 전국 거리순 fallback을 수행한다. `StoreQueryOptimizationIntegrationTest`로 정렬/파티 수/currentQuantity projection을 검증했다.
 
-### [ ] E2-3 인덱스 및 스키마 최적화
+### [x] E2-3 인덱스 및 스키마 최적화
 - 목표: 지점/파티 조회 쿼리에 맞는 인덱스를 추가한다.
 - 범위: 좌표, 상태, 지점별 파티 조회 관련 인덱스.
 - 완료 조건: 쿼리 계획이 개선되고 풀스캔을 줄인다.
 - 검증: `EXPLAIN` 결과 비교, 성능 재측정.
 - ADR: 인덱스 전략과 쓰기 비용 트레이드오프를 문서화한다.
+- 구현 메모(2026-03-15): `store(latitude, longitude)`와 `party(store_id, party_status)` 복합 인덱스를 추가했다. `StoreQueryIndexIntegrationTest`에서 `INFORMATION_SCHEMA`와 `EXPLAIN` 결과를 검증했고, 결과는 `docs/benchmarks/E2-3-store-query-explain.md`에 정리했다.
 
-### [ ] E2-4 캐시 적용
+### [x] E2-4 캐시 적용
 - 목표: 자주 조회되는 위치 기반 결과를 캐시한다.
-- 범위: Redis 캐시, TTL, 키 전략, 무효화 규칙.
+- 범위: 캐시 계층, TTL, 키 전략, 무효화 규칙.
 - 완료 조건: 캐시 hit 시 응답시간이 유의미하게 줄어든다.
 - 검증: 캐시 hit/miss 테스트, 성능 재측정.
 - ADR: 캐시 계층 도입 이유와 TTL/무효화 전략을 문서화한다.
+- 구현 메모(2026-03-15): 현재 단계에서는 Redis 대신 `Spring Cache + Caffeine`으로 `nearbyStores`, `storeParties` 캐시를 추가했다. 키는 `위도:경도(소수점 4자리)`와 `storeId`, TTL은 각각 5분/2분으로 두었고, 파티 생성/즉시 참여/취소 시 캐시를 무효화한다. `StoreQueryCacheIntegrationTest`로 hit/miss와 무효화 동작을 검증했다.
 
-### [ ] E2-5 성능 전후 비교 정리
+### [x] E2-5 성능 전후 비교 정리
 - 목표: 이력서와 포트폴리오에 사용할 수치를 정리한다.
 - 범위: 베이스라인 대비 평균 응답시간, P95, 캐시 hit ratio 정리.
 - 완료 조건: 전후 비교 수치가 문서로 남는다.
 - 검증: 재측정 결과와 정리 문서 확인.
 - ADR: 측정 결과 해석과 남은 한계를 문서화한다.
+- 구현 메모(2026-03-15): `StoreQueryOptimizedBenchmarkTest`와 `./scripts/run_store_query_optimized_benchmark.sh`를 추가했다. 측정 결과는 `docs/benchmarks/E2-5-store-query-performance-comparison.md`에 정리했고, 주변 지점 조회는 cold path 평균 `12.49ms`, warm path 평균 `1.64ms`, 캐시 hit ratio `0.95`를 기록했다.
 
 ## Epic 3. 자동 마감 + 알림 파이프라인
 
-### [ ] E3-1 파티 생명주기 모델 확장
+### [x] E3-1 파티 생명주기 모델 확장
 - 목표: 마감/종료 상태를 표현할 수 있는 도메인 모델을 만든다.
 - 범위: `deadline`, `closedAt`, `closeReason` 등 필드와 상태 규칙.
 - 완료 조건: 시간 만료와 정원 달성 케이스를 모두 표현할 수 있다.
 - 검증: 상태 전이 테스트.
 - ADR: 파티 생명주기 모델과 상태 설계를 문서화한다.
+- 구현 메모(2026-03-16): `Party`에 `deadline`, `closedAt`, `closeReason`과 `CLOSED` 상태를 추가하고, 파티 생성 시 기본 마감시간은 `현재 + 1일`로 채운다. `PartyResponse`, `PartyDetailResponse`, `MyJoinedPartyResponse`, 프론트 `party` 정규화 유틸과 카드/UI를 함께 수정해 종료 상태를 목록/상세/내 파티에 노출한다. `PartyLifecycleIntegrationTest`로 정원 달성 시 `FULL`, 시간 만료 시 `CLOSED` 전이를 검증했다.
 
-### [ ] E3-2 자동 마감 스케줄러
+### [x] E3-2 자동 마감 스케줄러
 - 목표: 시간이 지난 파티를 자동 종료한다.
 - 범위: 스케줄러, 종료 서비스, 종료 시 상태 갱신.
 - 완료 조건: 마감 시간이 지난 파티가 자동으로 종료된다.
 - 검증: 시간 기반 테스트 또는 스케줄러 통합 테스트.
 - ADR: 스케줄링 방식과 실행 주기 선택 이유를 문서화한다.
+- 구현 메모(2026-03-16): `SchedulingConfig`와 `PartyDeadlineScheduler`를 추가하고, 실제 종료 처리는 `PartyLifecycleService.closeExpiredParties()`로 모았다. 30초 fixed delay로 `deadline <= now` 이고 상태가 `RECRUITING/FULL`인 파티를 종료하며, 종료 시 대기열 만료와 캐시 무효화를 함께 처리한다. 시간 기반 검증은 `PartyLifecycleIntegrationTest`가 담당한다.
 
-### [ ] E3-3 이벤트/Outbox 구조 도입
+### [x] E3-3 이벤트/Outbox 구조 도입
 - 목표: 상태 변경 이벤트를 안전하게 비동기 처리할 기반을 만든다.
 - 범위: Outbox 테이블, 이벤트 모델, 저장 로직.
 - 완료 조건: 상태 변경과 이벤트 저장이 같은 트랜잭션 안에서 처리된다.
 - 검증: 이벤트 저장 통합 테스트.
 - ADR: Outbox 패턴 채택 이유와 대안 비교를 문서화한다.
+- 구현 메모(2026-03-16): `outbox_event` 엔티티와 저장소, `NotificationOutboxService`를 추가했다. 파티 즉시 참여, 대기열 승격, 시간 만료 종료 시 `PARTY_JOIN_CONFIRMED`, `WAITING_PROMOTED`, `PARTY_CLOSED` 이벤트를 같은 트랜잭션 안에서 적재한다. `PartyLifecycleIntegrationTest`에서 종료 시 outbox 이벤트가 남는지 검증했다.
 
-### [ ] E3-4 알림 워커 구현
+### [x] E3-4 알림 워커 구현
 - 목표: 참여 완료, 마감, 승격 알림을 비동기 발송한다.
 - 범위: 워커, 재시도 정책, 중복 방지 처리.
 - 완료 조건: 같은 이벤트가 중복 발송되지 않고 실패 시 재시도된다.
 - 검증: 워커 테스트, 재시도 테스트.
 - ADR: 알림 채널과 재시도 정책 선택 이유를 문서화한다.
+- 구현 메모(2026-03-16): `NotificationOutboxProcessor`와 `NotificationOutboxScheduler`를 추가해 10초 fixed delay polling 워커를 구성했다. payload 오류는 1분 뒤 재시도하고, `user_notification.external_key = eventId:userId:type` 기준 선조회와 DB 유니크 키를 함께 써 동일 outbox 이벤트의 중복 알림 생성을 막는다. `NotificationOutboxProcessorIntegrationTest`에서 참여 완료 알림 생성, 재시도, 동일 이벤트 재처리 시 중복 방지를 검증했다.
 
-### [ ] E3-5 사용자 알림 조회 흐름
+### [x] E3-5 사용자 알림 조회 흐름
 - 목표: 사용자가 알림 내역을 확인할 수 있게 한다.
 - 범위: 알림 조회 API, 프론트 알림 목록 또는 내 파티 연동.
 - 완료 조건: 마감/승격/참여 완료 알림을 확인할 수 있다.
 - 검증: API/화면 동작 확인.
 - ADR: 알림 노출 방식과 사용자 경험 선택 이유를 문서화한다.
+- 구현 메모(2026-03-16): `GET /api/users/me/notifications` API와 `UserNotificationResponse`를 추가했고, 프론트에는 `/notifications` 화면과 하단 네비게이션 진입점을 만들었다. 알림은 생성 시각 역순으로 노출하고 관련 파티 상세로 이동할 수 있다. `UserNotificationControllerTest`와 `npm run build`로 API/화면 연결을 검증했다.
 
 ## Epic 4. 실시간 모집 현황 반영
 

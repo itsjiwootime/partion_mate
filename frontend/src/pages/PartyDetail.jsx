@@ -43,8 +43,8 @@ function PartyDetail() {
     return Math.max(0, (detail.targetQuantity ?? 0) - (detail.currentQuantity ?? 0));
   }, [detail]);
   const isWaitingParty = detail.participationStatus === 'WAITING';
-
-  const isJoinable = !fromMyParties && detail.status !== 'full' && remaining > 0;
+  const isClosedParty = detail.status === 'closed';
+  const isJoinable = !fromMyParties && detail.status !== 'full' && !isClosedParty && remaining > 0;
 
   if (loading) return <LoadingState />;
   if (error) return <p className="text-sm text-red-600">{error}</p>;
@@ -61,7 +61,7 @@ function PartyDetail() {
 
       <div className="card-elevated p-5 space-y-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-mint-700">
-          {detail.status === 'full' ? '모집 완료' : '모집 중'}
+          {detail.status === 'closed' ? '거래 종료' : detail.status === 'full' ? '모집 완료' : '모집 중'}
         </p>
         <h1 className="text-xl font-semibold text-ink">{detail.title}</h1>
         <p className="section-subtitle">{detail.storeName}</p>
@@ -123,7 +123,7 @@ function PartyDetail() {
         )}
         {!fromMyParties && !isJoinable && (
           <div className="rounded-xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink/70">
-            모집이 마감된 파티입니다.
+            {isClosedParty ? '이미 종료된 파티입니다.' : '모집이 마감된 파티입니다.'}
           </div>
         )}
         {fromMyParties && !isWaitingParty && (

@@ -3,6 +3,8 @@ package com.project.partition_mate.dto;
 import com.project.partition_mate.domain.Store;
 import lombok.Getter;
 
+import java.time.LocalTime;
+
 @Getter
 public class StoreResponse {
 
@@ -14,6 +16,26 @@ public class StoreResponse {
     private final String phone;
     private final Double distance;
     private final Long partyCount;
+
+    public StoreResponse(Long id,
+                         String name,
+                         String address,
+                         LocalTime openTime,
+                         LocalTime closeTime,
+                         String phone,
+                         Double distance,
+                         Long partyCount) {
+        this(
+                id,
+                name,
+                address,
+                openTime != null ? openTime.toString() : null,
+                closeTime != null ? closeTime.toString() : null,
+                phone,
+                distance,
+                partyCount
+        );
+    }
 
     private StoreResponse(Long id,
                           String name,

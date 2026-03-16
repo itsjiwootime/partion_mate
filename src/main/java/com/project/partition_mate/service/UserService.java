@@ -3,8 +3,10 @@ package com.project.partition_mate.service;
 import com.project.partition_mate.domain.WaitingQueueEntry;
 import com.project.partition_mate.domain.WaitingQueueStatus;
 import com.project.partition_mate.domain.User;
+import com.project.partition_mate.dto.UserNotificationResponse;
 import com.project.partition_mate.dto.MyJoinedPartyResponse;
 import com.project.partition_mate.repository.PartyMemberRepository;
+import com.project.partition_mate.repository.UserNotificationRepository;
 import com.project.partition_mate.repository.UserRepository;
 import com.project.partition_mate.repository.WaitingQueueRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -21,6 +23,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final PartyMemberRepository partyMemberRepository;
     private final WaitingQueueRepository waitingQueueRepository;
+    private final UserNotificationRepository userNotificationRepository;
 
     public User getUserByEmail(String email) {
 
@@ -45,7 +48,10 @@ public class UserService {
                         pm.getRole(),
                         pm.getParty().getTotalPrice(),
                         pm.getParty().getOpenChatUrl(),
-                        pm.getRequestedQuantity()
+                        pm.getRequestedQuantity(),
+                        pm.getParty().getDeadline(),
+                        pm.getParty().getClosedAt(),
+                        pm.getParty().getCloseReason()
                 ))
                 .toList());
 
@@ -81,7 +87,16 @@ public class UserService {
                 waitingQueueEntry.getParty().getTotalPrice(),
                 waitingQueueEntry.getParty().getOpenChatUrl(),
                 waitingPosition,
-                waitingQueueEntry.getRequestedQuantity()
+                waitingQueueEntry.getRequestedQuantity(),
+                waitingQueueEntry.getParty().getDeadline(),
+                waitingQueueEntry.getParty().getClosedAt(),
+                waitingQueueEntry.getParty().getCloseReason()
         );
+    }
+
+    public List<UserNotificationResponse> getNotifications(User user) {
+        return userNotificationRepository.findAllByUserOrderByCreatedAtDesc(user).stream()
+                .map(UserNotificationResponse::from)
+                .toList();
     }
 }

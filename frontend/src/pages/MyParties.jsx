@@ -99,12 +99,14 @@ function MyParties() {
                   'badge',
                   isWaiting
                     ? 'bg-amber-100 text-amber-900'
+                    : p.status === 'CLOSED'
+                      ? 'bg-red-50 text-red-700'
                     : p.status === 'FULL'
                       ? 'bg-ink/10 text-ink/50'
                       : 'bg-mint-500/15 text-mint-700',
                 ].join(' ')}
               >
-                {isWaiting ? `대기열 ${p.waitingPosition ?? '-'}번` : p.status === 'FULL' ? '마감' : '모집 중'}
+                {isWaiting ? `대기열 ${p.waitingPosition ?? '-'}번` : p.status === 'CLOSED' ? '종료' : p.status === 'FULL' ? '마감' : '모집 중'}
               </div>
             </div>
             <h3 className="mt-1 text-lg font-semibold text-ink">{p.title}</h3>
@@ -115,6 +117,9 @@ function MyParties() {
             </div>
             <div className="text-xs text-ink/60">
               {isWaiting ? `대기 요청 수량 ${p.requestedQuantity ?? 0}개` : `내 참여 수량 ${p.requestedQuantity ?? 0}개`}
+            </div>
+            <div className="text-xs text-ink/60">
+              마감: {p.deadlineLabel ?? p.deadline ?? '미정'}
             </div>
             <div className="flex gap-2">
               <button
@@ -127,7 +132,7 @@ function MyParties() {
               >
                 상세 보기
               </button>
-              {canCancel && (
+              {canCancel && p.status !== 'CLOSED' && (
                 <button
                   onClick={() => handleCancel(p.id)}
                   disabled={cancellingId === p.id}

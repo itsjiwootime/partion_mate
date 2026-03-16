@@ -4,6 +4,12 @@ export function normalizePartyDetail(input) {
   const targetQuantity = input.targetQuantity ?? input.totalQuantity ?? 0;
   const currentQuantity = input.currentQuantity ?? 0;
   const rawStatus = input.status ?? 'RECRUITING';
+  const normalizedStatus =
+    rawStatus === 'CLOSED' || rawStatus === 'closed'
+      ? 'closed'
+      : rawStatus === 'FULL' || rawStatus === 'full'
+        ? 'full'
+        : 'active';
 
   return {
     partyId: input.partyId ?? input.id,
@@ -13,13 +19,16 @@ export function normalizePartyDetail(input) {
     currentQuantity,
     targetQuantity,
     deadlineLabel: input.deadlineLabel ?? input.deadline ?? '미정',
+    deadline: input.deadline ?? null,
     rating: input.rating ?? input.hostRating ?? 4.5,
-    status: rawStatus === 'FULL' || rawStatus === 'full' ? 'full' : 'active',
+    status: normalizedStatus,
     storeName: input.storeName ?? '',
     openChatUrl: input.openChatUrl ?? '',
     participationStatus: input.participationStatus ?? 'JOINED',
     waitingPosition: input.waitingPosition ?? null,
     requestedQuantity: input.requestedQuantity ?? null,
+    closeReason: input.closeReason ?? null,
+    closedAt: input.closedAt ?? null,
   };
 }
 

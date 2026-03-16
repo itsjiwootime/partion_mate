@@ -95,6 +95,12 @@ function CreateParty() {
       navigate('/login');
       return;
     }
+    if (!form.date || !form.time) {
+      const message = '모임 날짜와 시간을 모두 입력해 주세요.';
+      setError(message);
+      addToast(message, 'error');
+      return;
+    }
     try {
       setSubmitting(true);
       await api.createParty({
@@ -105,6 +111,7 @@ function CreateParty() {
         totalQuantity: Number(form.totalQuantity),
         hostRequestedQuantity: Number(form.hostRequestedQuantity) || 1,
         openChatUrl: form.openChatUrl,
+        deadline: `${form.date}T${form.time}`,
       });
       addToast('파티가 생성되었습니다.', 'success');
       navigate(`/branch/${form.branchId}`);

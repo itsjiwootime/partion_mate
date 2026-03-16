@@ -3,8 +3,11 @@ package com.project.partition_mate.dto;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Future;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
 
 @Getter
 @NoArgsConstructor
@@ -32,4 +35,7 @@ public class CreatePartyRequest {
     private Integer hostRequestedQuantity;
 
     private String openChatUrl;
+
+    @Future(message = "마감 시간은 현재보다 미래여야 합니다.")
+    private LocalDateTime deadline;
 }

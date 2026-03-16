@@ -6,11 +6,17 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.util.ArrayList;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 
 @Entity
-@Table(name = "party")
+@Table(
+        name = "party",
+        indexes = {
+                @Index(name = "idx_party_store_status", columnList = "store_id, party_status")
+        }
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Party {
@@ -38,8 +44,17 @@ public class Party {
     @Column
     private String openChatUrl;
 
+    @Column(nullable = false)
+    private LocalDateTime deadline;
+
     @Enumerated(EnumType.STRING)
+    @Column(name = "party_status")
     private PartyStatus partyStatus;
+
+    private LocalDateTime closedAt;
+
+    @Enumerated(EnumType.STRING)
+    private PartyCloseReason closeReason;
 
     @OneToMany(mappedBy = "party", cascade = CascadeType.ALL)
     private List<PartyMember> members =  new ArrayList<>();
@@ -50,6 +65,16 @@ public class Party {
                  Store store,
                  Integer totalQuantity,
                  String openChatUrl) {
+        this(title, productName, totalPrice, store, totalQuantity, openChatUrl, LocalDateTime.now().plusDays(1));
+    }
+
+    public Party(String title,
+                 String productName,
+                 Integer totalPrice,
+                 Store store,
+                 Integer totalQuantity,
+                 String openChatUrl,
+                 LocalDateTime deadline) {
 
         this.title = Objects.requireNonNull(title, "파티 제목은 필수입니다.");
         this.productName = Objects.requireNonNull(productName, "제품명은 필수입니다.");
@@ -57,9 +82,11 @@ public class Party {
         this.totalQuantity = Objects.requireNonNull(totalQuantity, "총 수량은 필수입니다.");
         this.store = Objects.requireNonNull(store, "지점 정보는 필수입니다.");
         this.openChatUrl = openChatUrl;
+        this.deadline = Objects.requireNonNull(deadline, "마감 시간은 필수입니다.");
 
         validateTotalPrice(totalPrice);
         validateTotalQuantity(totalQuantity);
+        validateDeadline(deadline);
 
         this.partyStatus = PartyStatus.RECRUITING;
     }
@@ -76,6 +103,20 @@ public class Party {
         return this.partyStatus == PartyStatus.RECRUITING;
     }
 
+    public boolean isClosed() {
+        return this.partyStatus == PartyStatus.CLOSED;
+    }
+
+    public boolean isDeadlineExpired(LocalDateTime now) {
+        return !deadline.isAfter(now);
+    }
+
+    public void close(LocalDateTime closedAt, PartyCloseReason closeReason) {
+        this.partyStatus = PartyStatus.CLOSED;
+        this.closedAt = Objects.requireNonNull(closedAt, "종료 시각은 필수입니다.");
+        this.closeReason = Objects.requireNonNull(closeReason, "종료 사유는 필수입니다.");
+    }
+
     public void removeMember(PartyMember member) {
         Objects.requireNonNull(member, "파티 멤버는 필수입니다.");
         this.members.removeIf(existingMember -> Objects.equals(existingMember.getId(), member.getId()));
@@ -83,6 +124,10 @@ public class Party {
     }
 
     public void refreshStatusByQuantity() {
+        if (isClosed()) {
+            return;
+        }
+
         if (getRequestedQuantity() >= this.totalQuantity) {
             this.partyStatus = PartyStatus.FULL;
             return;
@@ -126,7 +171,10 @@ public class Party {
         }
     }
 
-
-
+    private void validateDeadline(LocalDateTime deadline) {
+        if (!deadline.isAfter(LocalDateTime.now())) {
+            throw new IllegalArgumentException("마감 시간은 현재보다 미래여야 합니다.");
+        }
+    }
 
 }

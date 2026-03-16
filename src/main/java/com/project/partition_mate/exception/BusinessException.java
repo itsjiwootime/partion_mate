@@ -35,4 +35,12 @@ public class BusinessException extends RuntimeException {
     public static BusinessException hostCannotCancel() {
         return new BusinessException("호스트는 참여 취소 대신 파티 종료 흐름을 사용해야 합니다.", HttpStatus.CONFLICT);
     }
+
+    public static BusinessException deadlineExpired() {
+        return new BusinessException("마감 시간이 지나 종료된 파티입니다.", HttpStatus.CONFLICT);
+    }
+
+    public static BusinessException partyClosed() {
+        return new BusinessException("이미 종료된 파티입니다.", HttpStatus.CONFLICT);
+    }
 }

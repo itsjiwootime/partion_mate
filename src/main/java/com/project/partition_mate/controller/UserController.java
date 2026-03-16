@@ -2,6 +2,7 @@ package com.project.partition_mate.controller;
 
 import com.project.partition_mate.domain.User;
 import com.project.partition_mate.dto.MyJoinedPartyResponse;
+import com.project.partition_mate.dto.UserNotificationResponse;
 import com.project.partition_mate.dto.UserResponse;
 import com.project.partition_mate.security.CustomUserDetails;
 import com.project.partition_mate.service.UserService;
@@ -41,5 +42,14 @@ public class UserController {
         User user = principal.getUser();
 
         return ResponseEntity.ok(userService.getMyParties(user));
+    }
+
+    @GetMapping("/me/notifications")
+    public ResponseEntity<List<UserNotificationResponse>> getMyNotifications() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        CustomUserDetails principal = (CustomUserDetails) authentication.getPrincipal();
+        User user = principal.getUser();
+
+        return ResponseEntity.ok(userService.getNotifications(user));
     }
 }

@@ -10,6 +10,7 @@ import Profile from './pages/Profile';
 import PartyDetail from './pages/PartyDetail';
 import JoinParty from './pages/JoinParty';
 import MyParties from './pages/MyParties';
+import Notifications from './pages/Notifications';
 
 const Chat = () => (
   <div className="space-y-3">
@@ -29,6 +30,7 @@ function App() {
         <Route path="/parties/:id/join" element={<JoinParty />} />
         <Route path="/parties/create" element={<CreateParty />} />
         <Route path="/my-parties" element={<MyParties />} />
+        <Route path="/notifications" element={<Notifications />} />
         <Route path="/chat" element={<Chat />} />
         <Route path="/me" element={<Profile />} />
       </Route>

@@ -43,7 +43,7 @@ function JoinParty() {
   const remaining = Math.max(0, targetQuantity - currentQuantity);
   const perUnit = detail?.targetQuantity ? Math.round((detail.totalPrice || 0) / detail.targetQuantity) : 0;
   const expectedPrice = perUnit * (quantity || 0);
-  const isJoinClosed = !detail || remaining <= 0 || detail.status === 'full';
+  const isJoinClosed = !detail || remaining <= 0 || detail.status === 'full' || detail.status === 'closed';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -53,7 +53,7 @@ function JoinParty() {
       return;
     }
     if (isJoinClosed) {
-      setError('모집이 마감된 파티입니다.');
+      setError(detail?.status === 'closed' ? '이미 종료된 파티입니다.' : '모집이 마감된 파티입니다.');
       return;
     }
     const req = Math.max(1, Math.min(quantity, remaining || quantity));
@@ -120,7 +120,11 @@ function JoinParty() {
             <span>예상 부담금</span>
             <span className="text-lg font-bold text-mint-700">{expectedPrice.toLocaleString()}원</span>
           </div>
-          {isJoinClosed && <p className="text-sm text-ink/60">모집이 마감된 파티입니다.</p>}
+          {isJoinClosed && (
+            <p className="text-sm text-ink/60">
+              {detail?.status === 'closed' ? '이미 종료된 파티입니다.' : '모집이 마감된 파티입니다.'}
+            </p>
+          )}
           {error && <p className="text-sm text-red-600">{error}</p>}
           <button
             type="submit"

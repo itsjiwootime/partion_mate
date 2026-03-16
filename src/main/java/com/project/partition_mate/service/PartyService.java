@@ -2,6 +2,7 @@ package com.project.partition_mate.service;
 
 import com.project.partition_mate.domain.Party;
 import com.project.partition_mate.domain.PartyMember;
+import com.project.partition_mate.domain.PartyStatus;
 import com.project.partition_mate.domain.Store;
 import com.project.partition_mate.domain.User;
 import com.project.partition_mate.domain.WaitingQueueEntry;
@@ -23,6 +24,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -33,6 +36,9 @@ public class PartyService {
     private final PartyMemberRepository partyMemberRepository;
     private final WaitingQueueRepository waitingQueueRepository;
     private final StoreRepository storeRepository;
+    private final StoreQueryCacheSupport storeQueryCacheSupport;
+    private final NotificationOutboxService notificationOutboxService;
+    private final Clock clock;
 
     @Transactional
     public Party createParty(CreatePartyRequest request) {
@@ -49,7 +55,8 @@ public class PartyService {
                 request.getTotalPrice(),
                 store,
                 request.getTotalQuantity(),
-                request.getOpenChatUrl()
+                request.getOpenChatUrl(),
+                resolveDeadline(request.getDeadline())
         );
 
         PartyMember hostMember = PartyMember.joinAsHost(
@@ -60,16 +67,20 @@ public class PartyService {
 
         party.acceptMember(hostMember);
 
-        return partyRepository.save(party);
+        Party savedParty = partyRepository.save(party);
+        storeQueryCacheSupport.evictStoreQueries(store.getId());
+        return savedParty;
     }
 
     @Transactional
     public JoinPartyResponse joinParty(Long partyId, JoinPartyRequest request) {
         User member = getCurrentUser();
+        LocalDateTime now = LocalDateTime.now(clock);
 
         Party party = partyRepository.findByIdForUpdate(partyId)
                 .orElseThrow(() -> new EntityNotFoundException("파티가 존재하지 않습니다"));
 
+        validatePartyOpenForJoin(party, now);
         validateNotAlreadyJoinedOrWaiting(party, member);
 
         if (canJoinImmediately(party, request.getMemberRequestQuantity())) {
@@ -132,6 +143,9 @@ public class PartyService {
             throw BusinessException.alreadyJoined();
         }
 
+        notificationOutboxService.publishJoinConfirmed(party, member);
+        storeQueryCacheSupport.evictStoreQueries(party.getStore().getId());
+
         return JoinPartyResponse.joined(party);
     }
 
@@ -161,6 +175,7 @@ public class PartyService {
         partyMemberRepository.delete(joinedMember);
         partyMemberRepository.flush();
         promoteWaitingMembers(party);
+        storeQueryCacheSupport.evictStoreQueries(party.getStore().getId());
     }
 
     private void promoteWaitingMembers(Party party) {
@@ -183,6 +198,7 @@ public class PartyService {
             party.acceptMember(promotedMember);
             partyMemberRepository.saveAndFlush(promotedMember);
             waitingEntry.promote();
+            notificationOutboxService.publishWaitingPromoted(party, waitingEntry.getUser(), waitingEntry.getRequestedQuantity());
 
             if (!party.isRecruiting()) {
                 break;
@@ -202,6 +218,23 @@ public class PartyService {
 
     private boolean canJoinImmediately(Party party, Integer requestedQuantity) {
         return party.isRecruiting() && party.getRemainingQuantity() >= requestedQuantity;
+    }
+
+    private void validatePartyOpenForJoin(Party party, LocalDateTime now) {
+        if (party.getPartyStatus() == PartyStatus.CLOSED) {
+            throw BusinessException.partyClosed();
+        }
+
+        if (party.isDeadlineExpired(now)) {
+            throw BusinessException.deadlineExpired();
+        }
+    }
+
+    private LocalDateTime resolveDeadline(LocalDateTime requestedDeadline) {
+        if (requestedDeadline != null) {
+            return requestedDeadline;
+        }
+        return LocalDateTime.now(clock).plusDays(1);
     }
 
     private User getCurrentUser() {
