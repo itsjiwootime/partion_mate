@@ -92,6 +92,9 @@ public class Party {
     @OneToMany(mappedBy = "party", cascade = CascadeType.ALL)
     private List<PartyMember> members =  new ArrayList<>();
 
+    @OneToOne(mappedBy = "party", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private ChatRoom chatRoom;
+
     public Party(String title,
                  String productName,
                  Integer totalPrice,
@@ -204,6 +207,10 @@ public class Party {
 
         this.members.add(member);
         refreshStatusByQuantity();
+    }
+
+    public void attachChatRoom(ChatRoom chatRoom) {
+        this.chatRoom = chatRoom;
     }
 
     public boolean isRecruiting() {

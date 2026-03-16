@@ -37,6 +37,7 @@ public class SecurityConfig {
                 // 3. URL별 접근 권한 관리
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()    // 회원가입, 로그인은 무조건 허용
+                        .requestMatchers("/ws-chat/**", "/ws-chat").permitAll()
                         .requestMatchers(HttpMethod.GET,"/api/stores/**").permitAll() // 지점/파티 리스트 공개
                         .requestMatchers(HttpMethod.GET, "/party/**").permitAll() // 파티 목록/상세 공개
                         .anyRequest().authenticated()                   // 나머지는 모두 인증 필요

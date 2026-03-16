@@ -15,7 +15,8 @@ const pageMeta = {
 function Layout() {
   const { pathname } = useLocation();
   const isBranchPage = pathname.startsWith('/branch');
-  const current = isBranchPage ? pageMeta.branch : pageMeta[pathname] ?? pageMeta['/'];
+  const isChatPage = pathname.startsWith('/chat');
+  const current = isBranchPage ? pageMeta.branch : isChatPage ? pageMeta['/chat'] : pageMeta[pathname] ?? pageMeta['/'];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-mint-50 via-clean-white to-clean-white text-ink">

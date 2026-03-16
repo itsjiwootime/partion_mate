@@ -60,6 +60,7 @@ public class PartyService {
     private final StoreQueryCacheSupport storeQueryCacheSupport;
     private final NotificationOutboxService notificationOutboxService;
     private final PartyRealtimeService partyRealtimeService;
+    private final ChatService chatService;
     private final TrustScoreService trustScoreService;
     private final Clock clock;
 
@@ -102,6 +103,7 @@ public class PartyService {
         party.acceptMember(hostMember);
 
         Party savedParty = partyRepository.save(party);
+        chatService.initializePartyChatRoom(savedParty, host);
         storeQueryCacheSupport.evictStoreQueries(store.getId());
         partyRealtimeService.publishPartyUpdatedAfterCommit(savedParty, PartyRealtimeTrigger.PARTY_CREATED);
         return savedParty;
@@ -353,6 +355,7 @@ public class PartyService {
         }
 
         notificationOutboxService.publishJoinConfirmed(party, member);
+        chatService.appendSystemMessage(party, member.getUsername() + "님이 파티에 참여했습니다.");
         storeQueryCacheSupport.evictStoreQueries(party.getStore().getId());
         partyRealtimeService.publishPartyUpdatedAfterCommit(party, PartyRealtimeTrigger.JOIN_CONFIRMED);
 
@@ -384,6 +387,7 @@ public class PartyService {
         party.removeMember(joinedMember);
         partyMemberRepository.delete(joinedMember);
         partyMemberRepository.flush();
+        chatService.appendSystemMessage(party, joinedMember.getUser().getUsername() + "님이 파티에서 나갔습니다.");
         boolean promoted = promoteWaitingMembers(party);
         storeQueryCacheSupport.evictStoreQueries(party.getStore().getId());
         if (!promoted) {
@@ -413,6 +417,10 @@ public class PartyService {
             partyMemberRepository.saveAndFlush(promotedMember);
             waitingEntry.promote();
             notificationOutboxService.publishWaitingPromoted(party, waitingEntry.getUser(), waitingEntry.getRequestedQuantity());
+            chatService.appendSystemMessage(
+                    party,
+                    waitingEntry.getUser().getUsername() + "님이 대기열에서 채팅방 참여 상태로 승격되었습니다."
+            );
             promoted = true;
 
             if (!party.isRecruiting()) {

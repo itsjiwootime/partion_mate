@@ -1,4 +1,4 @@
-import { Bell, Home, ListChecks, User, FolderKanban } from 'lucide-react';
+import { Bell, Home, ListChecks, User, FolderKanban, MessageCircleMore } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 
 const navItems = [
@@ -15,6 +15,7 @@ const navItems = [
     match: (path) => path.startsWith('/parties') || path.startsWith('/branch'),
   },
   { to: '/my-parties', label: '내파티', icon: FolderKanban, match: (path) => path.startsWith('/my-parties') },
+  { to: '/chat', label: '채팅', icon: MessageCircleMore, match: (path) => path.startsWith('/chat') },
   { to: '/notifications', label: '알림', icon: Bell, match: (path) => path.startsWith('/notifications') },
   { to: '/me', label: '내정보', icon: User, match: (path) => path.startsWith('/me') },
 ];
@@ -24,7 +25,7 @@ function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-20 border-t border-mint-100 bg-white/90 backdrop-blur-md md:static md:mx-auto md:mt-10 md:max-w-4xl md:rounded-2xl md:border">
-      <div className="grid grid-cols-5">
+      <div className="grid grid-cols-6">
         {navItems.map(({ to, label, icon: Icon, match }) => {
           const isActive = match(pathname);
           return (

@@ -6,10 +6,12 @@ import SectionHeader from '../components/SectionHeader';
 import { LoadingState, EmptyState } from '../components/Feedback';
 import { applyPartyListRealtimeUpdate, normalizePartySummary } from '../utils/party';
 import { subscribeToPartyStream } from '../utils/partyRealtime';
+import { useAuth } from '../context/AuthContext';
 
 function PartyList() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { isAuthed } = useAuth();
   const isAll = id === undefined;
   const branchName = useMemo(() => (isAll ? '전체 파티' : id ?? '지점 선택'), [id, isAll]);
   const [storeInfo, setStoreInfo] = useState(null);
@@ -17,6 +19,7 @@ function PartyList() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [realtimeState, setRealtimeState] = useState('connecting');
+  const [chatUnreadMap, setChatUnreadMap] = useState({});
 
   useEffect(() => {
     let active = true;
@@ -60,8 +63,30 @@ function PartyList() {
         }
       }
     };
+    const fetchChatRooms = async () => {
+      if (!isAuthed) {
+        setChatUnreadMap({});
+        return;
+      }
+      try {
+        const rooms = await api.getMyChatRooms();
+        if (active) {
+          setChatUnreadMap(
+            rooms.reduce((acc, room) => {
+              acc[room.partyId] = room.unreadCount ?? 0;
+              return acc;
+            }, {}),
+          );
+        }
+      } catch {
+        if (active) {
+          setChatUnreadMap({});
+        }
+      }
+    };
     fetchStore();
     fetchParties();
+    fetchChatRooms();
 
     const unsubscribe = subscribeToPartyStream({
       storeId: isAll ? null : numericId,
@@ -94,7 +119,7 @@ function PartyList() {
       active = false;
       unsubscribe?.();
     };
-  }, [id, isAll]);
+  }, [id, isAll, isAuthed]);
 
   return (
     <div className="space-y-4">
@@ -151,6 +176,7 @@ function PartyList() {
           <PartyCard
             key={party.partyId}
             partyId={party.partyId}
+            chatUnreadCount={chatUnreadMap[party.partyId] ?? 0}
             {...party}
             onViewDetail={() => navigate(`/parties/${party.partyId}`, { state: { party } })}
           />

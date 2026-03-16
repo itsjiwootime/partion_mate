@@ -296,40 +296,45 @@
 
 ## Epic 8. 파티 채팅
 
-### [ ] E8-1 파티 채팅 도메인 및 권한 모델
+### [x] E8-1 파티 채팅 도메인 및 권한 모델
 - 목표: 파티 단위 채팅방과 접근 권한 모델을 정의한다.
 - 범위: `chat_room`, `chat_message`, `chat_member` 또는 동등한 모델, 파티-채팅방 연결, 참여자 권한 체크.
 - 완료 조건: 파티별 채팅방이 생성되고 참여자만 접근할 수 있다.
 - 검증: 권한 테스트, 채팅방 생성 테스트.
 - ADR: 파티 전용 채팅 모델과 접근 제어 정책을 문서화한다.
+- 구현 메모(2026-03-17): `ChatRoom`, `ChatMessage`, `ChatReadState` 엔티티를 추가하고 `Party`와 1:1 채팅방 관계를 연결했다. 별도 `chat_member` 테이블은 만들지 않고 기존 `PartyMember`를 채팅 접근 권한의 단일 기준으로 사용한다. `ChatRoomFlowIntegrationTest`로 채팅방 생성, 참여자 접근 제한, 읽음 처리까지 검증했다.
 
-### [ ] E8-2 WebSocket/STOMP 채팅 송수신 기반
+### [x] E8-2 WebSocket/STOMP 채팅 송수신 기반
 - 목표: 참여자가 실시간으로 메시지를 주고받을 수 있는 채널을 만든다.
 - 범위: WebSocket endpoint, STOMP destination, 인증/세션 연동.
 - 완료 조건: 같은 파티 참여자 간 메시지가 실시간으로 전달된다.
 - 검증: 통합 테스트 또는 다중 클라이언트 수동 테스트.
 - ADR: 채팅에서 SSE가 아닌 WebSocket/STOMP를 선택한 이유를 문서화한다.
+- 구현 메모(2026-03-17): `/ws-chat` endpoint, `/app/chat/{partyId}/messages` 발행, `/topic/chat/{partyId}` 구독 규격으로 STOMP 채널을 추가했다. `ChatStompChannelInterceptor`가 `CONNECT`의 JWT를 검증하고 세션 속성에 저장해 `SUBSCRIBE`, `SEND`, `MessageMapping` 처리까지 같은 인증 정보를 재사용한다. `ChatWebSocketIntegrationTest`로 실제 WebSocket 연결, 구독, 메시지 저장/브로드캐스트를 통합 검증했다.
 
-### [ ] E8-3 메시지 저장 및 시스템 메시지
+### [x] E8-3 메시지 저장 및 시스템 메시지
 - 목표: 채팅 내용을 저장하고 참여/취소/마감 이벤트를 시스템 메시지로 남긴다.
 - 범위: 메시지 영속화, 시스템 메시지 타입, 과거 메시지 조회 API.
 - 완료 조건: 새로 입장한 사용자가 최근 메시지를 조회할 수 있다.
 - 검증: 메시지 저장 테스트, 시스템 메시지 생성 테스트.
 - ADR: 메시지 저장 범위와 시스템 메시지 모델을 문서화한다.
+- 구현 메모(2026-03-17): 최근 100개 메시지를 내려주는 `GET /api/chat/rooms/{partyId}` API와 메시지 저장 로직을 `ChatService`로 모았다. 시스템 메시지는 채팅방 생성, 파티 참여, 참여 취소, 대기열 승격, 자동 마감, 공지 변경 시 자동 생성되며, 브로드캐스트는 `afterCommit` 기준으로 보낸다. `ChatRoomFlowIntegrationTest`와 `ChatWebSocketIntegrationTest`가 저장/조회/브로드캐스트를 함께 검증한다.
 
-### [ ] E8-4 안 읽은 메시지 수 및 호스트 공지 고정
+### [x] E8-4 안 읽은 메시지 수 및 호스트 공지 고정
 - 목표: 사용자가 중요한 공지와 읽지 않은 메시지를 쉽게 확인하게 한다.
 - 범위: 마지막 읽음 위치 저장, unread count 계산, pinned notice.
 - 완료 조건: 파티 목록/내 파티/채팅방에서 안 읽은 메시지 수를 확인할 수 있다.
 - 검증: unread 계산 테스트, 공지 고정 동작 확인.
 - ADR: 읽음 처리 모델과 공지 고정 방식을 문서화한다.
+- 구현 메모(2026-03-17): `ChatReadState.lastReadMessageId`로 unread count를 계산하고, 채팅방 상세 조회와 `POST /api/chat/rooms/{partyId}/read` 모두 마지막 메시지까지 읽음 처리하도록 만들었다. 호스트 공지는 `PUT /api/chat/rooms/{partyId}/notice`에서만 수정 가능하며 공지 변경 시 시스템 메시지도 함께 남긴다. 프론트는 파티 목록, 내 파티, 채팅 화면에 unread count와 공지 정보를 노출한다.
 
-### [ ] E8-5 채팅 화면 통합 및 오픈채팅 전환 정책
+### [x] E8-5 채팅 화면 통합 및 오픈채팅 전환 정책
 - 목표: 기존 오픈채팅 링크 기반 흐름에서 인앱 채팅으로 자연스럽게 전환한다.
 - 범위: 채팅 페이지 구현, 파티 상세 연결, 오픈채팅 링크 fallback 정책.
 - 완료 조건: 파티 상세에서 인앱 채팅으로 진입할 수 있고 필요 시 외부 오픈채팅도 fallback으로 유지할 수 있다.
 - 검증: 프론트 라우팅 확인, 상세-채팅 연결 확인.
 - ADR: 인앱 채팅 도입 범위와 오픈채팅 fallback 정책을 문서화한다.
+- 구현 메모(2026-03-17): 프론트에 `/chat`, `/chat/:partyId` 채팅 화면과 `@stomp/stompjs` 기반 `chatClient`를 추가했다. 하단 네비게이션, 파티 상세, 내 파티, 파티 목록에서 unread count와 채팅 진입 CTA를 연결했고, 기존 `openChatUrl`은 채팅 화면과 파티 상세에서 fallback 링크로 유지했다. 화면 통합 검증은 `npm run build`와 REST/STOMP 통합 테스트 기준으로 마무리했다.
 
 ## Agent Prompt Template
 ```text

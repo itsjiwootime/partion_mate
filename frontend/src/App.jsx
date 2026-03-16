@@ -11,13 +11,7 @@ import PartyDetail from './pages/PartyDetail';
 import JoinParty from './pages/JoinParty';
 import MyParties from './pages/MyParties';
 import Notifications from './pages/Notifications';
-
-const Chat = () => (
-  <div className="space-y-3">
-    <h2 className="text-lg font-semibold text-ink">채팅</h2>
-    <p className="text-sm text-ink/70">참여 중인 파티의 채팅이 여기에 표시됩니다.</p>
-  </div>
-);
+import Chat from './pages/Chat';
 
 function App() {
   return (
@@ -32,6 +26,7 @@ function App() {
         <Route path="/my-parties" element={<MyParties />} />
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/chat" element={<Chat />} />
+        <Route path="/chat/:partyId" element={<Chat />} />
         <Route path="/me" element={<Profile />} />
       </Route>
       <Route element={<AuthLayout />}>

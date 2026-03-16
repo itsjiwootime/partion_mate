@@ -16,6 +16,7 @@ function PartyCard({
   targetQuantity,
   deadlineLabel,
   rating,
+  chatUnreadCount = 0,
   status = 'active',
   onViewDetail,
 }) {
@@ -39,6 +40,7 @@ function PartyCard({
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-ink/60">공동구매</p>
           <h3 className="mt-1 text-lg font-semibold text-ink">{title}</h3>
+          {chatUnreadCount > 0 && <p className="mt-2 text-xs font-semibold text-mint-700">새 메시지 {chatUnreadCount}개</p>}
         </div>
         <span
           className={[

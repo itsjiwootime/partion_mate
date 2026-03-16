@@ -52,6 +52,10 @@ public class BusinessException extends RuntimeException {
         return new BusinessException("픽업 일정 확정은 호스트만 처리할 수 있습니다.", HttpStatus.FORBIDDEN);
     }
 
+    public static BusinessException onlyHostCanManageChatNotice() {
+        return new BusinessException("호스트만 채팅 공지를 고정할 수 있습니다.", HttpStatus.FORBIDDEN);
+    }
+
     public static BusinessException onlyHostCanManageTradeStatus() {
         return new BusinessException("거래 완료와 노쇼 처리는 호스트만 할 수 있습니다.", HttpStatus.FORBIDDEN);
     }

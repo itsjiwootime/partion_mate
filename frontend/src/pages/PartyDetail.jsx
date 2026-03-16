@@ -755,6 +755,14 @@ function PartyDetail() {
             이미 참여 중인 파티입니다.
           </div>
         )}
+        {detail.userRole && !isWaitingParty && (
+          <button
+            onClick={() => navigate(`/chat/${detail.partyId}`)}
+            className="btn-secondary w-full"
+          >
+            채팅방 이동
+          </button>
+        )}
         {isWaitingParty && (
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             대기열 {detail.waitingPosition ?? '-'}번입니다. 빈 자리가 생기면 자동으로 승격됩니다.

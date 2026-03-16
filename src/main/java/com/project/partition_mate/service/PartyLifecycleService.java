@@ -26,6 +26,7 @@ public class PartyLifecycleService {
     private final NotificationOutboxService notificationOutboxService;
     private final PartyRealtimeService partyRealtimeService;
     private final StoreQueryCacheSupport storeQueryCacheSupport;
+    private final ChatService chatService;
     private final Clock clock;
 
     public PartyLifecycleService(PartyRepository partyRepository,
@@ -34,6 +35,7 @@ public class PartyLifecycleService {
                                  NotificationOutboxService notificationOutboxService,
                                  PartyRealtimeService partyRealtimeService,
                                  StoreQueryCacheSupport storeQueryCacheSupport,
+                                 ChatService chatService,
                                  Clock clock) {
         this.partyRepository = partyRepository;
         this.partyMemberRepository = partyMemberRepository;
@@ -41,6 +43,7 @@ public class PartyLifecycleService {
         this.notificationOutboxService = notificationOutboxService;
         this.partyRealtimeService = partyRealtimeService;
         this.storeQueryCacheSupport = storeQueryCacheSupport;
+        this.chatService = chatService;
         this.clock = clock;
     }
 
@@ -83,6 +86,7 @@ public class PartyLifecycleService {
         party.close(now, PartyCloseReason.DEADLINE_EXPIRED);
 
         notificationOutboxService.publishPartyClosed(party, joinedUserIds, expiredWaitingUserIds);
+        chatService.appendSystemMessage(party, "마감 시간이 지나 모집이 종료되었습니다.");
         storeQueryCacheSupport.evictStoreQueries(party.getStore().getId());
         partyRealtimeService.publishPartyUpdatedAfterCommit(party, PartyRealtimeTrigger.PARTY_CLOSED);
     }

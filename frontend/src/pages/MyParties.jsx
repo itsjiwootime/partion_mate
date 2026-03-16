@@ -20,6 +20,7 @@ function MyParties() {
   const [error, setError] = useState('');
   const [cancellingId, setCancellingId] = useState(null);
   const [realtimeState, setRealtimeState] = useState('connecting');
+  const [chatUnreadMap, setChatUnreadMap] = useState({});
   const partyIdsRef = useRef(new Set());
 
   useEffect(() => {
@@ -47,7 +48,25 @@ function MyParties() {
         }
       }
     };
+    const fetchChatRooms = async () => {
+      try {
+        const rooms = await api.getMyChatRooms();
+        if (active) {
+          setChatUnreadMap(
+            rooms.reduce((acc, room) => {
+              acc[room.partyId] = room.unreadCount ?? 0;
+              return acc;
+            }, {}),
+          );
+        }
+      } catch {
+        if (active) {
+          setChatUnreadMap({});
+        }
+      }
+    };
     fetchData();
+    fetchChatRooms();
 
     const unsubscribe = subscribeToPartyStream({
       onConnected: () => {
@@ -181,6 +200,9 @@ function MyParties() {
             <div className="text-xs text-ink/60">
               마감: {p.deadlineLabel ?? p.deadline ?? '미정'}
             </div>
+            {(chatUnreadMap[p.id] ?? 0) > 0 && (
+              <div className="text-xs font-semibold text-mint-700">새 메시지 {chatUnreadMap[p.id]}개</div>
+            )}
             <div className="flex gap-2">
               <button
                 onClick={() =>
@@ -192,6 +214,14 @@ function MyParties() {
               >
                 상세 보기
               </button>
+              {!isWaiting && (
+                <button
+                  onClick={() => navigate(`/chat/${p.id}`)}
+                  className="btn-secondary flex-1"
+                >
+                  채팅
+                </button>
+              )}
               {canCancel && p.status !== 'CLOSED' && (
                 <button
                   onClick={() => handleCancel(p.id)}

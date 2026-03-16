@@ -74,6 +74,17 @@ export const api = {
 
   getMyParties: () => fetchJson('/api/users/me/parties'),
   getMyNotifications: () => fetchJson('/api/users/me/notifications'),
+  getMyChatRooms: () => fetchJson('/api/chat/rooms'),
+  getChatRoomDetail: (partyId) => fetchJson(`/api/chat/rooms/${partyId}`),
+  markChatRoomRead: (partyId) =>
+    fetchJson(`/api/chat/rooms/${partyId}/read`, {
+      method: 'POST',
+    }),
+  updatePinnedNotice: ({ partyId, pinnedNotice }) =>
+    fetchJson(`/api/chat/rooms/${partyId}/notice`, {
+      method: 'PUT',
+      body: JSON.stringify({ pinnedNotice }),
+    }),
 
   joinParty: ({ partyId, quantity = 1 }) =>
     fetchJson(`/party/${partyId}/join`, {
