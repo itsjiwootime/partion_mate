@@ -33,6 +33,11 @@
 - 정산 금액은 `호스트가 실제 결제 금액을 확정한 뒤` 최종 금액으로 확정한다.
 - 픽업 일정과 장소는 `호스트 확정 -> 참여자 확인` 흐름을 기본으로 한다.
 - 후기 작성은 `거래 완료 처리 이후`에만 가능하게 한다.
+- 인증은 `access token + refresh token` 이중 토큰 구조를 기본으로 한다.
+- access token은 `짧은 수명 JWT`로 유지하고, API 요청의 `Authorization: Bearer` 헤더로만 전달한다.
+- refresh token은 프론트 저장소가 아닌 `HttpOnly Cookie`로 관리하는 것을 기본으로 한다.
+- refresh token은 재발급 시 `rotation`을 적용하고, 로그아웃 시 서버에서 무효화한다.
+- 인증 실패 응답은 프론트가 세션 만료를 구분할 수 있게 `JSON 401` 형식을 기본으로 한다.
 - 성능 측정 기본 대상은 `지점 조회 API`, `지점별 파티 조회 API`, `참여 API`로 한다.
 - E1 부하 테스트 기본 조건은 `동시 참여 100건 이상`으로 설정한다.
 - E2 성능 목표는 `주변 지점 조회 API P95 300ms 이하`를 1차 목표로 한다.
@@ -403,6 +408,65 @@
 - 검증: Docker 컨테이너 실행 확인, 백엔드 기동 확인, `/api/stores/nearby` 응답 확인.
 - ADR: Docker Compose 기반 로컬 DB 운영 방식을 문서화한다.
 - 구현 메모(2026-03-17): MySQL 8.4 기반 `docker-compose.yml`과 `.env.example`, `docs/local-db.md`를 추가했다. `.env`를 로컬 전용으로 두고 `DB_URL/DB_USERNAME/DB_PASSWORD`를 백엔드와 공유하도록 맞췄다. 실제로 `docker compose up -d db` 후 백엔드를 MySQL 기준으로 기동했고, 시드 적재까지 포함해 `/api/stores/nearby` 응답을 확인했다.
+
+## Epic 11. 로그인 세션 안정화 및 리프레시 토큰 도입
+
+### [x] E11-1 인증 실패 응답 표준화
+- 목표: 만료되거나 잘못된 토큰에 대해 프론트가 일관되게 처리할 수 있는 인증 오류 응답을 만든다.
+- 범위: Spring Security `authenticationEntryPoint`/`accessDeniedHandler`, JWT 예외 매핑, 공통 에러 코드.
+- 완료 조건: 인증되지 않은 요청과 만료/변조 토큰 요청이 `JSON 401` 또는 `JSON 403`으로 명확히 구분되어 반환된다.
+- 검증: 무토큰/만료 토큰/변조 토큰 API 테스트, 응답 본문 스냅샷 확인.
+- ADR: 인증 실패를 401/403으로 어떻게 구분하고 어떤 에러 코드를 내려줄지 문서화한다.
+- 구현 메모(2026-03-18): `RestAuthenticationEntryPoint`와 `RestAccessDeniedHandler`를 추가하고, `JwtAuthenticationFilter`가 만료 토큰과 변조 토큰을 `request attribute`로 구분해 전달하도록 수정했다. 보호 API는 이제 `AUTH_REQUIRED`, `TOKEN_EXPIRED`, `INVALID_TOKEN`, `ACCESS_DENIED` 코드로 JSON 응답을 반환한다. `SecurityAuthenticationFailureIntegrationTest`와 `RestAccessDeniedHandlerTest`로 401/403 응답 형식을 검증했다.
+
+### [x] E11-2 프론트 전역 세션 만료 처리
+- 목표: access token 만료나 인증 실패가 발생했을 때 사용자가 화면마다 부분적으로 깨지는 대신 재로그인 흐름으로 자연스럽게 이동하게 한다.
+- 범위: `fetchJson` 전역 401 처리, 만료 시 토큰 정리, 로그인 복귀 경로 유지, 세션 만료 안내 UI.
+- 완료 조건: 보호 API가 401을 반환하면 프론트가 토큰을 정리하고 로그인 화면으로 이동시키며, 로그인 후 원래 화면으로 복귀한다.
+- 검증: 만료 토큰을 넣은 수동 테스트, 로그인 복귀 플로우 확인, 프론트 빌드.
+- ADR: 프론트 전역 인증 실패 처리와 세션 만료 UX 정책을 문서화한다.
+- 구현 메모(2026-03-18): `fetchJson`에 전역 401 처리 훅을 추가하고, `AuthContext`가 인증 실패 시 세션을 정리하면서 `returnTo`와 메시지를 저장하도록 구성했다. `SessionExpiryHandler`는 라우터 내부에서 이 상태를 감지해 로그인 화면으로 이동시키고, `Login.jsx`는 세션 만료 안내 문구를 상단에 노출한다. 프론트 자동 검증은 `npm run build` 기준으로 마무리했고, 만료 토큰 수동 리다이렉트는 아직 별도 브라우저 클릭 테스트를 남겨두고 있다.
+
+### [x] E11-3 리프레시 토큰 발급 및 저장 구조
+- 목표: access token 만료 후에도 사용자가 매번 수동 로그인하지 않도록 세션 연장 기반을 만든다.
+- 범위: 로그인 응답 확장, refresh token 생성/저장, DB 또는 영속 저장소 모델, `HttpOnly Cookie` 설정.
+- 완료 조건: 로그인 시 access token과 함께 refresh token이 발급되고, 서버가 refresh token 식별/검증 정보를 안전하게 저장한다.
+- 검증: 로그인 통합 테스트, refresh token 저장/중복 발급 정책 테스트.
+- ADR: refresh token 형식, 저장 방식, `HttpOnly Cookie` 선택 이유를 문서화한다.
+- 구현 메모(2026-03-18): `RefreshToken` 엔티티와 `RefreshTokenRepository`, `RefreshTokenService`를 추가해 refresh token 원문은 쿠키로만 보내고 서버에는 SHA-256 해시만 저장하도록 구성했다. 로그인 응답은 `accessToken`과 `accessTokenExpiresInMs`를 내려주고, `pm_refresh_token`은 `HttpOnly Cookie`로 설정한다. `AuthLoginRefreshTokenIntegrationTest`로 쿠키 발급, DB 저장, 다중 기기용 복수 토큰 저장을 검증했다.
+
+### [x] E11-4 access token 재발급과 rotation 및 로그아웃 무효화
+- 목표: 세션 재연장과 로그아웃/탈취 대응을 함께 처리할 수 있게 만든다.
+- 범위: `/api/auth/refresh`, refresh token rotation, 재사용 감지 또는 무효화 정책, 로그아웃 API.
+- 완료 조건: 유효한 refresh token으로 access token을 재발급할 수 있고, 로그아웃 후에는 같은 refresh token으로 재발급할 수 없다.
+- 검증: 재발급 성공/실패 테스트, 로그아웃 후 재사용 차단 테스트, 쿠키 기반 수동 검증.
+- ADR: refresh rotation, 로그아웃 무효화, 재사용 대응 정책을 문서화한다.
+- 구현 메모(2026-03-18): `AuthController`에 `/api/auth/refresh`와 `/api/auth/logout`을 추가하고, `RefreshTokenService`는 refresh token을 비관적 락으로 조회한 뒤 rotation과 revoke를 처리하도록 확장했다. 프론트 `fetchJson`은 보호 API 401에서 refresh를 한 번 시도한 뒤 원 요청을 재시도하고, `AuthContext.logout`은 서버 로그아웃 API까지 호출해 현재 기기 refresh cookie를 비운다. `AuthRefreshTokenFlowIntegrationTest`와 `client.refresh.test.js`로 rotation 성공, 회전된 토큰 재사용 차단, 로그아웃 후 재발급 차단, 프론트 자동 재시도를 검증했다.
+
+### [ ] E11-5 로그인 실패 정책과 입력 검증 정리
+- 목표: 로그인 UX를 더 안전하고 예측 가능하게 만든다.
+- 범위: 계정 존재 여부 노출 방지, 로그인 실패 메시지 통일, 로그인 요청 검증 문구 정합성, 로그인 화면 피드백.
+- 완료 조건: 존재하지 않는 이메일과 비밀번호 오류가 같은 범주의 실패로 처리되고, 로그인/검증 문구가 실제 정책과 일치한다.
+- 검증: 로그인 실패 API 테스트, 프론트 에러 메시지 확인, 빌드/테스트 통과.
+- ADR: 로그인 실패 메시지 통일과 검증 정책 선택 근거를 문서화한다.
+
+## Epic 12. 프론트 테스트 기반 구축
+
+### [x] E12-1 Vitest 및 React Testing Library 도입
+- 목표: 프론트 핵심 흐름을 자동화 테스트로 검증할 수 있는 기반을 만든다.
+- 범위: `vitest`, `jsdom`, React Testing Library, 공통 setup, `npm run test` 스크립트.
+- 완료 조건: 프론트에서 테스트 명령이 동작하고, 최소 1개 이상의 컴포넌트/라우터 테스트가 실행된다.
+- 검증: `frontend`의 `npm run test`, `npm run build`.
+- ADR: 프론트 테스트 러너 선택과 범위를 문서화한다.
+- 구현 메모(2026-03-18): `Vitest + React Testing Library + jsdom`을 추가하고 `vite.config.js`에 테스트 환경을 연결했다. `src/test/setup.js`에서 `jest-dom` 매처와 브라우저 테스트 보조 설정을 초기화하고, `package.json`에 `test`/`test:watch` 스크립트를 추가했다.
+
+### [x] E12-2 인증 세션 흐름 프론트 테스트 추가
+- 목표: 로그인 복귀와 세션 만료 리다이렉트가 회귀 없이 유지되게 만든다.
+- 범위: 로그인 화면 테스트, 세션 만료 리다이렉트 테스트, API 401 mock, 라우터 테스트.
+- 완료 조건: 로그인 성공 시 `returnTo` 경로 복귀와 보호 화면 401 시 로그인 이동이 자동 테스트로 검증된다.
+- 검증: `frontend`의 `npm run test`, `npm run build`.
+- ADR: 프론트 테스트 러너 선택 ADR을 재사용한다.
+- 구현 메모(2026-03-18): `Login.test.jsx`에서 세션 만료 안내와 로그인 후 `returnTo` 복귀를 검증했고, `App.sessionExpiry.test.jsx`에서 보호 화면 401 응답 시 로그인 화면 이동과 안내 문구 노출을 검증했다. `partyRealtime`는 테스트에서 mock 처리해 인증 흐름에만 집중하도록 분리했다.
 
 ## Agent Prompt Template
 ```text

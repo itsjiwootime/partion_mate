@@ -32,7 +32,7 @@ public class GlobalExceptionHandler {
         HttpStatus status = ex.getHttpStatus();
         String errorMessage = ex.getMessage();
 
-        ErrorResponse response = new ErrorResponse("AUTH_ERROR", errorMessage);
+        ErrorResponse response = new ErrorResponse(ex.getErrorCode(), errorMessage);
         return new ResponseEntity<>(response, status);
 
 

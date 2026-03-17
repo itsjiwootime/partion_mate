@@ -7,10 +7,16 @@ import org.springframework.http.HttpStatus;
 public class CustomAuthException extends RuntimeException {
 
     private final HttpStatus httpStatus;
+    private final String errorCode;
 
     public CustomAuthException(String message, HttpStatus httpStatus) {
+        this(message, httpStatus, "AUTH_ERROR");
+    }
+
+    public CustomAuthException(String message, HttpStatus httpStatus, String errorCode) {
         super(message);
         this.httpStatus = httpStatus;
+        this.errorCode = errorCode;
     }
 
     public static final CustomAuthException EMAIL_DUPLICATE =
@@ -22,7 +28,7 @@ public class CustomAuthException extends RuntimeException {
     public static final CustomAuthException INVALID_PASSWORD =
             new CustomAuthException("Password error", HttpStatus.UNAUTHORIZED);
 
-
-
+    public static final CustomAuthException INVALID_REFRESH_TOKEN =
+            new CustomAuthException("세션이 만료되었습니다. 다시 로그인해주세요.", HttpStatus.UNAUTHORIZED, "INVALID_REFRESH_TOKEN");
 
 }
