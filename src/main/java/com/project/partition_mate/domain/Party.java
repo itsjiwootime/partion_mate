@@ -171,8 +171,8 @@ public class Party {
                  String pickupPlace,
                  LocalDateTime pickupTime) {
 
-        this.title = Objects.requireNonNull(title, "파티 제목은 필수입니다.");
-        this.productName = Objects.requireNonNull(productName, "제품명은 필수입니다.");
+        validateTitle(title);
+        validateProductName(productName);
         this.totalPrice = Objects.requireNonNull(totalPrice, "총 가격은 필수입니다.");
         this.totalQuantity = Objects.requireNonNull(totalQuantity, "총 수량은 필수입니다.");
         this.store = Objects.requireNonNull(store, "지점 정보는 필수입니다.");
@@ -189,10 +189,12 @@ public class Party {
         this.receiptNote = receiptNote;
         this.pickupPlace = pickupPlace;
         this.pickupTime = pickupTime;
+        this.title = title;
+        this.productName = productName;
 
         validateTotalPrice(totalPrice);
         validateTotalQuantity(totalQuantity);
-        validateDeadline(deadline);
+        validateDeadline(deadline, LocalDateTime.now());
         validateUnitLabel(unitLabel);
         validateMinimumShareUnit(minimumShareUnit);
         validateActualTotalPrice(actualTotalPrice);
@@ -268,6 +270,10 @@ public class Party {
         return this.actualTotalPrice != null ? this.actualTotalPrice : this.totalPrice;
     }
 
+    public boolean hasSettlementConfirmed() {
+        return this.actualTotalPrice != null;
+    }
+
     public void updateActualPurchase(Integer actualTotalPrice, String receiptNote) {
         validateActualTotalPrice(actualTotalPrice);
         this.actualTotalPrice = actualTotalPrice;
@@ -278,6 +284,45 @@ public class Party {
         validatePickupSchedule(pickupPlace, pickupTime);
         this.pickupPlace = pickupPlace;
         this.pickupTime = pickupTime;
+    }
+
+    public void updateEditableInfo(String title,
+                                   String productName,
+                                   Integer totalPrice,
+                                   Integer totalQuantity,
+                                   String openChatUrl,
+                                   LocalDateTime deadline,
+                                   String unitLabel,
+                                   Integer minimumShareUnit,
+                                   StorageType storageType,
+                                   PackagingType packagingType,
+                                   boolean hostProvidesPackaging,
+                                   boolean onSiteSplit,
+                                   String guideNote,
+                                   LocalDateTime currentTime) {
+        validateTitle(title);
+        validateProductName(productName);
+        validateTotalPrice(totalPrice);
+        validateTotalQuantity(totalQuantity);
+        validateDeadline(deadline, currentTime);
+        validateUnitLabel(unitLabel);
+        validateMinimumShareUnit(minimumShareUnit);
+        validateRequestedQuantityFits(totalQuantity);
+
+        this.title = title;
+        this.productName = productName;
+        this.totalPrice = totalPrice;
+        this.totalQuantity = totalQuantity;
+        this.openChatUrl = openChatUrl;
+        this.deadline = deadline;
+        this.unitLabel = unitLabel;
+        this.minimumShareUnit = minimumShareUnit;
+        this.storageType = Objects.requireNonNull(storageType, "보관 방식은 필수입니다.");
+        this.packagingType = Objects.requireNonNull(packagingType, "포장 방식은 필수입니다.");
+        this.hostProvidesPackaging = hostProvidesPackaging;
+        this.onSiteSplit = onSiteSplit;
+        this.guideNote = guideNote;
+        refreshStatusByQuantity();
     }
 
     public boolean hasPickupSchedule() {
@@ -310,8 +355,24 @@ public class Party {
     }
 
     private void validateDeadline(LocalDateTime deadline) {
-        if (!deadline.isAfter(LocalDateTime.now())) {
+        validateDeadline(deadline, LocalDateTime.now());
+    }
+
+    private void validateDeadline(LocalDateTime deadline, LocalDateTime currentTime) {
+        if (deadline == null || !deadline.isAfter(currentTime)) {
             throw new IllegalArgumentException("마감 시간은 현재보다 미래여야 합니다.");
+        }
+    }
+
+    private void validateTitle(String title) {
+        if (title == null || title.isBlank()) {
+            throw new IllegalArgumentException("파티 제목은 필수입니다.");
+        }
+    }
+
+    private void validateProductName(String productName) {
+        if (productName == null || productName.isBlank()) {
+            throw new IllegalArgumentException("제품명은 필수입니다.");
         }
     }
 
@@ -344,6 +405,12 @@ public class Party {
 
         if (pickupTime == null) {
             throw new IllegalArgumentException("픽업 시간은 필수입니다.");
+        }
+    }
+
+    private void validateRequestedQuantityFits(Integer totalQuantity) {
+        if (getRequestedQuantity() > totalQuantity) {
+            throw new IllegalArgumentException("총 수량은 현재 참여 수량보다 적을 수 없습니다.");
         }
     }
 

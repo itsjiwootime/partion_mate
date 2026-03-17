@@ -9,6 +9,7 @@ import com.project.partition_mate.dto.JoinPartyResponse;
 import com.project.partition_mate.dto.PartyDetailResponse;
 import com.project.partition_mate.dto.PartyResponse;
 import com.project.partition_mate.dto.JoinPartyRequest;
+import com.project.partition_mate.dto.UpdatePartyRequest;
 import com.project.partition_mate.dto.UpdatePaymentStatusRequest;
 import com.project.partition_mate.dto.UpdateTradeStatusRequest;
 import com.project.partition_mate.service.PartyService;
@@ -41,6 +42,12 @@ public class PartyController {
 
         HttpStatus status = joinPartyResponse.isWaiting() ? HttpStatus.ACCEPTED : HttpStatus.CREATED;
         return ResponseEntity.status(status).body(joinPartyResponse);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<PartyDetailResponse> updateParty(@PathVariable Long id,
+                                                           @RequestBody @Valid UpdatePartyRequest updatePartyRequest) {
+        return ResponseEntity.ok(partyService.updateParty(id, updatePartyRequest));
     }
 
     @DeleteMapping("/{id}/join")

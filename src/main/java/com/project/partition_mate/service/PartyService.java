@@ -22,6 +22,7 @@ import com.project.partition_mate.dto.PartySettlementMemberResponse;
 import com.project.partition_mate.dto.PartyRealtimeTrigger;
 import com.project.partition_mate.dto.ReviewResponse;
 import com.project.partition_mate.dto.TrustSummaryResponse;
+import com.project.partition_mate.dto.UpdatePartyRequest;
 import com.project.partition_mate.dto.UpdatePaymentStatusRequest;
 import com.project.partition_mate.dto.UpdateTradeStatusRequest;
 import com.project.partition_mate.exception.BusinessException;
@@ -45,6 +46,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -149,6 +151,40 @@ public class PartyService {
         }
 
         waitingEntry.cancel();
+    }
+
+    @Transactional
+    public PartyDetailResponse updateParty(Long partyId, UpdatePartyRequest request) {
+        User currentUser = getCurrentUser();
+        LocalDateTime now = LocalDateTime.now(clock);
+        Party party = partyRepository.findDetailById(partyId)
+                .orElseThrow(() -> new EntityNotFoundException("파티가 존재하지 않습니다"));
+
+        PartyMember actorMember = getRequiredPartyMember(party, currentUser);
+        if (!actorMember.isHost()) {
+            throw BusinessException.onlyHostCanUpdateParty();
+        }
+
+        validatePartyEditableForUpdate(party, request, now);
+        party.updateEditableInfo(
+                request.getTitle(),
+                request.getProductName(),
+                request.getTotalPrice(),
+                request.getTotalQuantity(),
+                request.getOpenChatUrl(),
+                request.getDeadline(),
+                request.getUnitLabel(),
+                request.getMinimumShareUnit(),
+                request.getStorageType(),
+                request.getPackagingType(),
+                Boolean.TRUE.equals(request.getHostProvidesPackaging()),
+                Boolean.TRUE.equals(request.getOnSiteSplit()),
+                request.getGuideNote(),
+                now
+        );
+
+        storeQueryCacheSupport.evictStoreQueries(party.getStore().getId());
+        return buildPartyDetailResponse(party, currentUser);
     }
 
     public PartyDetailResponse detailsParty(Long partyId) {
@@ -457,6 +493,34 @@ public class PartyService {
         if (party.isDeadlineExpired(now)) {
             throw BusinessException.deadlineExpired();
         }
+    }
+
+    private void validatePartyEditableForUpdate(Party party, UpdatePartyRequest request, LocalDateTime now) {
+        if (party.getPartyStatus() == PartyStatus.CLOSED) {
+            throw BusinessException.partyClosed();
+        }
+
+        if (party.isDeadlineExpired(now)) {
+            throw BusinessException.deadlineExpired();
+        }
+
+        if ((party.hasSettlementConfirmed() || party.hasPickupSchedule()) && hasRestrictedFieldChanges(party, request)) {
+            throw BusinessException.partyEditRestrictedAfterSettlementOrPickup();
+        }
+    }
+
+    private boolean hasRestrictedFieldChanges(Party party, UpdatePartyRequest request) {
+        return !Objects.equals(party.getTitle(), request.getTitle())
+                || !Objects.equals(party.getProductName(), request.getProductName())
+                || !Objects.equals(party.getExpectedTotalPrice(), request.getTotalPrice())
+                || !Objects.equals(party.getTotalQuantity(), request.getTotalQuantity())
+                || !Objects.equals(party.getDeadline(), request.getDeadline())
+                || !Objects.equals(party.getUnitLabel(), request.getUnitLabel())
+                || !Objects.equals(party.getMinimumShareUnit(), request.getMinimumShareUnit())
+                || !Objects.equals(party.getStorageType(), request.getStorageType())
+                || !Objects.equals(party.getPackagingType(), request.getPackagingType())
+                || party.isHostProvidesPackaging() != Boolean.TRUE.equals(request.getHostProvidesPackaging())
+                || party.isOnSiteSplit() != Boolean.TRUE.equals(request.getOnSiteSplit());
     }
 
     private LocalDateTime resolveDeadline(LocalDateTime requestedDeadline) {
