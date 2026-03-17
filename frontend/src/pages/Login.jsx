@@ -53,11 +53,12 @@ function Login() {
           </div>
         )}
         {error && <p className="text-sm text-red-600">{error}</p>}
-        <label className="block space-y-1 text-sm">
+        <label htmlFor="login-email" className="block space-y-1 text-sm">
           <span className="text-ink/70">이메일</span>
           <div className="input-row">
             <Mail size={16} className="text-mint-700" />
             <input
+              id="login-email"
               type="email"
               required
               value={form.email}
@@ -67,11 +68,12 @@ function Login() {
             />
           </div>
         </label>
-        <label className="block space-y-1 text-sm">
+        <label htmlFor="login-password" className="block space-y-1 text-sm">
           <span className="text-ink/70">비밀번호</span>
           <div className="input-row">
             <Lock size={16} className="text-mint-700" />
             <input
+              id="login-password"
               type="password"
               required
               value={form.password}
@@ -80,6 +82,7 @@ function Login() {
               placeholder="********"
             />
           </div>
+          <p className="text-xs text-ink/50">비밀번호는 6자 이상 20자 이하로 입력해주세요.</p>
         </label>
         <button
           type="submit"

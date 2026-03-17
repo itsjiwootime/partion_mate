@@ -28,6 +28,9 @@ public class CustomAuthException extends RuntimeException {
     public static final CustomAuthException INVALID_PASSWORD =
             new CustomAuthException("Password error", HttpStatus.UNAUTHORIZED);
 
+    public static final CustomAuthException LOGIN_FAILED =
+            new CustomAuthException("이메일 또는 비밀번호를 확인해주세요.", HttpStatus.UNAUTHORIZED, "LOGIN_FAILED");
+
     public static final CustomAuthException INVALID_REFRESH_TOKEN =
             new CustomAuthException("세션이 만료되었습니다. 다시 로그인해주세요.", HttpStatus.UNAUTHORIZED, "INVALID_REFRESH_TOKEN");
 

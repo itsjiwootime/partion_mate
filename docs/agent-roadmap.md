@@ -443,12 +443,13 @@
 - ADR: refresh rotation, 로그아웃 무효화, 재사용 대응 정책을 문서화한다.
 - 구현 메모(2026-03-18): `AuthController`에 `/api/auth/refresh`와 `/api/auth/logout`을 추가하고, `RefreshTokenService`는 refresh token을 비관적 락으로 조회한 뒤 rotation과 revoke를 처리하도록 확장했다. 프론트 `fetchJson`은 보호 API 401에서 refresh를 한 번 시도한 뒤 원 요청을 재시도하고, `AuthContext.logout`은 서버 로그아웃 API까지 호출해 현재 기기 refresh cookie를 비운다. `AuthRefreshTokenFlowIntegrationTest`와 `client.refresh.test.js`로 rotation 성공, 회전된 토큰 재사용 차단, 로그아웃 후 재발급 차단, 프론트 자동 재시도를 검증했다.
 
-### [ ] E11-5 로그인 실패 정책과 입력 검증 정리
+### [x] E11-5 로그인 실패 정책과 입력 검증 정리
 - 목표: 로그인 UX를 더 안전하고 예측 가능하게 만든다.
 - 범위: 계정 존재 여부 노출 방지, 로그인 실패 메시지 통일, 로그인 요청 검증 문구 정합성, 로그인 화면 피드백.
 - 완료 조건: 존재하지 않는 이메일과 비밀번호 오류가 같은 범주의 실패로 처리되고, 로그인/검증 문구가 실제 정책과 일치한다.
 - 검증: 로그인 실패 API 테스트, 프론트 에러 메시지 확인, 빌드/테스트 통과.
 - ADR: 로그인 실패 메시지 통일과 검증 정책 선택 근거를 문서화한다.
+- 구현 메모(2026-03-18): 로그인은 이제 존재하지 않는 이메일과 비밀번호 오류를 모두 `LOGIN_FAILED`와 동일한 401 메시지로 반환한다. `AuthService`는 더미 비밀번호 해시를 함께 비교해 사용자 존재 여부에 따른 분기 차이를 줄였고, `LoginRequest`와 `Login.jsx`는 비밀번호 정책을 `6자 이상 20자 이하`로 맞췄다. `AuthLoginFailureIntegrationTest`와 `Login.test.jsx`로 공통 실패 응답과 프론트 메시지 노출을 검증했다.
 
 ## Epic 12. 프론트 테스트 기반 구축
 

@@ -17,6 +17,9 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class AuthService {
 
+    private static final String LOGIN_FAILURE_DUMMY_PASSWORD_HASH =
+            "$2a$10$7EqJtq98hPqEX7fNZaFWoOhi2x6YQ0G6lQ4c6Ih0b7D8Y1koXSP9m";
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
@@ -47,12 +50,12 @@ public class AuthService {
     @Transactional
     public IssuedLoginTokens login(LoginRequest loginRequest) {
 
-        User user = userRepository.findByEmail(loginRequest.getEmail())
-                .orElseThrow(() -> CustomAuthException.USER_NOT_FOUND);
+        User user = userRepository.findByEmail(loginRequest.getEmail()).orElse(null);
+        String passwordHash = user != null ? user.getPassword() : LOGIN_FAILURE_DUMMY_PASSWORD_HASH;
+        boolean passwordMatches = passwordEncoder.matches(loginRequest.getPassword(), passwordHash);
 
-
-        if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
-            throw CustomAuthException.INVALID_PASSWORD;
+        if (user == null || !passwordMatches) {
+            throw CustomAuthException.LOGIN_FAILED;
         }
 
         String jwtToken = jwtTokenProvider.createToken(user.getId());
