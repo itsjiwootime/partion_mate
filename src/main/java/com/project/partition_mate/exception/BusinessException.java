@@ -115,4 +115,36 @@ public class BusinessException extends RuntimeException {
     public static BusinessException invalidReviewTarget() {
         return new BusinessException("후기 대상 사용자가 올바르지 않습니다.", HttpStatus.BAD_REQUEST);
     }
+
+    public static BusinessException reportPartyRequired() {
+        return new BusinessException("신고할 파티를 선택해 주세요.", HttpStatus.BAD_REQUEST);
+    }
+
+    public static BusinessException reportTargetUserRequired() {
+        return new BusinessException("신고 대상 사용자를 선택해 주세요.", HttpStatus.BAD_REQUEST);
+    }
+
+    public static BusinessException reportTargetUserNotAllowedForParty() {
+        return new BusinessException("파티 신고에는 상대 사용자 정보를 함께 보낼 수 없습니다.", HttpStatus.BAD_REQUEST);
+    }
+
+    public static BusinessException selfReportNotAllowed() {
+        return new BusinessException("자기 자신은 신고할 수 없습니다.", HttpStatus.BAD_REQUEST);
+    }
+
+    public static BusinessException onlyRelatedUserCanReportParty() {
+        return new BusinessException("해당 파티와 관련된 사용자만 신고할 수 있습니다.", HttpStatus.FORBIDDEN);
+    }
+
+    public static BusinessException reportTargetUserNotInParty() {
+        return new BusinessException("신고 대상 사용자가 해당 파티 참여자가 아닙니다.", HttpStatus.BAD_REQUEST);
+    }
+
+    public static BusinessException chatReportRequiresJoinedParticipant() {
+        return new BusinessException("채팅 신고는 해당 파티 채팅 참여자만 접수할 수 있습니다.", HttpStatus.FORBIDDEN);
+    }
+
+    public static BusinessException duplicateReport() {
+        return new BusinessException("같은 대상과 사유로 접수 중인 신고가 이미 있습니다.", HttpStatus.CONFLICT);
+    }
 }
