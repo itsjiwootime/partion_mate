@@ -36,7 +36,7 @@ function Home() {
           const saved = { lat: me.latitude, lon: me.longitude };
           setStoredCoords(saved);
           setCoords({ lat: me.latitude, lon: me.longitude });
-          setCurrentLocation('저장 위치 기준');
+          setCurrentLocation('내 주소 기준');
           setCoordNote(`(${me.latitude.toFixed(4)}, ${me.longitude.toFixed(4)})`);
           setUseBrowserLocation(false);
         }
@@ -60,7 +60,7 @@ function Home() {
         setCoordNote(`(${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)})`);
         setUseBrowserLocation(true);
       },
-      () => setError('위치 접근이 거부되었습니다. 저장 위치나 기본 위치를 사용합니다.'),
+      () => setError('위치 접근이 거부되었습니다. 내 주소 기준이나 기본 위치를 사용합니다.'),
       { enableHighAccuracy: true, timeout: 5000 },
     );
   };
@@ -68,7 +68,7 @@ function Home() {
   const revertToStored = () => {
     if (storedCoords) {
       setCoords(storedCoords);
-      setCurrentLocation('저장 위치 기준');
+      setCurrentLocation('내 주소 기준');
       setCoordNote(`(${storedCoords.lat.toFixed(4)}, ${storedCoords.lon.toFixed(4)})`);
       setUseBrowserLocation(false);
     } else {
@@ -133,7 +133,7 @@ function Home() {
             {coordNote && <span className="text-ink/50">{coordNote}</span>}
           </div>
           <button onClick={handleLocationToggle} className="btn-primary px-3 py-1 text-xs">
-            {useBrowserLocation ? '저장 위치로' : '내 위치 기반'}
+            {useBrowserLocation ? '내 주소로' : '내 위치 기반'}
             <ChevronDown size={14} />
           </button>
         </div>
