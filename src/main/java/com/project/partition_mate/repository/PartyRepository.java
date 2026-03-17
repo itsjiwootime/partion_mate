@@ -74,4 +74,15 @@ public interface PartyRepository extends JpaRepository<Party, Long> {
     @Query("select p from Party p where p.id = :id")
     Optional<Party> findByIdForUpdate(@Param("id") Long id);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select distinct p
+            from Party p
+            join fetch p.store
+            left join fetch p.members m
+            left join fetch m.user
+            where p.id = :id
+            """)
+    Optional<Party> findDetailByIdForUpdate(@Param("id") Long id);
+
 }

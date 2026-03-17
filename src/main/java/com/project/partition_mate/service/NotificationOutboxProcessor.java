@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.partition_mate.domain.OutboxEvent;
 import com.project.partition_mate.domain.OutboxEventStatus;
 import com.project.partition_mate.domain.OutboxEventType;
+import com.project.partition_mate.domain.PartyCloseReason;
 import com.project.partition_mate.domain.User;
 import com.project.partition_mate.domain.UserNotification;
 import com.project.partition_mate.domain.UserNotificationType;
@@ -119,6 +120,7 @@ public class NotificationOutboxProcessor {
     private void processPartyClosed(OutboxEvent event, JsonNode payload, LocalDateTime now) {
         Long partyId = requireLong(payload, "partyId");
         String partyTitle = requireText(payload, "partyTitle");
+        PartyCloseReason closeReason = resolveCloseReason(payload.path("closeReason").asText(null));
         List<Long> joinedUserIds = readLongArray(payload.path("joinedUserIds"));
         List<Long> expiredWaitingUserIds = readLongArray(payload.path("expiredWaitingUserIds"));
 
@@ -127,8 +129,10 @@ public class NotificationOutboxProcessor {
                     event,
                     loadUser(userId),
                     UserNotificationType.PARTY_CLOSED,
-                    "파티 모집이 종료되었습니다",
-                    partyTitle + " 파티가 마감 시간에 도달해 종료되었습니다.",
+                    closeReason == PartyCloseReason.HOST_CANCELED ? "파티가 취소되었습니다" : "파티 모집이 종료되었습니다",
+                    closeReason == PartyCloseReason.HOST_CANCELED
+                            ? partyTitle + " 파티를 호스트가 취소했습니다."
+                            : partyTitle + " 파티가 마감 시간에 도달해 종료되었습니다.",
                     "/parties/" + partyId,
                     now
             );
@@ -140,7 +144,9 @@ public class NotificationOutboxProcessor {
                     loadUser(userId),
                     UserNotificationType.WAITING_EXPIRED,
                     "대기열이 종료되었습니다",
-                    partyTitle + " 파티가 종료되어 대기열이 만료되었습니다.",
+                    closeReason == PartyCloseReason.HOST_CANCELED
+                            ? partyTitle + " 파티를 호스트가 취소해 대기열이 종료되었습니다."
+                            : partyTitle + " 파티가 종료되어 대기열이 만료되었습니다.",
                     "/parties/" + partyId,
                     now
             );
@@ -201,5 +207,17 @@ public class NotificationOutboxProcessor {
         }
         jsonNode.forEach(value -> values.add(value.asLong()));
         return values;
+    }
+
+    private PartyCloseReason resolveCloseReason(String value) {
+        if (value == null || value.isBlank()) {
+            return PartyCloseReason.DEADLINE_EXPIRED;
+        }
+
+        try {
+            return PartyCloseReason.valueOf(value);
+        } catch (IllegalArgumentException ex) {
+            return PartyCloseReason.DEADLINE_EXPIRED;
+        }
     }
 }

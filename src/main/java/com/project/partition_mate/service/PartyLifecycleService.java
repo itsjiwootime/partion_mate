@@ -4,6 +4,7 @@ import com.project.partition_mate.domain.Party;
 import com.project.partition_mate.domain.PartyCloseReason;
 import com.project.partition_mate.domain.PartyMember;
 import com.project.partition_mate.domain.PartyStatus;
+import com.project.partition_mate.domain.User;
 import com.project.partition_mate.domain.WaitingQueueEntry;
 import com.project.partition_mate.domain.WaitingQueueStatus;
 import com.project.partition_mate.dto.PartyRealtimeTrigger;
@@ -68,10 +69,36 @@ public class PartyLifecycleService {
         return closedCount;
     }
 
+    @Transactional
+    public void closePartyByHost(Party party, User host, LocalDateTime now) {
+        closeParty(
+                party,
+                now,
+                PartyCloseReason.HOST_CANCELED,
+                "호스트가 파티를 취소해 모집이 종료되었습니다.",
+                host != null ? host.getId() : null
+        );
+    }
+
     private void closeExpiredParty(Party party, LocalDateTime now) {
+        closeParty(
+                party,
+                now,
+                PartyCloseReason.DEADLINE_EXPIRED,
+                "마감 시간이 지나 모집이 종료되었습니다.",
+                null
+        );
+    }
+
+    private void closeParty(Party party,
+                            LocalDateTime now,
+                            PartyCloseReason closeReason,
+                            String chatMessage,
+                            Long excludedUserId) {
         List<PartyMember> joinedMembers = partyMemberRepository.findByParty(party);
         List<Long> joinedUserIds = joinedMembers.stream()
                 .map(member -> member.getUser().getId())
+                .filter(userId -> excludedUserId == null || !excludedUserId.equals(userId))
                 .toList();
 
         List<WaitingQueueEntry> waitingEntries = waitingQueueRepository.findAllByPartyAndStatusOrderByQueuedAtAsc(
@@ -83,10 +110,10 @@ public class PartyLifecycleService {
                 .toList();
 
         waitingEntries.forEach(WaitingQueueEntry::expire);
-        party.close(now, PartyCloseReason.DEADLINE_EXPIRED);
+        party.close(now, closeReason);
 
         notificationOutboxService.publishPartyClosed(party, joinedUserIds, expiredWaitingUserIds);
-        chatService.appendSystemMessage(party, "마감 시간이 지나 모집이 종료되었습니다.");
+        chatService.appendSystemMessage(party, chatMessage);
         storeQueryCacheSupport.evictStoreQueries(party.getStore().getId());
         partyRealtimeService.publishPartyUpdatedAfterCommit(party, PartyRealtimeTrigger.PARTY_CLOSED);
     }

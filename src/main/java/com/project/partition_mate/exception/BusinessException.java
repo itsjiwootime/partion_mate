@@ -48,8 +48,16 @@ public class BusinessException extends RuntimeException {
         return new BusinessException("파티 수정은 호스트만 처리할 수 있습니다.", HttpStatus.FORBIDDEN);
     }
 
+    public static BusinessException onlyHostCanCloseParty() {
+        return new BusinessException("파티 종료는 호스트만 처리할 수 있습니다.", HttpStatus.FORBIDDEN);
+    }
+
     public static BusinessException partyEditRestrictedAfterSettlementOrPickup() {
         return new BusinessException("정산 또는 픽업 일정이 진행된 뒤에는 안내 문구와 오픈채팅 링크만 수정할 수 있습니다.", HttpStatus.CONFLICT);
+    }
+
+    public static BusinessException partyHostCancelNotAllowedAfterOperationsStarted() {
+        return new BusinessException("정산, 픽업, 송금 또는 거래가 시작된 파티는 호스트 취소할 수 없습니다.", HttpStatus.CONFLICT);
     }
 
     public static BusinessException onlyHostCanManageSettlement() {

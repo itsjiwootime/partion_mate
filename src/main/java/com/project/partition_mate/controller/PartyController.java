@@ -44,6 +44,11 @@ public class PartyController {
         return ResponseEntity.status(status).body(joinPartyResponse);
     }
 
+    @PostMapping("/{id}/close")
+    public ResponseEntity<PartyDetailResponse> closeParty(@PathVariable Long id) {
+        return ResponseEntity.ok(partyService.closeParty(id));
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<PartyDetailResponse> updateParty(@PathVariable Long id,
                                                            @RequestBody @Valid UpdatePartyRequest updatePartyRequest) {

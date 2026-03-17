@@ -63,6 +63,7 @@ public class PartyService {
     private final NotificationOutboxService notificationOutboxService;
     private final PartyRealtimeService partyRealtimeService;
     private final ChatService chatService;
+    private final PartyLifecycleService partyLifecycleService;
     private final TrustScoreService trustScoreService;
     private final Clock clock;
 
@@ -151,6 +152,23 @@ public class PartyService {
         }
 
         waitingEntry.cancel();
+    }
+
+    @Transactional
+    public PartyDetailResponse closeParty(Long partyId) {
+        User currentUser = getCurrentUser();
+        LocalDateTime now = LocalDateTime.now(clock);
+        Party party = partyRepository.findDetailByIdForUpdate(partyId)
+                .orElseThrow(() -> new EntityNotFoundException("파티가 존재하지 않습니다"));
+
+        PartyMember actorMember = getRequiredPartyMember(party, currentUser);
+        if (!actorMember.isHost()) {
+            throw BusinessException.onlyHostCanCloseParty();
+        }
+
+        validatePartyClosableByHost(party, now);
+        partyLifecycleService.closePartyByHost(party, currentUser, now);
+        return buildPartyDetailResponse(party, currentUser);
     }
 
     @Transactional
@@ -506,6 +524,29 @@ public class PartyService {
 
         if ((party.hasSettlementConfirmed() || party.hasPickupSchedule()) && hasRestrictedFieldChanges(party, request)) {
             throw BusinessException.partyEditRestrictedAfterSettlementOrPickup();
+        }
+    }
+
+    private void validatePartyClosableByHost(Party party, LocalDateTime now) {
+        if (party.getPartyStatus() == PartyStatus.CLOSED) {
+            throw BusinessException.partyClosed();
+        }
+
+        if (party.isDeadlineExpired(now)) {
+            throw BusinessException.deadlineExpired();
+        }
+
+        boolean operationStarted = party.hasSettlementConfirmed()
+                || party.hasPickupSchedule()
+                || party.getMembers().stream()
+                .filter(PartyMember::isMember)
+                .anyMatch(member -> member.getActualAmount() != null
+                        || member.getPaymentStatus() != com.project.partition_mate.domain.PaymentStatus.PENDING
+                        || member.getTradeStatus() != com.project.partition_mate.domain.TradeStatus.PENDING
+                        || member.isPickupAcknowledged());
+
+        if (operationStarted) {
+            throw BusinessException.partyHostCancelNotAllowedAfterOperationsStarted();
         }
     }
 
