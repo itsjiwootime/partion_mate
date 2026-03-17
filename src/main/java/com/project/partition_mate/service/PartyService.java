@@ -65,6 +65,7 @@ public class PartyService {
     private final PartyRealtimeService partyRealtimeService;
     private final ChatService chatService;
     private final PartyLifecycleService partyLifecycleService;
+    private final UserBlockPolicyService userBlockPolicyService;
     private final TrustScoreService trustScoreService;
     private final Clock clock;
 
@@ -120,6 +121,10 @@ public class PartyService {
 
         Party party = partyRepository.findByIdForUpdate(partyId)
                 .orElseThrow(() -> new EntityNotFoundException("파티가 존재하지 않습니다"));
+
+        if (userBlockPolicyService.hasBlockedParticipantInParty(party, member.getId())) {
+            throw BusinessException.blockedPartyInteractionNotAllowed();
+        }
 
         validatePartyOpenForJoin(party, now);
         validateNotAlreadyJoinedOrWaiting(party, member);

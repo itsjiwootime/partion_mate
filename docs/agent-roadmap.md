@@ -512,12 +512,13 @@
 - ADR: 신고 모델과 최소 수집 정보 범위를 문서화한다.
 - 구현 메모(2026-03-18): `Report` 엔티티와 `ReportTargetType`, `ReportReasonType`, `ReportStatus`를 추가하고 `POST /api/reports`, `GET /api/reports/me`를 구현했다. 신고 대상은 `PARTY`, `USER`, `CHAT`으로 나눴고, 사용자/채팅 신고에는 파티 맥락을 필수로 둬 무관한 제3자 신고를 막았다. 파티 신고는 참여자 또는 대기 사용자만 가능하게 했고, 채팅 신고는 신고자와 대상자 모두 해당 파티 채팅 참여자일 때만 허용했다. 중복은 `같은 신고자 + 같은 대상 + 같은 사유 + RECEIVED 상태` 기준으로 막았다. `ReportServiceIntegrationTest`, `ReportControllerTest`로 생성/대기 신고/중복/자기 신고/채팅 참여 제한을 검증했다.
 
-### [ ] E14-2 사용자 차단 및 상호작용 제한
+### [x] E14-2 사용자 차단 및 상호작용 제한
 - 목표: 차단한 사용자와의 채팅 및 후속 상호작용을 제한한다.
 - 범위: 차단 엔티티, 차단/해제 API, 채팅/파티 접근 제어 규칙.
 - 완료 조건: 차단 후 채팅 진입 또는 새 상호작용이 제한되고 이유를 UI가 노출할 수 있다.
 - 검증: 차단/해제 테스트, 채팅 접근 제한 테스트.
 - ADR: 차단 적용 범위와 예외 규칙을 문서화한다.
+- 구현 메모(2026-03-18): 방향성 있는 `UserBlock` 엔티티와 `POST /api/blocks`, `DELETE /api/blocks/{targetUserId}`, `GET /api/blocks`를 추가했다. 차단 관계는 `UserBlockPolicyService`에서 공통 판별하고, 파티 참여 요청 시 현재 참여자와의 차단 관계가 있으면 참여/대기 등록을 막는다. 채팅은 REST 상세/읽음/공지/메시지 전송과 STOMP 구독 모두에서 차단 관계가 있는 파티 채팅 접근을 막고, 이유는 기존 에러 응답 메시지로 노출하게 했다. `UserBlockServiceIntegrationTest`, `UserBlockInteractionIntegrationTest`, `UserBlockControllerTest`, `ChatStompChannelInterceptorTest`, `ChatRoomFlowIntegrationTest`, `PartyWaitingQueueIntegrationTest`로 CRUD와 상호작용 제한을 검증했다.
 
 ### [ ] E14-3 노쇼 누적 정책
 - 목표: 반복 노쇼 사용자의 재참여를 제한할 수 있는 운영 정책을 만든다.

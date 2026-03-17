@@ -40,6 +40,7 @@ public class ChatService {
     private final ChatReadStateRepository chatReadStateRepository;
     private final PartyRepository partyRepository;
     private final PartyMemberRepository partyMemberRepository;
+    private final UserBlockPolicyService userBlockPolicyService;
     private final SimpMessagingTemplate simpMessagingTemplate;
     private final Clock clock;
 
@@ -80,6 +81,7 @@ public class ChatService {
         Party party = partyRepository.findById(partyId)
                 .orElseThrow(() -> new EntityNotFoundException("파티가 존재하지 않습니다."));
         PartyMember partyMember = getRequiredPartyMember(party, user);
+        validateBlockedChatAccess(party, user);
         ChatRoom chatRoom = findOrCreateRoom(party);
         ChatMessage message = chatMessageRepository.save(ChatMessage.text(
                 chatRoom,
@@ -96,6 +98,7 @@ public class ChatService {
         Party party = partyRepository.findById(partyId)
                 .orElseThrow(() -> new EntityNotFoundException("파티가 존재하지 않습니다."));
         PartyMember partyMember = getRequiredPartyMember(party, user);
+        validateBlockedChatAccess(party, user);
         ChatRoom chatRoom = findOrCreateRoom(party);
         markReadInternal(chatRoom, user, latestMessageId(chatRoom));
         return toDetailResponse(chatRoom, partyMember.isHost(), user.getId(), 0);
@@ -106,6 +109,7 @@ public class ChatService {
         Party party = partyRepository.findById(partyId)
                 .orElseThrow(() -> new EntityNotFoundException("파티가 존재하지 않습니다."));
         getRequiredPartyMember(party, user);
+        validateBlockedChatAccess(party, user);
         ChatRoom chatRoom = findOrCreateRoom(party);
         markReadInternal(chatRoom, user, latestMessageId(chatRoom));
         return new ChatReadReceiptResponse(partyId, 0);
@@ -116,6 +120,7 @@ public class ChatService {
         Party party = partyRepository.findById(partyId)
                 .orElseThrow(() -> new EntityNotFoundException("파티가 존재하지 않습니다."));
         PartyMember partyMember = getRequiredPartyMember(party, user);
+        validateBlockedChatAccess(party, user);
         if (!partyMember.isHost()) {
             throw BusinessException.onlyHostCanManageChatNotice();
         }
@@ -229,6 +234,12 @@ public class ChatService {
     private PartyMember getRequiredPartyMember(Party party, User user) {
         return partyMemberRepository.findByPartyAndUser(party, user)
                 .orElseThrow(() -> new EntityNotFoundException("파티 참여자만 채팅을 사용할 수 있습니다."));
+    }
+
+    private void validateBlockedChatAccess(Party party, User user) {
+        if (userBlockPolicyService.hasBlockedParticipantInParty(party, user.getId())) {
+            throw BusinessException.blockedChatAccessNotAllowed();
+        }
     }
 
     private ChatRoom findOrCreateRoom(Party party) {

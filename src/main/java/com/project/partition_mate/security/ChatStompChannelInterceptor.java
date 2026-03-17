@@ -1,6 +1,7 @@
 package com.project.partition_mate.security;
 
 import com.project.partition_mate.repository.PartyMemberRepository;
+import com.project.partition_mate.service.UserBlockPolicyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
@@ -21,6 +22,7 @@ public class ChatStompChannelInterceptor implements ChannelInterceptor {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final PartyMemberRepository partyMemberRepository;
+    private final UserBlockPolicyService userBlockPolicyService;
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
@@ -61,6 +63,9 @@ public class ChatStompChannelInterceptor implements ChannelInterceptor {
 
             if (!partyMemberRepository.existsByPartyIdAndUserId(partyId, principal.getUser().getId())) {
                 throw new AccessDeniedException("파티 참여자만 채팅에 접근할 수 있습니다.");
+            }
+            if (userBlockPolicyService.hasBlockedParticipantInParty(partyId, principal.getUser().getId())) {
+                throw new AccessDeniedException("차단 관계가 있는 사용자가 포함된 채팅방에는 접근할 수 없습니다.");
             }
         }
 

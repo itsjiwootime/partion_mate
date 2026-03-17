@@ -147,4 +147,24 @@ public class BusinessException extends RuntimeException {
     public static BusinessException duplicateReport() {
         return new BusinessException("같은 대상과 사유로 접수 중인 신고가 이미 있습니다.", HttpStatus.CONFLICT);
     }
+
+    public static BusinessException blockSelfNotAllowed() {
+        return new BusinessException("자기 자신은 차단할 수 없습니다.", HttpStatus.BAD_REQUEST);
+    }
+
+    public static BusinessException duplicateUserBlock() {
+        return new BusinessException("이미 차단한 사용자입니다.", HttpStatus.CONFLICT);
+    }
+
+    public static BusinessException userBlockNotFound() {
+        return new BusinessException("차단한 사용자 내역이 없습니다.", HttpStatus.NOT_FOUND);
+    }
+
+    public static BusinessException blockedPartyInteractionNotAllowed() {
+        return new BusinessException("차단한 사용자 또는 나를 차단한 사용자가 포함된 파티에는 참여할 수 없습니다.", HttpStatus.FORBIDDEN);
+    }
+
+    public static BusinessException blockedChatAccessNotAllowed() {
+        return new BusinessException("차단 관계가 있는 사용자가 포함된 채팅방에는 접근할 수 없습니다.", HttpStatus.FORBIDDEN);
+    }
 }
