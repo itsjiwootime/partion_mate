@@ -396,6 +396,14 @@
 - ADR: JSON 시드 형식과 시작 시 upsert 정책 선택 근거를 문서화한다.
 - 구현 메모(2026-03-17): `seeds/stores.json`과 `StoreSeedInitializer`/`StoreSeedService`를 추가해 앱 시작 시 `name` 기준 upsert를 수행하도록 만들었다. `Store.applySeed(...)`로 기존 지점 정보를 안전하게 갱신하고, `application-test.yml`에서는 시드를 비활성화해 기존 테스트를 보호했다. `StoreSeedServiceIntegrationTest`와 H2 기동 후 `/api/stores/nearby` 응답으로 시드 적재를 검증했다.
 
+### [x] E10-2 Docker 기반 로컬 MySQL 실행
+- 목표: 로컬 개발 환경에서 별도 설치 없이 서비스 DB를 일관되게 실행할 수 있게 한다.
+- 범위: `docker-compose.yml`, `.env.example`, 로컬 실행 문서, healthcheck, 볼륨 구성.
+- 완료 조건: `docker compose up -d db`로 MySQL이 실행되고, 백엔드가 같은 설정으로 연결된다.
+- 검증: Docker 컨테이너 실행 확인, 백엔드 기동 확인, `/api/stores/nearby` 응답 확인.
+- ADR: Docker Compose 기반 로컬 DB 운영 방식을 문서화한다.
+- 구현 메모(2026-03-17): MySQL 8.4 기반 `docker-compose.yml`과 `.env.example`, `docs/local-db.md`를 추가했다. `.env`를 로컬 전용으로 두고 `DB_URL/DB_USERNAME/DB_PASSWORD`를 백엔드와 공유하도록 맞췄다. 실제로 `docker compose up -d db` 후 백엔드를 MySQL 기준으로 기동했고, 시드 적재까지 포함해 `/api/stores/nearby` 응답을 확인했다.
+
 ## Agent Prompt Template
 ```text
 현재 프로젝트에서 [작업 카드 ID]를 구현해줘.

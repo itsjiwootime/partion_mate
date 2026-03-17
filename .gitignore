@@ -50,3 +50,4 @@ $RECYCLE.BIN/
 *.lnk
 src/main/resources/application-local.yml
 frontend/.env.local
+.env
