@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Bell, Clock3, ExternalLink } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { EmptyState, LoadingState } from '../components/Feedback';
 import { useAuth } from '../context/AuthContext';
@@ -8,34 +8,34 @@ import { useAuth } from '../context/AuthContext';
 function Notifications() {
   const { isAuthed } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const fetchNotifications = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const data = await api.getMyNotifications();
+      setNotifications(data);
+    } catch (e) {
+      setError('알림을 불러오지 못했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!isAuthed) return;
-
-    const fetchNotifications = async () => {
-      try {
-        setLoading(true);
-        setError('');
-        const data = await api.getMyNotifications();
-        setNotifications(data);
-      } catch (e) {
-        setError('알림을 불러오지 못했습니다.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchNotifications();
-  }, [isAuthed]);
+  }, [fetchNotifications, isAuthed]);
 
   if (!isAuthed) {
     return (
       <div className="space-y-3">
         <p className="section-subtitle">로그인 후 알림 내역을 확인할 수 있습니다.</p>
-        <button onClick={() => navigate('/login')} className="btn-primary px-4 py-2 text-sm">
+        <button onClick={() => navigate('/login', { state: { from: `${location.pathname}${location.search}` } })} className="btn-primary px-4 py-2 text-sm">
           로그인 하러 가기
         </button>
       </div>
@@ -51,11 +51,21 @@ function Notifications() {
 
       {loading && <LoadingState />}
       {error && <p className="text-sm text-red-600">{error}</p>}
+      {!loading && error && (
+        <button onClick={fetchNotifications} className="btn-secondary px-4 py-2 text-sm">
+          다시 불러오기
+        </button>
+      )}
 
       {!loading && !error && notifications.length === 0 && (
         <EmptyState
           title="도착한 알림이 없어요"
           description="파티 참여, 승격, 마감 알림이 생기면 여기에 표시됩니다."
+          action={
+            <button onClick={() => navigate('/parties')} className="btn-secondary px-4 py-2 text-sm">
+              파티 둘러보기
+            </button>
+          }
         />
       )}
 

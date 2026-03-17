@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -14,6 +14,7 @@ const roleLabel = {
 function MyParties() {
   const { isAuthed } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { addToast } = useToast();
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -23,85 +24,96 @@ function MyParties() {
   const [chatUnreadMap, setChatUnreadMap] = useState({});
   const partyIdsRef = useRef(new Set());
 
+  const returnTo = `${location.pathname}${location.search}`;
+
+  const fetchData = useCallback(async (activeRef = { current: true }) => {
+    try {
+      setLoading(true);
+      setError('');
+      const data = await api.getMyParties();
+      if (activeRef.current) {
+        setList(data);
+      }
+    } catch (e) {
+      if (activeRef.current) {
+        setError('내 파티를 불러오지 못했습니다.');
+      }
+    } finally {
+      if (activeRef.current) {
+        setLoading(false);
+      }
+    }
+  }, []);
+
+  const fetchChatRooms = useCallback(async (activeRef = { current: true }) => {
+    try {
+      const rooms = await api.getMyChatRooms();
+      if (activeRef.current) {
+        setChatUnreadMap(
+          rooms.reduce((acc, room) => {
+            acc[room.partyId] = room.unreadCount ?? 0;
+            return acc;
+          }, {}),
+        );
+      }
+    } catch {
+      if (activeRef.current) {
+        setChatUnreadMap({});
+      }
+    }
+  }, []);
+
   useEffect(() => {
     partyIdsRef.current = new Set(list.map((party) => party.id));
   }, [list]);
 
   useEffect(() => {
     if (!isAuthed) return;
-    let active = true;
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError('');
-        const data = await api.getMyParties();
-        if (active) {
-          setList(data);
-        }
-      } catch (e) {
-        if (active) {
-          setError('내 파티를 불러오지 못했습니다.');
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    };
-    const fetchChatRooms = async () => {
-      try {
-        const rooms = await api.getMyChatRooms();
-        if (active) {
-          setChatUnreadMap(
-            rooms.reduce((acc, room) => {
-              acc[room.partyId] = room.unreadCount ?? 0;
-              return acc;
-            }, {}),
-          );
-        }
-      } catch {
-        if (active) {
-          setChatUnreadMap({});
-        }
-      }
-    };
-    fetchData();
-    fetchChatRooms();
+    const activeRef = { current: true };
+    fetchData(activeRef);
+    fetchChatRooms(activeRef);
 
     const unsubscribe = subscribeToPartyStream({
       onConnected: () => {
-        if (active) {
+        if (activeRef.current) {
           setRealtimeState('live');
         }
       },
       onReconnectStateChange: (state) => {
-        if (active) {
+        if (activeRef.current) {
           setRealtimeState(state);
         }
       },
       onPartyUpdated: (event) => {
-        if (!active) return;
+        if (!activeRef.current) return;
         if (!partyIdsRef.current.has(event.id)) return;
-        fetchData();
+        fetchData(activeRef);
+        fetchChatRooms(activeRef);
       },
       onFallback: () => {
-        if (active && partyIdsRef.current.size > 0) {
-          fetchData();
+        if (activeRef.current && partyIdsRef.current.size > 0) {
+          fetchData(activeRef);
+          fetchChatRooms(activeRef);
         }
       },
     });
 
     return () => {
-      active = false;
+      activeRef.current = false;
       unsubscribe?.();
     };
-  }, [isAuthed]);
+  }, [fetchChatRooms, fetchData, isAuthed]);
 
   const handleCancel = async (partyId) => {
     try {
       setCancellingId(partyId);
       await api.cancelJoin(partyId);
       setList((current) => current.filter((party) => party.id !== partyId));
+      setChatUnreadMap((current) => {
+        const next = { ...current };
+        delete next[partyId];
+        return next;
+      });
       addToast('참여 또는 대기 내역을 취소했습니다.', 'success');
     } catch (e) {
       addToast(e.message || '취소 중 오류가 발생했습니다.', 'error');
@@ -115,7 +127,7 @@ function MyParties() {
       <div className="space-y-3">
         <p className="section-subtitle">로그인 후 내 파티를 확인할 수 있습니다.</p>
         <button
-          onClick={() => navigate('/login')}
+          onClick={() => navigate('/login', { state: { from: returnTo } })}
           className="btn-primary px-4 py-2 text-sm"
         >
           로그인 하러 가기
@@ -136,11 +148,21 @@ function MyParties() {
 
       {loading && <LoadingState />}
       {error && <p className="text-sm text-red-600">{error}</p>}
+      {!loading && error && (
+        <button onClick={() => fetchData()} className="btn-secondary px-4 py-2 text-sm">
+          다시 불러오기
+        </button>
+      )}
 
       {!loading && !error && list.length === 0 && (
         <EmptyState
           title="아직 등록된 파티가 없어요!"
           description="새로운 파티에 참여하거나 직접 만들어보세요."
+          action={
+            <button onClick={() => navigate('/parties')} className="btn-secondary px-4 py-2 text-sm">
+              파티 둘러보기
+            </button>
+          }
         />
       )}
 

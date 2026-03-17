@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
-import { MapPin, ArrowRight, ChevronDown, Navigation } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { MapPin, ArrowRight, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { EmptyState, LoadingState } from '../components/Feedback';
+
+const DEFAULT_COORDS = { lat: 37.5665, lon: 126.978 };
 
 const BrandBadge = ({ brand }) => {
   const isCostco = brand.includes('코스트코');
@@ -18,7 +21,7 @@ function Home() {
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [coords, setCoords] = useState({ lat: 37.5665, lon: 126.978 }); // 기본: 서울 시청
+  const [coords, setCoords] = useState(DEFAULT_COORDS); // 기본: 서울 시청
   const [storedCoords, setStoredCoords] = useState(null);
   const [useBrowserLocation, setUseBrowserLocation] = useState(false);
 
@@ -49,9 +52,6 @@ function Home() {
       setError('이 브라우저는 위치 기능을 지원하지 않습니다.');
       return;
     }
-    if (!window.confirm('브라우저 위치를 사용해 주변 지점을 다시 불러올까요?')) {
-      return;
-    }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setError('');
@@ -72,8 +72,9 @@ function Home() {
       setCoordNote(`(${storedCoords.lat.toFixed(4)}, ${storedCoords.lon.toFixed(4)})`);
       setUseBrowserLocation(false);
     } else {
+      setCoords(DEFAULT_COORDS);
       setCurrentLocation('기본 위치');
-      setCoordNote(`(${coords.lat.toFixed(4)}, ${coords.lon.toFixed(4)})`);
+      setCoordNote(`(${DEFAULT_COORDS.lat.toFixed(4)}, ${DEFAULT_COORDS.lon.toFixed(4)})`);
       setUseBrowserLocation(false);
     }
   };
@@ -132,14 +133,22 @@ function Home() {
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="section-title">내 주변 지점</h2>
-          <button className="btn-ghost text-xs">
-            <Navigation size={14} />
-            거리순
-          </button>
+          <span className="badge bg-mint-500/10 text-mint-800">거리순 정렬</span>
         </div>
 
-        {loading && <p className="text-sm text-ink/60">지점 불러오는 중...</p>}
+        {loading && <LoadingState message="주변 지점을 불러오는 중..." />}
         {error && <p className="text-sm text-red-600">{error}</p>}
+        {!loading && !error && branches.length === 0 && (
+          <EmptyState
+            title="주변 지점을 찾지 못했어요"
+            description="위치를 다시 불러오거나 잠시 후 다시 시도해보세요."
+            action={
+              <button type="button" onClick={requestBrowserLocation} className="btn-secondary px-4 py-2 text-sm">
+                내 위치 다시 불러오기
+              </button>
+            }
+          />
+        )}
         <div className="grid gap-3">
           {branches.map((branch) => (
             <button

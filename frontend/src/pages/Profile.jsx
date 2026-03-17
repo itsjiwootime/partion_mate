@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { LoadingState } from '../components/Feedback';
@@ -12,25 +12,27 @@ function formatRating(value) {
 function Profile() {
   const { isAuthed, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [user, setUser] = useState(null);
   const [error, setError] = useState('');
 
+  const fetchMe = useCallback(async () => {
+    try {
+      setError('');
+      const res = await api.getMe();
+      setUser(res);
+    } catch (e) {
+      setError('프로필을 불러오지 못했습니다.');
+    }
+  }, []);
+
   useEffect(() => {
     if (!isAuthed) {
-      navigate('/login');
+      navigate('/login', { replace: true, state: { from: `${location.pathname}${location.search}` } });
       return;
     }
-    const fetchMe = async () => {
-      try {
-        setError('');
-        const res = await api.getMe();
-        setUser(res);
-      } catch (e) {
-        setError('프로필을 불러오지 못했습니다.');
-      }
-    };
     fetchMe();
-  }, [isAuthed, navigate]);
+  }, [fetchMe, isAuthed, location.pathname, location.search, navigate]);
 
   if (!isAuthed) {
     return null;
@@ -42,6 +44,11 @@ function Profile() {
         <h2 className="section-title">내 정보</h2>
         {error && <p className="text-sm text-red-600">{error}</p>}
         {!user && !error && <LoadingState />}
+        {error && (
+          <button onClick={fetchMe} className="btn-secondary w-full">
+            다시 불러오기
+          </button>
+        )}
         {user && (
           <div className="space-y-2 text-sm text-ink">
             <p className="flex items-center gap-2">

@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { MessageCircle, Pin, Send, ExternalLink, ArrowLeft, ShieldCheck } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Pin, Send, ExternalLink, ArrowLeft, ShieldCheck } from 'lucide-react';
 import { api } from '../api/client';
 import { connectChatRoom } from '../utils/chatClient';
 import { useAuth } from '../context/AuthContext';
@@ -18,9 +18,11 @@ function Chat() {
   const { partyId } = useParams();
   const selectedPartyId = partyId ? Number(partyId) : null;
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAuthed, token, userName } = useAuth();
   const { addToast } = useToast();
   const clientRef = useRef(null);
+  const messageListRef = useRef(null);
   const [rooms, setRooms] = useState([]);
   const [roomsLoading, setRoomsLoading] = useState(false);
   const [roomsError, setRoomsError] = useState('');
@@ -31,15 +33,12 @@ function Chat() {
   const [notice, setNotice] = useState('');
   const [connectionState, setConnectionState] = useState(selectedPartyId ? 'connecting' : 'idle');
   const [updatingNotice, setUpdatingNotice] = useState(false);
-
-  const activeRoom = useMemo(
-    () => rooms.find((room) => room.partyId === selectedPartyId) ?? null,
-    [rooms, selectedPartyId],
-  );
+  const [roomsReloadToken, setRoomsReloadToken] = useState(0);
+  const [roomReloadToken, setRoomReloadToken] = useState(0);
 
   useEffect(() => {
     if (!isAuthed) {
-      navigate('/login');
+      navigate('/login', { replace: true, state: { from: `${location.pathname}${location.search}` } });
       return;
     }
 
@@ -67,7 +66,7 @@ function Chat() {
     return () => {
       active = false;
     };
-  }, [isAuthed, navigate]);
+  }, [isAuthed, location.pathname, location.search, navigate, roomsReloadToken]);
 
   useEffect(() => {
     if (!isAuthed || !selectedPartyId) {
@@ -110,7 +109,7 @@ function Chat() {
     return () => {
       active = false;
     };
-  }, [isAuthed, selectedPartyId]);
+  }, [isAuthed, roomReloadToken, selectedPartyId]);
 
   useEffect(() => {
     if (!isAuthed || !token || !selectedPartyId) {
@@ -184,10 +183,23 @@ function Chat() {
     };
   }, [addToast, isAuthed, selectedPartyId, token, userName]);
 
+  useEffect(() => {
+    if (!roomDetail?.messages?.length) return;
+    const frameId = window.requestAnimationFrame(() => {
+      if (!messageListRef.current) return;
+      messageListRef.current.scrollTop = messageListRef.current.scrollHeight;
+    });
+    return () => window.cancelAnimationFrame(frameId);
+  }, [roomDetail?.messages, selectedPartyId]);
+
   const handleSendMessage = (e) => {
     e.preventDefault();
     const content = message.trim();
-    if (!content || !selectedPartyId || !clientRef.current?.connected) {
+    if (!content || !selectedPartyId) {
+      return;
+    }
+    if (!clientRef.current?.connected) {
+      addToast('채팅 연결이 아직 준비되지 않았습니다. 잠시 후 다시 시도해 주세요.', 'error');
       return;
     }
 
@@ -234,7 +246,7 @@ function Chat() {
 
   return (
     <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
-      <div className="card-elevated p-4 space-y-3">
+      <div className={['card-elevated p-4 space-y-3', selectedPartyId ? 'hidden lg:block' : 'block'].join(' ')}>
         <div className="flex items-center justify-between">
           <div>
             <h2 className="section-title">내 채팅방</h2>
@@ -246,11 +258,23 @@ function Chat() {
         </div>
 
         {roomsLoading && <LoadingState />}
-        {roomsError && <p className="text-sm text-red-600">{roomsError}</p>}
+        {roomsError && (
+          <div className="space-y-2">
+            <p className="text-sm text-red-600">{roomsError}</p>
+            <button onClick={() => setRoomsReloadToken((current) => current + 1)} className="btn-secondary px-4 py-2 text-sm">
+              채팅방 다시 불러오기
+            </button>
+          </div>
+        )}
         {!roomsLoading && !roomsError && rooms.length === 0 && (
           <EmptyState
             title="참여 중인 채팅방이 없어요"
             description="파티에 참여하면 채팅방이 자동으로 생성됩니다."
+            action={
+              <button onClick={() => navigate('/parties')} className="btn-secondary px-4 py-2 text-sm">
+                파티 둘러보기
+              </button>
+            }
           />
         )}
 
@@ -286,7 +310,7 @@ function Chat() {
         </div>
       </div>
 
-      <div className="card-elevated flex min-h-[640px] flex-col p-4">
+      <div className={['card-elevated min-h-[640px] flex-col p-4', selectedPartyId ? 'flex' : 'hidden lg:flex'].join(' ')}>
         {!selectedPartyId && (
           <div className="flex flex-1 items-center justify-center">
             <EmptyState
@@ -297,7 +321,14 @@ function Chat() {
         )}
 
         {selectedPartyId && roomLoading && <LoadingState />}
-        {selectedPartyId && roomError && <p className="text-sm text-red-600">{roomError}</p>}
+        {selectedPartyId && roomError && (
+          <div className="space-y-2">
+            <p className="text-sm text-red-600">{roomError}</p>
+            <button onClick={() => setRoomReloadToken((current) => current + 1)} className="btn-secondary px-4 py-2 text-sm">
+              채팅방 다시 불러오기
+            </button>
+          </div>
+        )}
 
         {selectedPartyId && roomDetail && !roomLoading && (
           <>
@@ -343,7 +374,7 @@ function Chat() {
                   rows="3"
                   value={notice}
                   onChange={(e) => setNotice(e.target.value)}
-                  className="input-field min-h-[96px]"
+                  className="input min-h-[96px]"
                   placeholder="픽업 시간, 준비물, 정산 안내를 고정해보세요. 비우면 공지가 해제됩니다."
                 />
                 <button className="btn-secondary px-4 py-2 text-sm" disabled={updatingNotice}>
@@ -352,7 +383,7 @@ function Chat() {
               </form>
             )}
 
-            <div className="mt-4 flex-1 overflow-y-auto rounded-2xl border border-ink/10 bg-clean-white p-4">
+            <div ref={messageListRef} className="mt-4 flex-1 overflow-y-auto rounded-2xl border border-ink/10 bg-clean-white p-4">
               {roomDetail.messages.length === 0 ? (
                 <div className="flex h-full items-center justify-center">
                   <EmptyState
@@ -394,7 +425,7 @@ function Chat() {
                 rows="2"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                className="input-field min-h-[68px] flex-1"
+                className="input min-h-[68px] flex-1"
                 placeholder="메시지를 입력하세요."
               />
               <button className="btn-primary h-[68px] px-4" disabled={!clientRef.current?.connected || !message.trim()}>

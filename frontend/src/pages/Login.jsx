@@ -1,14 +1,23 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Mail, Lock } from 'lucide-react';
 
 function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [form, setForm] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const returnTo = useMemo(() => {
+    const requestedPath = location.state?.from;
+    if (typeof requestedPath !== 'string' || requestedPath.startsWith('/login') || requestedPath.startsWith('/signup')) {
+      return '/';
+    }
+    return requestedPath;
+  }, [location.state]);
 
   const handleChange = (key) => (e) => setForm((prev) => ({ ...prev, [key]: e.target.value }));
 
@@ -18,7 +27,7 @@ function Login() {
     try {
       setLoading(true);
       await login(form);
-      navigate('/');
+      navigate(returnTo, { replace: true });
     } catch (err) {
       setError(err.message || '로그인에 실패했습니다.');
     } finally {

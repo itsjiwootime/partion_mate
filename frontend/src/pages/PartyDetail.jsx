@@ -146,9 +146,9 @@ function PartyDetail() {
 
   const isWaitingParty = detail?.participationStatus === 'WAITING';
   const isClosedParty = detail?.status === 'closed';
-  const isHost = detail?.userRole === 'LEADER';
   const isJoinedMember = detail?.userRole === 'MEMBER';
-  const isJoinable = !detail?.participationStatus && detail?.status !== 'full' && !isClosedParty && remaining > 0;
+  const canJoinNow = !detail?.participationStatus && !isClosedParty && detail?.status !== 'full' && remaining > 0;
+  const canJoinWaitingList = !detail?.participationStatus && !isClosedParty && !canJoinNow;
 
   const runAction = async (key, action, successMessage) => {
     try {
@@ -737,7 +737,7 @@ function PartyDetail() {
           요청 수량을 선택하고 참여하세요. 최소 {detail.minimumShareUnit}
           {detail.unitLabel} 단위 · 남은 수량 {remaining}개 · 개당 {perUnit.toLocaleString()}원
         </p>
-        {isJoinable && (
+        {canJoinNow && (
           <button
             onClick={() => navigate(`/parties/${detail.partyId}/join`, { state: { detail } })}
             className="btn-primary w-full"
@@ -745,9 +745,22 @@ function PartyDetail() {
             참여하기
           </button>
         )}
-        {!detail.participationStatus && !isJoinable && (
+        {canJoinWaitingList && (
+          <button
+            onClick={() => navigate(`/parties/${detail.partyId}/join`, { state: { detail } })}
+            className="btn-secondary w-full"
+          >
+            대기열 등록하기
+          </button>
+        )}
+        {!detail.participationStatus && !canJoinNow && !canJoinWaitingList && (
           <div className="rounded-xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink/70">
             {isClosedParty ? '이미 종료된 파티입니다.' : '모집이 마감된 파티입니다.'}
+          </div>
+        )}
+        {canJoinWaitingList && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            현재 잔여 수량이 부족합니다. 지금 등록하면 빈 자리가 생길 때 대기열 순서대로 승격됩니다.
           </div>
         )}
         {detail.userRole && !isWaitingParty && (

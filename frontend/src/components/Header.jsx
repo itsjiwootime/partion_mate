@@ -27,12 +27,12 @@ function Header({ title, subtitle }) {
               로그인
             </button>
           ) : (
-            <div className="badge bg-ink/5 text-ink">
+            <button onClick={() => navigate('/me')} className="badge bg-ink/5 text-ink">
               <User size={16} />
               {userName || '닉네임 확인중'}
-            </div>
+            </button>
           )}
-          <button className="btn-pill">
+          <button onClick={() => navigate('/')} className="btn-pill">
             <MapPin size={16} />
             가까운 지점
           </button>

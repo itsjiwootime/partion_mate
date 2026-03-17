@@ -38,25 +38,39 @@ function JoinParty() {
     fetchDetail();
   }, [id, stateDetail]);
 
+  useEffect(() => {
+    if (!detail) return;
+    setQuantity((current) => {
+      const nextMinimum = Math.max(1, detail.minimumShareUnit ?? 1);
+      if (!current || current < nextMinimum) {
+        return nextMinimum;
+      }
+      return current;
+    });
+  }, [detail]);
+
   const targetQuantity = detail?.targetQuantity ?? 0;
   const currentQuantity = detail?.currentQuantity ?? 0;
   const remaining = Math.max(0, targetQuantity - currentQuantity);
+  const minimumShareUnit = Math.max(1, detail?.minimumShareUnit ?? 1);
   const perUnit = detail?.targetQuantity ? Math.round((detail.totalPrice || 0) / detail.targetQuantity) : 0;
   const expectedPrice = perUnit * (quantity || 0);
-  const isJoinClosed = !detail || remaining <= 0 || detail.status === 'full' || detail.status === 'closed';
+  const queueOnly = Boolean(detail) && detail.status !== 'closed' && (detail.status === 'full' || remaining <= 0);
+  const isJoinClosed = !detail || detail.status === 'closed';
+  const maxRequestQuantity = targetQuantity > 0 ? targetQuantity : undefined;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!isAuthed) {
       addToast('로그인이 필요합니다.', 'error');
-      navigate('/login');
+      navigate('/login', { state: { from: `/parties/${id}/join` } });
       return;
     }
     if (isJoinClosed) {
-      setError(detail?.status === 'closed' ? '이미 종료된 파티입니다.' : '모집이 마감된 파티입니다.');
+      setError('이미 종료된 파티입니다.');
       return;
     }
-    const req = Math.max(1, Math.min(quantity, remaining || quantity));
+    const req = Math.max(minimumShareUnit, Math.min(quantity, maxRequestQuantity || quantity));
     try {
       setSubmitting(true);
       setError('');
@@ -91,7 +105,7 @@ function JoinParty() {
       </button>
 
       <div className="card-elevated p-5 space-y-3">
-        <h1 className="text-xl font-semibold text-ink">참여하기</h1>
+        <h1 className="text-xl font-semibold text-ink">{queueOnly ? '대기열 등록' : '참여하기'}</h1>
         {detail && (
           <div className="text-sm text-ink/70 space-y-1">
             <div className="font-semibold text-ink">{detail.title}</div>
@@ -101,17 +115,23 @@ function JoinParty() {
                 총 {targetQuantity}개 중 현재 {currentQuantity}개 (잔여 {remaining}개)
               </span>
             </div>
+            <p className="text-xs text-ink/55">
+              {queueOnly
+                ? '지금 바로 참여할 수 없어도 대기열에 등록할 수 있습니다. 빈 자리가 생기면 자동 승격됩니다.'
+                : `최소 ${minimumShareUnit}${detail.unitLabel ?? '개'} 단위로 참여할 수 있습니다.`}
+            </p>
           </div>
         )}
         <form onSubmit={handleSubmit} className="space-y-3">
           <label className="block text-sm text-ink/70">
-            요청 수량
+            {queueOnly ? '대기 요청 수량' : '요청 수량'}
             <input
               type="number"
-              min="1"
-              max={remaining || undefined}
+              min={minimumShareUnit}
+              step={minimumShareUnit}
+              max={maxRequestQuantity}
               value={quantity}
-              onChange={(e) => setQuantity(Number(e.target.value) || 1)}
+              onChange={(e) => setQuantity(Number(e.target.value) || minimumShareUnit)}
               disabled={isJoinClosed}
               className="input mt-1"
             />
@@ -120,18 +140,15 @@ function JoinParty() {
             <span>예상 부담금</span>
             <span className="text-lg font-bold text-mint-700">{expectedPrice.toLocaleString()}원</span>
           </div>
-          {isJoinClosed && (
-            <p className="text-sm text-ink/60">
-              {detail?.status === 'closed' ? '이미 종료된 파티입니다.' : '모집이 마감된 파티입니다.'}
-            </p>
-          )}
+          {queueOnly && <p className="text-sm text-ink/60">잔여 수량이 부족해 즉시 참여 대신 대기열로 등록됩니다.</p>}
+          {isJoinClosed && <p className="text-sm text-ink/60">이미 종료된 파티입니다.</p>}
           {error && <p className="text-sm text-red-600">{error}</p>}
           <button
             type="submit"
             disabled={submitting || isJoinClosed}
             className="btn-primary w-full"
           >
-            {submitting ? '참여중...' : '참여 확정'}
+            {submitting ? '처리중...' : queueOnly ? '대기열 등록' : '참여 확정'}
           </button>
         </form>
       </div>

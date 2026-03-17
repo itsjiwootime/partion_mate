@@ -1,11 +1,10 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Calendar, Coins, MapPin, Users, ChevronDown } from 'lucide-react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 
-const categories = ['식품', '건강/의약', '생활용품', '주방', '기타'];
 const storageOptions = [
   { value: 'ROOM_TEMPERATURE', label: '상온' },
   { value: 'REFRIGERATED', label: '냉장' },
@@ -20,6 +19,7 @@ const packagingOptions = [
 
 function CreateParty() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const { isAuthed } = useAuth();
   const { addToast } = useToast();
@@ -29,11 +29,10 @@ function CreateParty() {
   const [form, setForm] = useState({
     branchId: defaultStoreId,
     productName: '',
-    category: categories[0],
     totalPrice: '',
     totalQuantity: 4,
-    date: '',
-    time: '',
+    deadlineDate: '',
+    deadlineTime: '',
     description: '',
     title: '',
     hostRequestedQuantity: 1,
@@ -109,11 +108,41 @@ function CreateParty() {
     setError('');
     if (!isAuthed) {
       addToast('로그인이 필요합니다.', 'error');
-      navigate('/login');
+      navigate('/login', { state: { from: `${location.pathname}${location.search}` } });
       return;
     }
-    if (!form.date || !form.time) {
-      const message = '모임 날짜와 시간을 모두 입력해 주세요.';
+    if (!form.branchId) {
+      const message = '지점을 먼저 선택해 주세요.';
+      setError(message);
+      addToast(message, 'error');
+      return;
+    }
+    if (!form.productName.trim()) {
+      const message = '제품명을 입력해 주세요.';
+      setError(message);
+      addToast(message, 'error');
+      return;
+    }
+    if (!form.deadlineDate || !form.deadlineTime) {
+      const message = '모집 마감 날짜와 시간을 모두 입력해 주세요.';
+      setError(message);
+      addToast(message, 'error');
+      return;
+    }
+    if ((Number(form.totalPrice) || 0) <= 0) {
+      const message = '총 가격은 1원 이상이어야 합니다.';
+      setError(message);
+      addToast(message, 'error');
+      return;
+    }
+    if ((Number(form.totalQuantity) || 0) < 1) {
+      const message = '총 수량은 1개 이상이어야 합니다.';
+      setError(message);
+      addToast(message, 'error');
+      return;
+    }
+    if ((Number(form.hostRequestedQuantity) || 0) < 0 || Number(form.hostRequestedQuantity) > Number(form.totalQuantity)) {
+      const message = '호스트 수량은 0개 이상, 총 수량 이하여야 합니다.';
       setError(message);
       addToast(message, 'error');
       return;
@@ -126,9 +155,9 @@ function CreateParty() {
         productName: form.productName,
         totalPrice: Number(form.totalPrice),
         totalQuantity: Number(form.totalQuantity),
-        hostRequestedQuantity: Number(form.hostRequestedQuantity) || 1,
+        hostRequestedQuantity: Number(form.hostRequestedQuantity),
         openChatUrl: form.openChatUrl,
-        deadline: `${form.date}T${form.time}`,
+        deadline: `${form.deadlineDate}T${form.deadlineTime}`,
         unitLabel: form.unitLabel,
         minimumShareUnit: Number(form.minimumShareUnit),
         storageType: form.storageType,
@@ -205,21 +234,7 @@ function CreateParty() {
             className="input"
           />
         </div>
-        <div className="space-y-2">
-          <label className="block text-sm text-ink/70">카테고리</label>
-          <div className="relative">
-            <select
-              value={form.category}
-              onChange={handleChange('category')}
-              className="input appearance-none text-sm font-medium"
-            >
-              {categories.map((cat) => (
-                <option key={cat}>{cat}</option>
-              ))}
-            </select>
-            <ChevronDown size={16} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-ink/50" />
-          </div>
-        </div>
+        <p className="helper-text">제품명과 제목은 상세 화면과 채팅방 이름에 그대로 사용됩니다.</p>
       </section>
 
       <section className="card-elevated p-4 space-y-4">
@@ -381,28 +396,29 @@ function CreateParty() {
       </section>
 
       <section className="card-elevated p-4 space-y-4">
-        <h2 className="section-title">추가 정보</h2>
+        <h2 className="section-title">모집 정보</h2>
+        <p className="helper-text">여기서 입력하는 시간은 픽업 시간이 아니라 모집 마감 시각입니다. 픽업 일정은 파티 생성 후 호스트가 확정합니다.</p>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-2">
-            <label className="block text-sm text-ink/70">모임 날짜</label>
+            <label className="block text-sm text-ink/70">모집 마감 날짜</label>
             <div className="input-row">
               <Calendar size={16} className="text-mint-700" />
               <input
                 type="date"
-                value={form.date}
-                onChange={handleChange('date')}
+                value={form.deadlineDate}
+                onChange={handleChange('deadlineDate')}
                 className="input-control"
               />
             </div>
           </div>
           <div className="space-y-2">
-            <label className="block text-sm text-ink/70">모임 시간</label>
+            <label className="block text-sm text-ink/70">모집 마감 시간</label>
             <div className="input-row">
               <Calendar size={16} className="text-mint-700" />
               <input
                 type="time"
-                value={form.time}
-                onChange={handleChange('time')}
+                value={form.deadlineTime}
+                onChange={handleChange('deadlineTime')}
                 className="input-control"
               />
             </div>
@@ -427,7 +443,7 @@ function CreateParty() {
             placeholder="https://open.kakao.com/..."
             className="input"
           />
-          <p className="helper-text">참여자들이 바로 입장할 수 있도록 오픈채팅 링크를 입력하세요.</p>
+          <p className="helper-text">선택 사항입니다. 인앱 채팅이 기본이며, 외부 오픈채팅은 fallback으로만 사용됩니다.</p>
         </div>
       </section>
 
