@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { api, setAuthToken } from '../api/client';
+import { api, setAccessTokenRefreshHandler, setAuthFailureHandler, setAuthToken } from '../api/client';
 
 const AuthContext = createContext(null);
 
@@ -7,6 +7,15 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem('pm_token'));
   const [userEmail, setUserEmail] = useState(() => localStorage.getItem('pm_email') || '');
   const [userName, setUserName] = useState(() => localStorage.getItem('pm_username') || '');
+  const [authFailure, setAuthFailure] = useState(null);
+
+  const clearSession = () => {
+    setToken(null);
+    setUserEmail('');
+    setUserName('');
+    localStorage.removeItem('pm_email');
+    localStorage.removeItem('pm_username');
+  };
 
   useEffect(() => {
     if (token) {
@@ -20,12 +29,77 @@ export function AuthProvider({ children }) {
   }, [token]);
 
   useEffect(() => {
+    setAuthFailureHandler((error) => {
+      setAuthFailure((prev) => {
+        if (prev) {
+          return prev;
+        }
+
+        const currentPath = `${window.location.pathname}${window.location.search}`;
+        const returnTo =
+          currentPath.startsWith('/login') || currentPath.startsWith('/signup') ? '/' : currentPath;
+
+        return {
+          message: error.message || '세션이 만료되었습니다. 다시 로그인해주세요.',
+          returnTo,
+        };
+      });
+      clearSession();
+    });
+
+    return () => {
+      setAuthFailureHandler(null);
+    };
+  }, []);
+
+  useEffect(() => {
+    setAccessTokenRefreshHandler((session) => {
+      const trimmed = session?.accessToken?.trim() || null;
+      setToken(trimmed);
+      setAuthFailure(null);
+    });
+
+    return () => {
+      setAccessTokenRefreshHandler(null);
+    };
+  }, []);
+
+  useEffect(() => {
     if (userEmail) localStorage.setItem('pm_email', userEmail);
   }, [userEmail]);
 
   useEffect(() => {
     if (userName) localStorage.setItem('pm_username', userName);
   }, [userName]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const syncProfileFromServer = async () => {
+      if (!token) {
+        return;
+      }
+
+      try {
+        const me = await api.getMe();
+        if (cancelled) {
+          return;
+        }
+        setUserName(me.name || me.email || '');
+        setUserEmail(me.email || '');
+      } catch (err) {
+        if (cancelled || err?.status === 401) {
+          return;
+        }
+      }
+    };
+
+    syncProfileFromServer();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
 
   const value = useMemo(() => {
     const setProfileFromServer = async () => {
@@ -41,6 +115,7 @@ export function AuthProvider({ children }) {
     return {
       token,
       userEmail,
+      authFailure,
       isAuthed: Boolean(token),
       userName,
       async login({ email, password }) {
@@ -49,21 +124,27 @@ export function AuthProvider({ children }) {
         setToken(trimmed);
         setAuthToken(trimmed);
         setUserEmail(email);
+        setAuthFailure(null);
         await setProfileFromServer();
       },
       async signup({ email, password, username, address, latitude, longitude }) {
         await api.signup({ email, password, username, address, latitude, longitude });
         // 회원가입 후 자동 로그인은 백엔드 토큰 발급 없음 → 로그인 페이지로 유도
       },
-      logout() {
-        setToken(null);
-        setUserEmail('');
-        setUserName('');
-        localStorage.removeItem('pm_email');
-        localStorage.removeItem('pm_username');
+      consumeAuthFailure() {
+        setAuthFailure(null);
+      },
+      async logout() {
+        setAuthFailure(null);
+        try {
+          await api.logout();
+        } catch {
+          // ignore logout API failure and clear local session regardless
+        }
+        clearSession();
       },
     };
-  }, [token, userEmail, userName]);
+  }, [authFailure, token, userEmail, userName]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

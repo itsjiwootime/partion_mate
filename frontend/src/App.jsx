@@ -12,28 +12,32 @@ import JoinParty from './pages/JoinParty';
 import MyParties from './pages/MyParties';
 import Notifications from './pages/Notifications';
 import Chat from './pages/Chat';
+import SessionExpiryHandler from './components/SessionExpiryHandler';
 
 function App() {
   return (
-    <Routes>
-      <Route element={<Layout />}>
-        <Route index element={<Home />} />
-        <Route path="/parties" element={<PartyList />} />
-        <Route path="/branch/:id" element={<PartyList />} />
-        <Route path="/parties/:id" element={<PartyDetail />} />
-        <Route path="/parties/:id/join" element={<JoinParty />} />
-        <Route path="/parties/create" element={<CreateParty />} />
-        <Route path="/my-parties" element={<MyParties />} />
-        <Route path="/notifications" element={<Notifications />} />
-        <Route path="/chat" element={<Chat />} />
-        <Route path="/chat/:partyId" element={<Chat />} />
-        <Route path="/me" element={<Profile />} />
-      </Route>
-      <Route element={<AuthLayout />}>
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-      </Route>
-    </Routes>
+    <>
+      <SessionExpiryHandler />
+      <Routes>
+        <Route element={<Layout />}>
+          <Route index element={<Home />} />
+          <Route path="/parties" element={<PartyList />} />
+          <Route path="/branch/:id" element={<PartyList />} />
+          <Route path="/parties/:id" element={<PartyDetail />} />
+          <Route path="/parties/:id/join" element={<JoinParty />} />
+          <Route path="/parties/create" element={<CreateParty />} />
+          <Route path="/my-parties" element={<MyParties />} />
+          <Route path="/notifications" element={<Notifications />} />
+          <Route path="/chat" element={<Chat />} />
+          <Route path="/chat/:partyId" element={<Chat />} />
+          <Route path="/me" element={<Profile />} />
+        </Route>
+        <Route element={<AuthLayout />}>
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+        </Route>
+      </Routes>
+    </>
   );
 }
 

@@ -19,6 +19,11 @@ function Login() {
     return requestedPath;
   }, [location.state]);
 
+  const authMessage = useMemo(() => {
+    const message = location.state?.authMessage;
+    return typeof message === 'string' ? message : '';
+  }, [location.state]);
+
   const handleChange = (key) => (e) => setForm((prev) => ({ ...prev, [key]: e.target.value }));
 
   const handleSubmit = async (e) => {
@@ -42,6 +47,11 @@ function Login() {
         <p className="section-subtitle">이메일과 비밀번호로 로그인하세요.</p>
       </div>
       <form onSubmit={handleSubmit} className="card-elevated space-y-4 p-5">
+        {authMessage && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            {authMessage}
+          </div>
+        )}
         {error && <p className="text-sm text-red-600">{error}</p>}
         <label className="block space-y-1 text-sm">
           <span className="text-ink/70">이메일</span>
