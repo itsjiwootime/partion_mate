@@ -2,11 +2,12 @@ package com.project.partition_mate.service;
 
 import com.project.partition_mate.domain.User;
 import com.project.partition_mate.dto.LoginRequest;
-import com.project.partition_mate.dto.LoginResponse;
 import com.project.partition_mate.dto.SignUpRequest;
 import com.project.partition_mate.exception.CustomAuthException;
 import com.project.partition_mate.repository.UserRepository;
+import com.project.partition_mate.security.IssuedLoginTokens;
 import com.project.partition_mate.security.JwtTokenProvider;
+import com.project.partition_mate.security.RefreshTokenService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -19,6 +20,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final RefreshTokenService refreshTokenService;
 
     @Transactional
     public User signUp(SignUpRequest signUpRequest) {
@@ -43,7 +45,7 @@ public class AuthService {
     }
 
     @Transactional
-    public LoginResponse login(LoginRequest loginRequest) {
+    public IssuedLoginTokens login(LoginRequest loginRequest) {
 
         User user = userRepository.findByEmail(loginRequest.getEmail())
                 .orElseThrow(() -> CustomAuthException.USER_NOT_FOUND);
@@ -54,8 +56,31 @@ public class AuthService {
         }
 
         String jwtToken = jwtTokenProvider.createToken(user.getId());
+        var refreshToken = refreshTokenService.issue(user);
 
-        return new LoginResponse(jwtToken);
+        return new IssuedLoginTokens(
+                jwtToken,
+                jwtTokenProvider.getAccessTokenExpirationTime(),
+                refreshToken
+        );
+    }
+
+    @Transactional
+    public IssuedLoginTokens refresh(String rawRefreshToken) {
+        Long userId = refreshTokenService.findUserId(rawRefreshToken);
+        var rotatedRefreshToken = refreshTokenService.rotate(rawRefreshToken);
+        String jwtToken = jwtTokenProvider.createToken(userId);
+
+        return new IssuedLoginTokens(
+                jwtToken,
+                jwtTokenProvider.getAccessTokenExpirationTime(),
+                rotatedRefreshToken
+        );
+    }
+
+    @Transactional
+    public void logout(String rawRefreshToken) {
+        refreshTokenService.revoke(rawRefreshToken);
     }
 
     public void checkUsernameAvailability(String username) {

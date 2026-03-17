@@ -5,9 +5,11 @@ import lombok.NoArgsConstructor;
 
 @Getter
 public class LoginResponse {
-    private String accessToken;
+    private final String accessToken;
+    private final long accessTokenExpiresInMs;
 
-    public LoginResponse(String accessToken) {
+    public LoginResponse(String accessToken, long accessTokenExpiresInMs) {
         this.accessToken = accessToken;
+        this.accessTokenExpiresInMs = accessTokenExpiresInMs;
     }
 }

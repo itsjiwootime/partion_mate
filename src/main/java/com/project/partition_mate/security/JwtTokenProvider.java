@@ -49,6 +49,10 @@ public class JwtTokenProvider {
                 .compact();
     }
 
+    public long getAccessTokenExpirationTime() {
+        return expirationTime;
+    }
+
     public Boolean validateToken(String token) {
             Jwts.parserBuilder()
                     .setSigningKey(key)

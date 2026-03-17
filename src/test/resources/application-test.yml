@@ -16,8 +16,15 @@ spring:
 jwt:
   secret: test_secret_key_for_partition_mate_12345678901234567890
   expiration: 3600000
+  refresh-expiration: 1209600000
 
 app:
   seed:
     stores:
       enabled: false
+
+auth:
+  refresh:
+    cookie-name: pm_refresh_token
+    cookie-secure: false
+    cookie-same-site: Lax
