@@ -70,6 +70,38 @@ public class Store {
 
     }
 
+    public boolean applySeed(String address,
+                             LocalTime openTime,
+                             LocalTime closeTime,
+                             double latitude,
+                             double longitude,
+                             String phone) {
+
+        String nextAddress = Objects.requireNonNull(address);
+        LocalTime nextOpenTime = Objects.requireNonNull(openTime);
+        LocalTime nextCloseTime = Objects.requireNonNull(closeTime);
+        String nextPhone = Objects.requireNonNull(phone);
+
+        validateBusinessHour(nextOpenTime, nextCloseTime);
+        validateCoordinate(latitude, longitude);
+
+        boolean changed = !Objects.equals(this.address, nextAddress)
+                || !Objects.equals(this.openTime, nextOpenTime)
+                || !Objects.equals(this.closeTime, nextCloseTime)
+                || !Objects.equals(this.latitude, latitude)
+                || !Objects.equals(this.longitude, longitude)
+                || !Objects.equals(this.phone, nextPhone);
+
+        this.address = nextAddress;
+        this.openTime = nextOpenTime;
+        this.closeTime = nextCloseTime;
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.phone = nextPhone;
+
+        return changed;
+    }
+
     private void validateBusinessHour(LocalTime open, LocalTime close) {
         if (!open.isBefore(close)) {
             throw new IllegalArgumentException("영업 시작 시간은 종료 시간보다 빨라야 합니다.");
@@ -81,9 +113,4 @@ public class Store {
             throw new IllegalArgumentException("유효하지 않은 위경도 범위입니다.");
         }
     }
-
-
-
-
-
 }

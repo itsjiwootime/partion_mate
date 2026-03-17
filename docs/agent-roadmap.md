@@ -386,6 +386,16 @@
 - ADR: 공통 상태 피드백 표현 원칙과 화면별 예외 처리를 문서화한다.
 - 구현 메모(2026-03-17): `Home`, `MyParties`, `Notifications`, `Profile`, `Chat`에 `LoadingState`/`EmptyState`와 재시도 CTA를 정리했다. 빈 상태에서는 파티 탐색이나 위치 재요청처럼 다음 행동을 바로 제시하고, 오류 상태에서는 같은 화면을 다시 불러올 수 있게 했다. 자동화 검증은 `frontend`의 `npm run build` 통과로 확인했다.
 
+## Epic 10. 지점 시드 데이터 자동 적재
+
+### [x] E10-1 JSON 기반 지점 시드 로더
+- 목표: 빈 개발 DB에서도 주변 지점과 파티 생성 흐름을 바로 확인할 수 있게 한다.
+- 범위: 지점 시드 파일, 애플리케이션 시작 시 적재 로더, 중복 없는 upsert 정책, 테스트 프로필 비활성화.
+- 완료 조건: 서버 시작 시 `store` 테이블이 비어 있어도 코스트코/트레이더스 지점 기본 데이터가 적재된다.
+- 검증: 지점 시드 적재 통합 테스트, H2 실행 환경에서 `/api/stores/nearby` 응답 확인.
+- ADR: JSON 시드 형식과 시작 시 upsert 정책 선택 근거를 문서화한다.
+- 구현 메모(2026-03-17): `seeds/stores.json`과 `StoreSeedInitializer`/`StoreSeedService`를 추가해 앱 시작 시 `name` 기준 upsert를 수행하도록 만들었다. `Store.applySeed(...)`로 기존 지점 정보를 안전하게 갱신하고, `application-test.yml`에서는 시드를 비활성화해 기존 테스트를 보호했다. `StoreSeedServiceIntegrationTest`와 H2 기동 후 `/api/stores/nearby` 응답으로 시드 적재를 검증했다.
+
 ## Agent Prompt Template
 ```text
 현재 프로젝트에서 [작업 카드 ID]를 구현해줘.

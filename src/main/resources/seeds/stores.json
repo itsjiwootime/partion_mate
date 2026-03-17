@@ -1,0 +1,74 @@
+[
+  {
+    "name": "코스트코 양재점",
+    "address": "서울특별시 서초구 양재대로 159",
+    "openTime": "10:00:00",
+    "closeTime": "22:00:00",
+    "phone": "1899-9900",
+    "latitude": 37.4620,
+    "longitude": 127.0366
+  },
+  {
+    "name": "코스트코 상봉점",
+    "address": "서울특별시 중랑구 망우로 336",
+    "openTime": "10:00:00",
+    "closeTime": "22:00:00",
+    "phone": "1899-9900",
+    "latitude": 37.5978,
+    "longitude": 127.0914
+  },
+  {
+    "name": "코스트코 하남점",
+    "address": "경기도 하남시 미사강변중앙로 40",
+    "openTime": "10:00:00",
+    "closeTime": "22:00:00",
+    "phone": "1899-9900",
+    "latitude": 37.5487,
+    "longitude": 127.2235
+  },
+  {
+    "name": "코스트코 공세점",
+    "address": "경기도 용인시 기흥구 탑실로 38",
+    "openTime": "10:00:00",
+    "closeTime": "22:00:00",
+    "phone": "1899-9900",
+    "latitude": 37.2220,
+    "longitude": 127.1110
+  },
+  {
+    "name": "트레이더스 월계점",
+    "address": "서울특별시 노원구 마들로3길 15",
+    "openTime": "10:00:00",
+    "closeTime": "23:00:00",
+    "phone": "02-2092-1234",
+    "latitude": 37.6265,
+    "longitude": 127.0612
+  },
+  {
+    "name": "트레이더스 킨텍스점",
+    "address": "경기도 고양시 일산서구 킨텍스로 171",
+    "openTime": "10:00:00",
+    "closeTime": "23:00:00",
+    "phone": "031-5174-1234",
+    "latitude": 37.6627,
+    "longitude": 126.7458
+  },
+  {
+    "name": "트레이더스 하남점",
+    "address": "경기도 하남시 위례대로 200",
+    "openTime": "10:00:00",
+    "closeTime": "23:00:00",
+    "phone": "031-524-1234",
+    "latitude": 37.5433,
+    "longitude": 127.2148
+  },
+  {
+    "name": "트레이더스 안성점",
+    "address": "경기도 안성시 공도읍 서동대로 3930-39",
+    "openTime": "10:00:00",
+    "closeTime": "23:00:00",
+    "phone": "031-8092-1234",
+    "latitude": 36.9952,
+    "longitude": 127.1484
+  }
+]

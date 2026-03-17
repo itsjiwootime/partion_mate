@@ -21,3 +21,9 @@ spring:
 jwt:
   secret: ${JWT_SECRET_KEY:local_dev_secret_key_for_partition_mate_12345678901234567890}
   expiration: ${JWT_EXPIRATION_MS:3600000}
+
+app:
+  seed:
+    stores:
+      enabled: ${STORE_SEED_ENABLED:true}
+      resource: ${STORE_SEED_RESOURCE:classpath:seeds/stores.json}

@@ -16,3 +16,8 @@ spring:
 jwt:
   secret: test_secret_key_for_partition_mate_12345678901234567890
   expiration: 3600000
+
+app:
+  seed:
+    stores:
+      enabled: false
