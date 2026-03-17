@@ -42,6 +42,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -175,7 +176,7 @@ public class PartyService {
     public PartyDetailResponse updateParty(Long partyId, UpdatePartyRequest request) {
         User currentUser = getCurrentUser();
         LocalDateTime now = LocalDateTime.now(clock);
-        Party party = partyRepository.findDetailById(partyId)
+        Party party = partyRepository.findDetailByIdForUpdate(partyId)
                 .orElseThrow(() -> new EntityNotFoundException("파티가 존재하지 않습니다"));
 
         PartyMember actorMember = getRequiredPartyMember(party, currentUser);
@@ -184,6 +185,8 @@ public class PartyService {
         }
 
         validatePartyEditableForUpdate(party, request, now);
+        PartyUpdateSnapshot previous = PartyUpdateSnapshot.from(party);
+        List<Long> joinedRecipientIds = resolveJoinedRecipientIds(party, currentUser.getId());
         party.updateEditableInfo(
                 request.getTitle(),
                 request.getProductName(),
@@ -200,8 +203,23 @@ public class PartyService {
                 request.getGuideNote(),
                 now
         );
+        PartyUpdateChangeSummary changeSummary = PartyUpdateChangeSummary.from(previous, party);
+        if (changeSummary.hasChanges()) {
+            chatService.appendSystemMessage(party, "호스트가 파티 조건을 수정했습니다. " + changeSummary.message());
+        }
+        if (previous.totalQuantity() < party.getTotalQuantity()) {
+            promoteWaitingMembers(party);
+        }
 
         storeQueryCacheSupport.evictStoreQueries(party.getStore().getId());
+        if (changeSummary.hasChanges()) {
+            publishPartyUpdatedSync(
+                    party,
+                    joinedRecipientIds,
+                    resolveWaitingRecipientIds(party),
+                    changeSummary.message()
+            );
+        }
         return buildPartyDetailResponse(party, currentUser);
     }
 
@@ -541,8 +559,8 @@ public class PartyService {
                 || party.getMembers().stream()
                 .filter(PartyMember::isMember)
                 .anyMatch(member -> member.getActualAmount() != null
-                        || member.getPaymentStatus() != com.project.partition_mate.domain.PaymentStatus.PENDING
-                        || member.getTradeStatus() != com.project.partition_mate.domain.TradeStatus.PENDING
+                        || member.getPaymentStatus() != PaymentStatus.PENDING
+                        || member.getTradeStatus() != TradeStatus.PENDING
                         || member.isPickupAcknowledged());
 
         if (operationStarted) {
@@ -562,6 +580,32 @@ public class PartyService {
                 || !Objects.equals(party.getPackagingType(), request.getPackagingType())
                 || party.isHostProvidesPackaging() != Boolean.TRUE.equals(request.getHostProvidesPackaging())
                 || party.isOnSiteSplit() != Boolean.TRUE.equals(request.getOnSiteSplit());
+    }
+
+    private void publishPartyUpdatedSync(Party party,
+                                         List<Long> joinedRecipientIds,
+                                         List<Long> waitingRecipientIds,
+                                         String changeSummary) {
+        if (!joinedRecipientIds.isEmpty() || !waitingRecipientIds.isEmpty()) {
+            notificationOutboxService.publishPartyUpdated(party, joinedRecipientIds, waitingRecipientIds, changeSummary);
+        }
+        partyRealtimeService.publishPartyUpdatedAfterCommit(party, PartyRealtimeTrigger.PARTY_UPDATED);
+    }
+
+    private List<Long> resolveJoinedRecipientIds(Party party, Long excludedUserId) {
+        return getJoinedMembers(party).stream()
+                .map(PartyMember::getUser)
+                .map(User::getId)
+                .filter(userId -> !Objects.equals(userId, excludedUserId))
+                .distinct()
+                .toList();
+    }
+
+    private List<Long> resolveWaitingRecipientIds(Party party) {
+        return waitingQueueRepository.findAllByPartyAndStatusOrderByQueuedAtAsc(party, WaitingQueueStatus.WAITING).stream()
+                .map(WaitingQueueEntry::getUser)
+                .map(User::getId)
+                .toList();
     }
 
     private LocalDateTime resolveDeadline(LocalDateTime requestedDeadline) {
@@ -788,6 +832,94 @@ public class PartyService {
             throw new EntityNotFoundException("현재 로그인한 사용자를 찾을 수 없습니다.");
         }
         return currentUser;
+    }
+
+    private record PartyUpdateSnapshot(
+            String title,
+            String productName,
+            Integer totalPrice,
+            Integer totalQuantity,
+            String openChatUrl,
+            LocalDateTime deadline,
+            String unitLabel,
+            Integer minimumShareUnit,
+            com.project.partition_mate.domain.StorageType storageType,
+            com.project.partition_mate.domain.PackagingType packagingType,
+            boolean hostProvidesPackaging,
+            boolean onSiteSplit,
+            String guideNote
+    ) {
+        private static PartyUpdateSnapshot from(Party party) {
+            return new PartyUpdateSnapshot(
+                    party.getTitle(),
+                    party.getProductName(),
+                    party.getExpectedTotalPrice(),
+                    party.getTotalQuantity(),
+                    party.getOpenChatUrl(),
+                    party.getDeadline(),
+                    party.getUnitLabel(),
+                    party.getMinimumShareUnit(),
+                    party.getStorageType(),
+                    party.getPackagingType(),
+                    party.isHostProvidesPackaging(),
+                    party.isOnSiteSplit(),
+                    party.getGuideNote()
+            );
+        }
+    }
+
+    private record PartyUpdateChangeSummary(List<String> fields) {
+        private static PartyUpdateChangeSummary from(PartyUpdateSnapshot previous, Party current) {
+            List<String> changedFields = new ArrayList<>();
+            if (!Objects.equals(previous.title(), current.getTitle())) {
+                changedFields.add("제목");
+            }
+            if (!Objects.equals(previous.productName(), current.getProductName())) {
+                changedFields.add("제품명");
+            }
+            if (!Objects.equals(previous.totalPrice(), current.getExpectedTotalPrice())) {
+                changedFields.add("총 금액");
+            }
+            if (!Objects.equals(previous.totalQuantity(), current.getTotalQuantity())) {
+                changedFields.add("총 수량");
+            }
+            if (!Objects.equals(previous.openChatUrl(), current.getOpenChatUrl())) {
+                changedFields.add("오픈채팅 링크");
+            }
+            if (!Objects.equals(previous.deadline(), current.getDeadline())) {
+                changedFields.add("마감 시간");
+            }
+            if (!Objects.equals(previous.unitLabel(), current.getUnitLabel())) {
+                changedFields.add("소분 단위");
+            }
+            if (!Objects.equals(previous.minimumShareUnit(), current.getMinimumShareUnit())) {
+                changedFields.add("최소 소분 수량");
+            }
+            if (!Objects.equals(previous.storageType(), current.getStorageType())) {
+                changedFields.add("보관 방식");
+            }
+            if (!Objects.equals(previous.packagingType(), current.getPackagingType())) {
+                changedFields.add("포장 방식");
+            }
+            if (previous.hostProvidesPackaging() != current.isHostProvidesPackaging()) {
+                changedFields.add("포장 제공 여부");
+            }
+            if (previous.onSiteSplit() != current.isOnSiteSplit()) {
+                changedFields.add("현장 소분 여부");
+            }
+            if (!Objects.equals(previous.guideNote(), current.getGuideNote())) {
+                changedFields.add("안내 문구");
+            }
+            return new PartyUpdateChangeSummary(List.copyOf(changedFields));
+        }
+
+        private boolean hasChanges() {
+            return !fields.isEmpty();
+        }
+
+        private String message() {
+            return "변경 항목: " + String.join(", ", fields);
+        }
     }
 
 }

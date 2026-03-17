@@ -75,6 +75,7 @@ public class NotificationOutboxProcessor {
         switch (event.getEventType()) {
             case PARTY_JOIN_CONFIRMED -> processJoinConfirmed(event, payload, now);
             case WAITING_PROMOTED -> processWaitingPromoted(event, payload, now);
+            case PARTY_UPDATED -> processPartyUpdated(event, payload, now);
             case PARTY_CLOSED -> processPartyClosed(event, payload, now);
             default -> throw new IllegalStateException("지원하지 않는 Outbox 이벤트입니다.");
         }
@@ -115,6 +116,38 @@ public class NotificationOutboxProcessor {
                 "/parties/" + partyId,
                 now
         );
+    }
+
+    private void processPartyUpdated(OutboxEvent event, JsonNode payload, LocalDateTime now) {
+        Long partyId = requireLong(payload, "partyId");
+        String partyTitle = requireText(payload, "partyTitle");
+        String changeSummary = requireText(payload, "changeSummary");
+        List<Long> joinedUserIds = readLongArray(payload.path("joinedUserIds"));
+        List<Long> waitingUserIds = readLongArray(payload.path("waitingUserIds"));
+
+        for (Long userId : joinedUserIds) {
+            saveNotification(
+                    event,
+                    loadUser(userId),
+                    UserNotificationType.PARTY_UPDATED,
+                    "파티 조건이 변경되었습니다",
+                    partyTitle + " 파티 조건이 변경되었습니다. " + changeSummary,
+                    "/parties/" + partyId,
+                    now
+            );
+        }
+
+        for (Long userId : waitingUserIds) {
+            saveNotification(
+                    event,
+                    loadUser(userId),
+                    UserNotificationType.PARTY_UPDATED,
+                    "대기 중인 파티 조건이 변경되었습니다",
+                    partyTitle + " 파티 조건이 변경되었습니다. " + changeSummary,
+                    "/parties/" + partyId,
+                    now
+            );
+        }
     }
 
     private void processPartyClosed(OutboxEvent event, JsonNode payload, LocalDateTime now) {

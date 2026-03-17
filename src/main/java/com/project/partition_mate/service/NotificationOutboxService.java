@@ -50,6 +50,20 @@ public class NotificationOutboxService {
         save("PARTY", party.getId(), OutboxEventType.WAITING_PROMOTED, payload);
     }
 
+    public void publishPartyUpdated(Party party,
+                                    List<Long> joinedUserIds,
+                                    List<Long> waitingUserIds,
+                                    String changeSummary) {
+        ObjectNode payload = objectMapper.createObjectNode();
+        payload.put("partyId", party.getId());
+        payload.put("partyTitle", party.getTitle());
+        payload.put("changeSummary", changeSummary);
+        payload.set("joinedUserIds", toLongArray(joinedUserIds));
+        payload.set("waitingUserIds", toLongArray(waitingUserIds));
+
+        save("PARTY", party.getId(), OutboxEventType.PARTY_UPDATED, payload);
+    }
+
     public void publishPartyClosed(Party party, List<Long> joinedUserIds, List<Long> expiredWaitingUserIds) {
         ObjectNode payload = objectMapper.createObjectNode();
         payload.put("partyId", party.getId());

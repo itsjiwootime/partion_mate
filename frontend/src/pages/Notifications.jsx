@@ -46,7 +46,7 @@ function Notifications() {
     <div className="space-y-4">
       <div className="card-elevated p-4">
         <h2 className="text-xl font-semibold text-ink">알림 내역</h2>
-        <p className="section-subtitle">참여 완료, 대기열 승격, 마감 알림을 확인하세요.</p>
+        <p className="section-subtitle">참여 완료, 조건 변경, 대기열 승격, 마감 알림을 확인하세요.</p>
       </div>
 
       {loading && <LoadingState />}
@@ -60,7 +60,7 @@ function Notifications() {
       {!loading && !error && notifications.length === 0 && (
         <EmptyState
           title="도착한 알림이 없어요"
-          description="파티 참여, 승격, 마감 알림이 생기면 여기에 표시됩니다."
+          description="파티 참여, 조건 변경, 승격, 마감 알림이 생기면 여기에 표시됩니다."
           action={
             <button onClick={() => navigate('/parties')} className="btn-secondary px-4 py-2 text-sm">
               파티 둘러보기

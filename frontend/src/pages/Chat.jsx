@@ -6,6 +6,7 @@ import { connectChatRoom } from '../utils/chatClient';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { EmptyState, LoadingState } from '../components/Feedback';
+import { subscribeToPartyStream } from '../utils/partyRealtime';
 
 function formatPreview(room) {
   if (room.lastMessagePreview) {
@@ -23,6 +24,7 @@ function Chat() {
   const { addToast } = useToast();
   const clientRef = useRef(null);
   const messageListRef = useRef(null);
+  const roomPartyIdsRef = useRef(new Set());
   const [rooms, setRooms] = useState([]);
   const [roomsLoading, setRoomsLoading] = useState(false);
   const [roomsError, setRoomsError] = useState('');
@@ -35,6 +37,10 @@ function Chat() {
   const [updatingNotice, setUpdatingNotice] = useState(false);
   const [roomsReloadToken, setRoomsReloadToken] = useState(0);
   const [roomReloadToken, setRoomReloadToken] = useState(0);
+
+  useEffect(() => {
+    roomPartyIdsRef.current = new Set(rooms.map((room) => room.partyId));
+  }, [rooms]);
 
   useEffect(() => {
     if (!isAuthed) {
@@ -182,6 +188,41 @@ function Chat() {
       clientRef.current = null;
     };
   }, [addToast, isAuthed, selectedPartyId, token, userName]);
+
+  useEffect(() => {
+    if (!isAuthed) {
+      return undefined;
+    }
+
+    const unsubscribe = subscribeToPartyStream({
+      onPartyUpdated: (event) => {
+        const eventPartyId = event?.partyId ?? event?.id;
+        if (!eventPartyId) return;
+        if (!roomPartyIdsRef.current.has(eventPartyId) && selectedPartyId !== eventPartyId) {
+          return;
+        }
+
+        setRoomsReloadToken((current) => current + 1);
+        if (selectedPartyId === eventPartyId) {
+          setRoomReloadToken((current) => current + 1);
+        }
+      },
+      onFallback: () => {
+        if (roomPartyIdsRef.current.size === 0 && !selectedPartyId) {
+          return;
+        }
+
+        setRoomsReloadToken((current) => current + 1);
+        if (selectedPartyId) {
+          setRoomReloadToken((current) => current + 1);
+        }
+      },
+    });
+
+    return () => {
+      unsubscribe?.();
+    };
+  }, [isAuthed, selectedPartyId]);
 
   useEffect(() => {
     if (!roomDetail?.messages?.length) return;

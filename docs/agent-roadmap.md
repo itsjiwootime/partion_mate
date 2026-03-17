@@ -494,12 +494,13 @@
 - ADR: 호스트 취소 정책과 종료 사유 모델을 문서화한다.
 - 구현 메모(2026-03-18): `POST /party/{id}/close` API와 `HOST_CANCELED` 종료 사유를 추가했다. 호스트 취소 시 `WAITING` 대기열은 `EXPIRED`로 종료하고, 참여자/대기자에게는 기존 `PARTY_CLOSED` outbox 이벤트를 재사용해 알림을 보낸다. 정산, 픽업, 송금, 거래가 시작된 파티는 취소를 막았고, 호스트 본인에게는 자기 취소 알림을 보내지 않는다. `PartyHostCancelIntegrationTest`, `PartyControllerCloseExceptionTest`로 성공/권한/진행 제한을 검증했다.
 
-### [ ] E13-3 파티 변경 이벤트 동기화
+### [x] E13-3 파티 변경 이벤트 동기화
 - 목표: 파티 수정/취소가 실시간 화면, 알림, 채팅 시스템 메시지에 동시에 반영되게 한다.
 - 범위: SSE trigger 확장, outbox 이벤트, 채팅 시스템 메시지, 프론트 상태 동기화.
 - 완료 조건: 수정/취소 후 새로고침 없이 목록/상세/내 파티/채팅이 최신 상태로 맞춰진다.
 - 검증: 실시간 통합 테스트, 프론트 빌드, 수동 화면 확인.
 - ADR: 파티 변경 이벤트 전파 구조와 fallback 정책을 문서화한다.
+- 구현 메모(2026-03-18): 파티 수정 시 `PARTY_UPDATED` outbox 이벤트와 `PartyRealtimeTrigger.PARTY_UPDATED`를 추가했다. 수정 전/후 diff를 `변경 항목: ...` 문자열로 만들어 채팅 시스템 메시지와 앱 내 알림에 공통 사용했고, 총 수량 증가 시에는 기존 FIFO 대기열 승격 로직을 수정 흐름에 묶었다. 참여자(호스트 제외)와 수정 후에도 남아 있는 대기자에게만 `PARTY_UPDATED` 알림을 보내고, 채팅 화면은 SSE를 구독해 방 목록/상세를 다시 조회하도록 확장했다. `PartyUpdateSyncIntegrationTest`, `PartyRealtimeServiceIntegrationTest`, `NotificationOutboxProcessorIntegrationTest`, `PartyUpdateIntegrationTest`와 `frontend npm run build`로 검증했다.
 
 ## Epic 14. 사용자 안전장치
 

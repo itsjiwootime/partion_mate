@@ -2,6 +2,7 @@ package com.project.partition_mate.dto;
 
 public enum PartyRealtimeTrigger {
     PARTY_CREATED,
+    PARTY_UPDATED,
     JOIN_CONFIRMED,
     MEMBER_CANCELLED,
     WAITING_PROMOTED,

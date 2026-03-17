@@ -114,6 +114,28 @@ class PartyRealtimeServiceIntegrationTest {
                 .doesNotContain("\"storeId\":" + otherStore.getId());
     }
 
+    @Test
+    void 파티_수정_이벤트는_PARTY_UPDATED_trigger로_전달한다() throws Exception {
+        // given
+        Store store = storeRepository.saveAndFlush(createStore("수정 지점", 37.50, 127.00));
+        Party party = partyRepository.saveAndFlush(createParty(store, "수정 대상 파티"));
+
+        MvcResult result = mockMvc.perform(get("/party/stream")
+                        .param("partyId", String.valueOf(party.getId())))
+                .andExpect(request().asyncStarted())
+                .andReturn();
+        awaitResponseContaining(result, "event:connected");
+
+        // when
+        partyRealtimeService.publishPartyUpdatedAfterCommit(party, PartyRealtimeTrigger.PARTY_UPDATED);
+        String responseBody = awaitResponseContaining(result, "\"realtimeTrigger\":\"PARTY_UPDATED\"");
+
+        // then
+        assertThat(responseBody)
+                .contains("\"id\":" + party.getId())
+                .contains("\"realtimeTrigger\":\"PARTY_UPDATED\"");
+    }
+
     private String awaitResponseContaining(MvcResult result, String expectedToken) throws Exception {
         long deadline = System.currentTimeMillis() + 1_500L;
 
