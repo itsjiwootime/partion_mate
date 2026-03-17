@@ -62,8 +62,8 @@ export const api = {
   checkUsername: (username) => fetchJson(`/api/auth/check-username?username=${encodeURIComponent(username)}`),
   checkEmail: (email) => fetchJson(`/api/auth/check-email?email=${encodeURIComponent(email)}`),
 
-  getNearbyStores: ({ latitude, longitude }) =>
-    fetchJson(`/api/stores/nearby?latitude=${latitude}&longitude=${longitude}`),
+  getNearbyStores: ({ latitude, longitude }, options = {}) =>
+    fetchJson(`/api/stores/nearby?latitude=${latitude}&longitude=${longitude}`, options),
 
   getStoreDetail: (storeId) => fetchJson(`/api/stores/${storeId}`),
 

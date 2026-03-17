@@ -88,11 +88,16 @@ function Home() {
   };
 
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchBranches = async () => {
       try {
         setLoading(true);
         setError('');
-        const data = await api.getNearbyStores({ latitude: coords.lat, longitude: coords.lon });
+        const data = await api.getNearbyStores(
+          { latitude: coords.lat, longitude: coords.lon },
+          { signal: controller.signal },
+        );
         setBranches(
           data.map((item) => ({
             id: item.id, // 백엔드 store.id (숫자) 그대로 사용
@@ -103,12 +108,19 @@ function Home() {
           })),
         );
       } catch (e) {
+        if (e.name === 'AbortError') {
+          return;
+        }
         setError('지점 정보를 불러오지 못했습니다.');
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       }
     };
     fetchBranches();
+
+    return () => controller.abort();
   }, [coords]);
 
   return (
