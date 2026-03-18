@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { ArrowLeft, Clock3, Copy, ExternalLink, Heart, Link as LinkIcon, MapPin, MessageSquareText, Package, ShieldCheck, Star, Users, Wallet } from 'lucide-react';
+import { ArrowLeft, Clock3, Heart, MapPin, MessageSquareText, Package, ShieldCheck, Star, Users, Wallet } from 'lucide-react';
 import { LoadingState } from '../components/Feedback';
 import { mergeRealtimeParty, normalizePartyDetail } from '../utils/party';
 import { subscribeToPartyStream } from '../utils/partyRealtime';
@@ -301,28 +301,6 @@ function PartyDetail() {
               <span>
                 픽업: {detail.pickupPlace} · {detail.pickupTimeLabel}
               </span>
-            </div>
-          )}
-          {detail.openChatUrl && (
-            <div className="flex items-center gap-2">
-              <LinkIcon size={16} className="text-mint-700" />
-              <span className="truncate text-ink/80">{detail.openChatUrl}</span>
-              <button
-                onClick={() => navigator.clipboard.writeText(detail.openChatUrl)}
-                className="btn-pill px-2 py-1 text-[11px]"
-              >
-                <Copy size={12} />
-                복사
-              </button>
-              <a
-                href={detail.openChatUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-secondary px-2 py-1 text-[11px]"
-              >
-                <ExternalLink size={12} />
-                열기
-              </a>
             </div>
           )}
         </div>

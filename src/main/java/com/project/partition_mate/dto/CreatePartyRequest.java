@@ -36,8 +36,6 @@ public class CreatePartyRequest {
     @Min(value = 0, message = "호스트 요청 수량은 0개 이상이어야 합니다.")
     private Integer hostRequestedQuantity;
 
-    private String openChatUrl;
-
     @Future(message = "마감 시간은 현재보다 미래여야 합니다.")
     private LocalDateTime deadline;
 

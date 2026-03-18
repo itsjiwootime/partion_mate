@@ -3,7 +3,6 @@
 ## 목적
 - 파티 참여자 전용 인앱 채팅방을 제공한다.
 - 파티 운영 이벤트를 시스템 메시지로 기록하고, unread count와 호스트 공지를 같은 모델로 노출한다.
-- 기존 `openChatUrl`은 fallback 채널로 유지한다.
 
 ## REST API
 
@@ -15,7 +14,6 @@
   - `partyId`
   - `partyTitle`
   - `storeName`
-  - `openChatUrl`
   - `pinnedNotice`
   - `lastMessagePreview`
   - `lastMessageType`
@@ -32,7 +30,6 @@
   - `partyId`
   - `partyTitle`
   - `storeName`
-  - `openChatUrl`
   - `host`
   - `pinnedNotice`
   - `pinnedNoticeUpdatedAt`
@@ -115,4 +112,4 @@
   - `/chat`
   - `/chat/:partyId`
 - 목록/내 파티/파티 상세에서 채팅 unread count와 진입 CTA를 제공한다.
-- 인앱 채팅이 기본이지만 `openChatUrl`이 있으면 채팅 화면에서도 외부 오픈채팅 링크를 fallback으로 제공한다.
+- 파티 생성 후 전용 인앱 채팅방이 자동으로 열리며, 채팅 화면과 파티 상세 모두 인앱 채팅을 기본 경로로 사용한다.

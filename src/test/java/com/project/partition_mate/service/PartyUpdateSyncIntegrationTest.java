@@ -106,7 +106,6 @@ class PartyUpdateSyncIntegrationTest {
                 party.getProductName(),
                 party.getExpectedTotalPrice(),
                 3,
-                party.getOpenChatUrl(),
                 LocalDateTime.now().plusHours(10),
                 party.getUnitLabel(),
                 party.getMinimumShareUnit(),
@@ -132,7 +131,11 @@ class PartyUpdateSyncIntegrationTest {
         List<OutboxEvent> outboxEvents = outboxEventRepository.findAll();
         assertThat(outboxEvents)
                 .extracting(OutboxEvent::getEventType)
-                .containsExactlyInAnyOrder(OutboxEventType.WAITING_PROMOTED, OutboxEventType.PARTY_UPDATED);
+                .containsExactlyInAnyOrder(
+                        OutboxEventType.PARTY_JOIN_CONFIRMED,
+                        OutboxEventType.WAITING_PROMOTED,
+                        OutboxEventType.PARTY_UPDATED
+                );
         assertThat(outboxEvents)
                 .filteredOn(event -> event.getEventType() == OutboxEventType.PARTY_UPDATED)
                 .singleElement()
@@ -186,7 +189,6 @@ class PartyUpdateSyncIntegrationTest {
                                              String productName,
                                              Integer totalPrice,
                                              Integer totalQuantity,
-                                             String openChatUrl,
                                              LocalDateTime deadline,
                                              String unitLabel,
                                              Integer minimumShareUnit,
@@ -200,7 +202,6 @@ class PartyUpdateSyncIntegrationTest {
         ReflectionTestUtils.setField(request, "productName", productName);
         ReflectionTestUtils.setField(request, "totalPrice", totalPrice);
         ReflectionTestUtils.setField(request, "totalQuantity", totalQuantity);
-        ReflectionTestUtils.setField(request, "openChatUrl", openChatUrl);
         ReflectionTestUtils.setField(request, "deadline", deadline);
         ReflectionTestUtils.setField(request, "unitLabel", unitLabel);
         ReflectionTestUtils.setField(request, "minimumShareUnit", minimumShareUnit);

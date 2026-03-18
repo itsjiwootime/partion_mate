@@ -12,10 +12,10 @@
 
 ## 결정사항
 - 파티 수정은 `PUT /party/{id}` 단일 API로 제공하고, 호스트만 호출할 수 있게 한다.
-- 수정 가능 필드는 `title`, `productName`, `totalPrice`, `totalQuantity`, `openChatUrl`, `deadline`, `unitLabel`, `minimumShareUnit`, `storageType`, `packagingType`, `hostProvidesPackaging`, `onSiteSplit`, `guideNote`로 제한한다.
+- 수정 가능 필드는 `title`, `productName`, `totalPrice`, `totalQuantity`, `deadline`, `unitLabel`, `minimumShareUnit`, `storageType`, `packagingType`, `hostProvidesPackaging`, `onSiteSplit`, `guideNote`로 제한한다.
 - `storeId`와 `hostRequestedQuantity`는 수정 대상에서 제외한다. 지점 변경은 조회/캐시/참여 맥락을 크게 흔들고, 호스트 수량 변경은 정산 및 참여 수량 모델과 강하게 엮여 있기 때문이다.
 - `CLOSED` 파티나 마감 시간이 지난 파티는 수정할 수 없게 한다.
-- 정산이 확정되었거나 픽업 일정이 잡힌 뒤에는 거래 조건 변경을 막고, `guideNote`와 `openChatUrl`만 수정 가능하게 한다.
+- 정산이 확정되었거나 픽업 일정이 잡힌 뒤에는 거래 조건 변경을 막고, `guideNote`만 수정 가능하게 한다.
 - 수정 시 현재 참여 수량보다 `totalQuantity`를 작게 줄일 수 없게 하고, 수정 후에는 파티 상태를 다시 계산해 `FULL -> RECRUITING` 복귀도 허용한다.
 - 수정이 완료되면 지점 조회 캐시를 무효화해 목록/상세의 후속 조회가 새 값을 읽도록 한다.
 
@@ -41,4 +41,4 @@
   - 실시간 전파와 채팅 시스템 메시지 동기화는 이번 카드 범위에서 제외되어 다음 카드에서 보강이 필요하다.
 - 중립적 트레이드오프 또는 후속 영향 사항을 작성한다.
   - 이후 `E13-3`에서 SSE, 채팅 시스템 메시지, 알림까지 연결하면 수정 이벤트의 사용자 체감 일관성이 완성된다.
-  - 안전하게 열어둔 `guideNote`와 `openChatUrl` 수정 가능 범위는 운영 피드백에 따라 더 좁히거나 넓힐 수 있다.
+- 안전하게 열어둔 `guideNote` 수정 가능 범위는 운영 피드백에 따라 더 좁히거나 넓힐 수 있다.

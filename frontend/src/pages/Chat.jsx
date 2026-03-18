@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Pin, Send, ExternalLink, ArrowLeft, ShieldCheck } from 'lucide-react';
+import { Pin, Send, ArrowLeft, ShieldCheck } from 'lucide-react';
 import { api } from '../api/client';
 import { connectChatRoom } from '../utils/chatClient';
 import { useAuth } from '../context/AuthContext';
@@ -381,17 +381,6 @@ function Chat() {
                 <h2 className="text-lg font-semibold text-ink">{roomDetail.partyTitle}</h2>
                 <p className="text-xs text-ink/50">{roomDetail.storeName}</p>
               </div>
-              {roomDetail.openChatUrl && (
-                <a
-                  href={roomDetail.openChatUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn-secondary px-3 py-2 text-xs"
-                >
-                  <ExternalLink size={14} />
-                  오픈채팅 열기
-                </a>
-              )}
             </div>
 
             {roomDetail.pinnedNotice && (

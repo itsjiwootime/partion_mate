@@ -73,7 +73,6 @@ class PartyUpdateIntegrationTest {
                 "비타민 C 1000정",
                 32000,
                 4,
-                "https://open.kakao.com/o/updated-room",
                 LocalDateTime.now().plusHours(10),
                 "통",
                 1,
@@ -92,7 +91,6 @@ class PartyUpdateIntegrationTest {
         assertThat(response.getProductName()).isEqualTo("비타민 C 1000정");
         assertThat(response.getExpectedTotalPrice()).isEqualTo(32000);
         assertThat(response.getTotalQuantity()).isEqualTo(4);
-        assertThat(response.getOpenChatUrl()).isEqualTo("https://open.kakao.com/o/updated-room");
         assertThat(response.getUnitLabel()).isEqualTo("통");
         assertThat(response.getPackagingType()).isEqualTo(PackagingType.CONTAINER);
         assertThat(response.isOnSiteSplit()).isTrue();
@@ -140,7 +138,7 @@ class PartyUpdateIntegrationTest {
     }
 
     @Test
-    void 픽업이_확정된_뒤에도_안내문과_오픈채팅링크는_수정한다() {
+    void 픽업이_확정된_뒤에도_안내문은_수정한다() {
         // given
         Store store = storeRepository.saveAndFlush(createStore("세종 코스트코"));
         User host = userRepository.saveAndFlush(createUser("host"));
@@ -153,7 +151,6 @@ class PartyUpdateIntegrationTest {
                 party.getProductName(),
                 party.getExpectedTotalPrice(),
                 party.getTotalQuantity(),
-                "https://open.kakao.com/o/after-pickup",
                 party.getDeadline(),
                 party.getUnitLabel(),
                 party.getMinimumShareUnit(),
@@ -168,7 +165,6 @@ class PartyUpdateIntegrationTest {
         PartyDetailResponse response = partyService.updateParty(party.getId(), request);
 
         // then
-        assertThat(response.getOpenChatUrl()).isEqualTo("https://open.kakao.com/o/after-pickup");
         assertThat(response.getGuideNote()).isEqualTo("픽업 10분 전 도착 부탁드립니다.");
         assertThat(response.getPickupPlace()).isEqualTo("세종터미널 앞");
     }
@@ -187,7 +183,6 @@ class PartyUpdateIntegrationTest {
                 party.getProductName(),
                 party.getExpectedTotalPrice(),
                 party.getTotalQuantity(),
-                party.getOpenChatUrl(),
                 party.getDeadline().plusHours(2),
                 party.getUnitLabel(),
                 party.getMinimumShareUnit(),
@@ -204,7 +199,7 @@ class PartyUpdateIntegrationTest {
         // then
         assertThat(thrown)
                 .isInstanceOf(BusinessException.class)
-                .hasMessage("정산 또는 픽업 일정이 진행된 뒤에는 안내 문구와 오픈채팅 링크만 수정할 수 있습니다.");
+                .hasMessage("정산 또는 픽업 일정이 진행된 뒤에는 안내 문구만 수정할 수 있습니다.");
     }
 
     private Party createFullParty(Store store, User host, User member) {
@@ -267,7 +262,6 @@ class PartyUpdateIntegrationTest {
                 "수정된 제품명",
                 31000,
                 5,
-                "https://open.kakao.com/o/updated-room",
                 LocalDateTime.now().plusHours(12),
                 "팩",
                 1,
@@ -283,7 +277,6 @@ class PartyUpdateIntegrationTest {
                                              String productName,
                                              Integer totalPrice,
                                              Integer totalQuantity,
-                                             String openChatUrl,
                                              LocalDateTime deadline,
                                              String unitLabel,
                                              Integer minimumShareUnit,
@@ -297,7 +290,6 @@ class PartyUpdateIntegrationTest {
         ReflectionTestUtils.setField(request, "productName", productName);
         ReflectionTestUtils.setField(request, "totalPrice", totalPrice);
         ReflectionTestUtils.setField(request, "totalQuantity", totalQuantity);
-        ReflectionTestUtils.setField(request, "openChatUrl", openChatUrl);
         ReflectionTestUtils.setField(request, "deadline", deadline);
         ReflectionTestUtils.setField(request, "unitLabel", unitLabel);
         ReflectionTestUtils.setField(request, "minimumShareUnit", minimumShareUnit);

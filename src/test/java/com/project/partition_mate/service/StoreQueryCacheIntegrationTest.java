@@ -100,7 +100,6 @@ class StoreQueryCacheIntegrationTest {
         ReflectionTestUtils.setField(request, "totalPrice", 12000);
         ReflectionTestUtils.setField(request, "totalQuantity", 5);
         ReflectionTestUtils.setField(request, "hostRequestedQuantity", 1);
-        ReflectionTestUtils.setField(request, "openChatUrl", "https://open.kakao.com/o/test");
         ReflectionTestUtils.setField(request, "unitLabel", "개");
         ReflectionTestUtils.setField(request, "minimumShareUnit", 1);
         ReflectionTestUtils.setField(request, "storageType", com.project.partition_mate.domain.StorageType.ROOM_TEMPERATURE);

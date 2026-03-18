@@ -179,7 +179,6 @@ class ChatRoomFlowIntegrationTest {
         ReflectionTestUtils.setField(request, "totalPrice", 18000);
         ReflectionTestUtils.setField(request, "totalQuantity", 3);
         ReflectionTestUtils.setField(request, "hostRequestedQuantity", 1);
-        ReflectionTestUtils.setField(request, "openChatUrl", "https://open.kakao.com/o/test");
         ReflectionTestUtils.setField(request, "deadline", LocalDateTime.now().plusHours(8));
         ReflectionTestUtils.setField(request, "unitLabel", "개");
         ReflectionTestUtils.setField(request, "minimumShareUnit", 1);

@@ -16,7 +16,6 @@
   "productName": "비타민 C 1000정",
   "totalPrice": 32000,
   "totalQuantity": 4,
-  "openChatUrl": "https://open.kakao.com/o/updated-room",
   "deadline": "2026-03-19T10:00:00",
   "unitLabel": "통",
   "minimumShareUnit": 1,
@@ -36,7 +35,6 @@
 - `productName`
 - `totalPrice`
 - `totalQuantity`
-- `openChatUrl`
 - `deadline`
 - `unitLabel`
 - `minimumShareUnit`
@@ -54,7 +52,7 @@
 ## 상태 제한
 - `CLOSED` 파티는 수정할 수 없다.
 - 마감 시간이 지난 파티는 수정할 수 없다.
-- 정산이 확정되었거나 픽업 일정이 잡힌 뒤에는 `guideNote`, `openChatUrl`만 수정할 수 있다.
+- 정산이 확정되었거나 픽업 일정이 잡힌 뒤에는 `guideNote`만 수정할 수 있다.
 - `totalQuantity`는 현재 참여 수량보다 작게 줄일 수 없다.
 
 ## 후속 동작
@@ -68,7 +66,7 @@
 - `409 BUSINESS_ERROR`
   - `이미 종료된 파티입니다.`
   - `마감 시간이 지나 종료된 파티입니다.`
-  - `정산 또는 픽업 일정이 진행된 뒤에는 안내 문구와 오픈채팅 링크만 수정할 수 있습니다.`
+  - `정산 또는 픽업 일정이 진행된 뒤에는 안내 문구만 수정할 수 있습니다.`
 - `400 VALIDATION_ERROR`
   - DTO 필수값 누락 또는 형식 오류
 - `400 INVALID_REQUEST`

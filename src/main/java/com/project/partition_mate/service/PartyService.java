@@ -87,7 +87,7 @@ public class PartyService {
                 request.getTotalPrice(),
                 store,
                 request.getTotalQuantity(),
-                request.getOpenChatUrl(),
+                null,
                 resolveDeadline(request.getDeadline()),
                 request.getUnitLabel(),
                 request.getMinimumShareUnit(),
@@ -204,7 +204,6 @@ public class PartyService {
                 request.getProductName(),
                 request.getTotalPrice(),
                 request.getTotalQuantity(),
-                request.getOpenChatUrl(),
                 request.getDeadline(),
                 request.getUnitLabel(),
                 request.getMinimumShareUnit(),
@@ -878,7 +877,6 @@ public class PartyService {
             String productName,
             Integer totalPrice,
             Integer totalQuantity,
-            String openChatUrl,
             LocalDateTime deadline,
             String unitLabel,
             Integer minimumShareUnit,
@@ -894,7 +892,6 @@ public class PartyService {
                     party.getProductName(),
                     party.getExpectedTotalPrice(),
                     party.getTotalQuantity(),
-                    party.getOpenChatUrl(),
                     party.getDeadline(),
                     party.getUnitLabel(),
                     party.getMinimumShareUnit(),
@@ -921,9 +918,6 @@ public class PartyService {
             }
             if (!Objects.equals(previous.totalQuantity(), current.getTotalQuantity())) {
                 changedFields.add("총 수량");
-            }
-            if (!Objects.equals(previous.openChatUrl(), current.getOpenChatUrl())) {
-                changedFields.add("오픈채팅 링크");
             }
             if (!Objects.equals(previous.deadline(), current.getDeadline())) {
                 changedFields.add("마감 시간");

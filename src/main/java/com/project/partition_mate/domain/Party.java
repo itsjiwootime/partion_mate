@@ -290,7 +290,6 @@ public class Party {
                                    String productName,
                                    Integer totalPrice,
                                    Integer totalQuantity,
-                                   String openChatUrl,
                                    LocalDateTime deadline,
                                    String unitLabel,
                                    Integer minimumShareUnit,
@@ -313,7 +312,6 @@ public class Party {
         this.productName = productName;
         this.totalPrice = totalPrice;
         this.totalQuantity = totalQuantity;
-        this.openChatUrl = openChatUrl;
         this.deadline = deadline;
         this.unitLabel = unitLabel;
         this.minimumShareUnit = minimumShareUnit;

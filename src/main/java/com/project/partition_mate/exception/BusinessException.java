@@ -53,7 +53,7 @@ public class BusinessException extends RuntimeException {
     }
 
     public static BusinessException partyEditRestrictedAfterSettlementOrPickup() {
-        return new BusinessException("정산 또는 픽업 일정이 진행된 뒤에는 안내 문구와 오픈채팅 링크만 수정할 수 있습니다.", HttpStatus.CONFLICT);
+        return new BusinessException("정산 또는 픽업 일정이 진행된 뒤에는 안내 문구만 수정할 수 있습니다.", HttpStatus.CONFLICT);
     }
 
     public static BusinessException partyHostCancelNotAllowedAfterOperationsStarted() {

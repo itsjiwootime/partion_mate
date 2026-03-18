@@ -11,7 +11,6 @@ public class ChatRoomSummaryResponse {
     private final Long partyId;
     private final String partyTitle;
     private final String storeName;
-    private final String openChatUrl;
     private final String pinnedNotice;
     private final String lastMessagePreview;
     private final String lastMessageType;
@@ -23,7 +22,6 @@ public class ChatRoomSummaryResponse {
                                    Long partyId,
                                    String partyTitle,
                                    String storeName,
-                                   String openChatUrl,
                                    String pinnedNotice,
                                    String lastMessagePreview,
                                    String lastMessageType,
@@ -33,7 +31,6 @@ public class ChatRoomSummaryResponse {
         this.partyId = partyId;
         this.partyTitle = partyTitle;
         this.storeName = storeName;
-        this.openChatUrl = openChatUrl;
         this.pinnedNotice = pinnedNotice;
         this.lastMessagePreview = lastMessagePreview;
         this.lastMessageType = lastMessageType;

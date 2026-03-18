@@ -12,7 +12,6 @@ public class ChatRoomDetailResponse {
     private final Long partyId;
     private final String partyTitle;
     private final String storeName;
-    private final String openChatUrl;
     private final boolean host;
     private final String pinnedNotice;
     private final LocalDateTime pinnedNoticeUpdatedAt;
@@ -24,7 +23,6 @@ public class ChatRoomDetailResponse {
                                   Long partyId,
                                   String partyTitle,
                                   String storeName,
-                                  String openChatUrl,
                                   boolean host,
                                   String pinnedNotice,
                                   LocalDateTime pinnedNoticeUpdatedAt,
@@ -34,7 +32,6 @@ public class ChatRoomDetailResponse {
         this.partyId = partyId;
         this.partyTitle = partyTitle;
         this.storeName = storeName;
-        this.openChatUrl = openChatUrl;
         this.host = host;
         this.pinnedNotice = pinnedNotice;
         this.pinnedNoticeUpdatedAt = pinnedNoticeUpdatedAt;

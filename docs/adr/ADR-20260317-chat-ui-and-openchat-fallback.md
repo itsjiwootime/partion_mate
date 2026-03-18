@@ -1,9 +1,10 @@
 # ADR-20260317-chat-ui-and-openchat-fallback
 
 - 날짜: 2026-03-17
-- 상태: Accepted
+- 상태: Superseded
 - 관련 작업: `E8-5`
 - 관련 파일: `frontend/src/pages/Chat.jsx`, `frontend/src/pages/PartyDetail.jsx`, `frontend/src/pages/MyParties.jsx`, `frontend/src/pages/PartyList.jsx`, `frontend/src/utils/chatClient.js`
+- 대체 ADR: `ADR-20260318-internal-chat-only-policy.md`
 
 ## 배경
 - 기존 파티 상세에는 카카오 오픈채팅 링크가 이미 있었고, 에픽 8 이후에도 외부 채널을 바로 없애면 운영 중인 파티 흐름이 끊길 수 있다.
