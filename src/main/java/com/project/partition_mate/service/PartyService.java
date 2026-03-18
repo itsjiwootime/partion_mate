@@ -66,6 +66,7 @@ public class PartyService {
     private final ChatService chatService;
     private final PartyLifecycleService partyLifecycleService;
     private final UserBlockPolicyService userBlockPolicyService;
+    private final NoShowPolicyService noShowPolicyService;
     private final TrustScoreService trustScoreService;
     private final Clock clock;
 
@@ -128,12 +129,16 @@ public class PartyService {
 
         validatePartyOpenForJoin(party, now);
         validateNotAlreadyJoinedOrWaiting(party, member);
-
-        if (canJoinImmediately(party, request.getMemberRequestQuantity())) {
-            return joinImmediately(party, member, request.getMemberRequestQuantity());
+        NoShowPolicyService.Decision noShowDecision = noShowPolicyService.evaluate(member);
+        if (noShowDecision.shouldBlock()) {
+            throw BusinessException.noShowParticipationRestricted();
         }
 
-        return joinWaitingQueue(party, member, request.getMemberRequestQuantity());
+        if (canJoinImmediately(party, request.getMemberRequestQuantity())) {
+            return joinImmediately(party, member, request.getMemberRequestQuantity(), noShowDecision);
+        }
+
+        return joinWaitingQueue(party, member, request.getMemberRequestQuantity(), noShowDecision);
     }
 
     @Transactional
@@ -373,9 +378,9 @@ public class PartyService {
                     if (targetMember.getPaymentStatus() != PaymentStatus.CONFIRMED) {
                         throw BusinessException.invalidTradeStatusTransition();
                     }
-                    targetMember.completeTrade();
+                    targetMember.completeTrade(LocalDateTime.now(clock));
                 }
-                case NO_SHOW -> targetMember.markNoShow();
+                case NO_SHOW -> targetMember.markNoShow(LocalDateTime.now(clock));
                 default -> throw BusinessException.invalidTradeStatusTransition();
             }
         } catch (IllegalArgumentException ex) {
@@ -416,7 +421,10 @@ public class PartyService {
         return buildPartyDetailResponse(party, currentUser);
     }
 
-    private JoinPartyResponse joinImmediately(Party party, User member, Integer requestedQuantity) {
+    private JoinPartyResponse joinImmediately(Party party,
+                                              User member,
+                                              Integer requestedQuantity,
+                                              NoShowPolicyService.Decision noShowDecision) {
         PartyMember newMember = PartyMember.joinAsMember(
                 party,
                 member,
@@ -436,10 +444,13 @@ public class PartyService {
         storeQueryCacheSupport.evictStoreQueries(party.getStore().getId());
         partyRealtimeService.publishPartyUpdatedAfterCommit(party, PartyRealtimeTrigger.JOIN_CONFIRMED);
 
-        return JoinPartyResponse.joined(party);
+        return JoinPartyResponse.joined(party, createJoinWarning(noShowDecision));
     }
 
-    private JoinPartyResponse joinWaitingQueue(Party party, User member, Integer requestedQuantity) {
+    private JoinPartyResponse joinWaitingQueue(Party party,
+                                               User member,
+                                               Integer requestedQuantity,
+                                               NoShowPolicyService.Decision noShowDecision) {
         WaitingQueueEntry waitingQueueEntry = WaitingQueueEntry.create(party, member, requestedQuantity);
 
         try {
@@ -453,7 +464,7 @@ public class PartyService {
                         WaitingQueueStatus.WAITING
                 ).size();
 
-        return JoinPartyResponse.waiting(party, waitingPosition);
+        return JoinPartyResponse.waiting(party, waitingPosition, createJoinWarning(noShowDecision));
     }
 
     private void cancelJoinedMember(Party party, PartyMember joinedMember) {
@@ -520,6 +531,18 @@ public class PartyService {
         if (waitingQueueRepository.existsByPartyAndUserAndStatus(party, member, WaitingQueueStatus.WAITING)) {
             throw BusinessException.alreadyWaiting();
         }
+    }
+
+    private JoinPartyResponse.Warning createJoinWarning(NoShowPolicyService.Decision noShowDecision) {
+        if (!noShowDecision.shouldWarn()) {
+            return null;
+        }
+
+        return JoinPartyResponse.Warning.of(
+                "NO_SHOW_CAUTION",
+                "최근 노쇼가 1회 기록되어 있습니다. 한 번 더 노쇼가 누적되면 새 거래를 1회 완료하기 전까지 참여가 제한됩니다.",
+                noShowDecision.activeNoShowCount()
+        );
     }
 
     private boolean canJoinImmediately(Party party, Integer requestedQuantity) {

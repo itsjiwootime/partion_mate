@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,6 +30,19 @@ public interface PartyMemberRepository extends JpaRepository<PartyMember, Long> 
     Optional<PartyMember> findByIdAndParty(Long id, Party party);
 
     long countByUserAndRoleAndTradeStatus(User user, PartyMemberRole role, TradeStatus tradeStatus);
+
+    @Query("""
+            select pm
+            from PartyMember pm
+            where pm.user = :user
+              and pm.role = :role
+              and pm.tradeStatus in :tradeStatuses
+              and pm.tradeStatusUpdatedAt is not null
+            order by pm.tradeStatusUpdatedAt desc, pm.id desc
+            """)
+    List<PartyMember> findAllForNoShowPolicy(@Param("user") User user,
+                                             @Param("role") PartyMemberRole role,
+                                             @Param("tradeStatuses") Collection<TradeStatus> tradeStatuses);
 
     @Query("""
             select count(distinct pm.id)

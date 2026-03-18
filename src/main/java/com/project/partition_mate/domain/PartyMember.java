@@ -49,6 +49,8 @@ public class PartyMember {
     @Column(nullable = false)
     private TradeStatus tradeStatus;
 
+    private LocalDateTime tradeStatusUpdatedAt;
+
     @Builder
     public PartyMember(Party party, User user,PartyMemberRole role, Integer requestedQuantity) {
 
@@ -124,12 +126,14 @@ public class PartyMember {
         this.pickupAcknowledgedAt = Objects.requireNonNull(acknowledgedAt, "픽업 확인 시각은 필수입니다.");
     }
 
-    public void completeTrade() {
+    public void completeTrade(LocalDateTime updatedAt) {
         this.tradeStatus = TradeStatus.COMPLETED;
+        this.tradeStatusUpdatedAt = Objects.requireNonNull(updatedAt, "거래 상태 변경 시각은 필수입니다.");
     }
 
-    public void markNoShow() {
+    public void markNoShow(LocalDateTime updatedAt) {
         this.tradeStatus = TradeStatus.NO_SHOW;
+        this.tradeStatusUpdatedAt = Objects.requireNonNull(updatedAt, "거래 상태 변경 시각은 필수입니다.");
     }
 
     public boolean isReviewEligible() {

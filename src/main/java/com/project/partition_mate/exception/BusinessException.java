@@ -164,6 +164,10 @@ public class BusinessException extends RuntimeException {
         return new BusinessException("차단한 사용자 또는 나를 차단한 사용자가 포함된 파티에는 참여할 수 없습니다.", HttpStatus.FORBIDDEN);
     }
 
+    public static BusinessException noShowParticipationRestricted() {
+        return new BusinessException("최근 노쇼가 2회 연속 기록되어 새 거래를 1회 완료하기 전까지 파티에 참여할 수 없습니다.", HttpStatus.FORBIDDEN);
+    }
+
     public static BusinessException blockedChatAccessNotAllowed() {
         return new BusinessException("차단 관계가 있는 사용자가 포함된 채팅방에는 접근할 수 없습니다.", HttpStatus.FORBIDDEN);
     }
