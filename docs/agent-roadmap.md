@@ -668,12 +668,13 @@
 - ADR: 탐색에서 생성으로 이어지는 라우터 회귀 범위와 mock 동기화 방식을 문서화한다.
 - 구현 메모(2026-03-18): `frontend/src/pages/DiscoveryCreateFlow.test.jsx`를 추가해 `Home -> /branch/:id -> /parties/create?storeId=:id` 흐름을 실제 `MemoryRouter` 라우트에서 검증하고, 선택한 지점이 생성 폼의 기본값으로 유지되는지 확인했다. 기존 `Home.quickDiscovery`, `CreateParty` 테스트는 유지하고 `PartyList.filters.test.jsx`에는 `ToastContext` mock을 보강해 현재 컴포넌트 의존성과 테스트 환경을 맞췄다. 검증은 `cd frontend && npm test -- --run src/pages/DiscoveryCreateFlow.test.jsx src/pages/Home.quickDiscovery.test.jsx src/pages/PartyList.filters.test.jsx src/pages/CreateParty.test.jsx`, `cd frontend && npm run build`로 진행했다.
 
-### [ ] E20-2 참여/정산/후기 플로우 테스트
+### [x] E20-2 참여/정산/후기 플로우 테스트
 - 목표: JoinParty, PartyDetail의 참여 이후 운영 흐름을 자동으로 검증한다.
 - 범위: 참여, 대기열, 정산, 픽업, 후기 작성 UI 테스트.
 - 완료 조건: 파티 운영 핵심 화면 회귀를 프론트 테스트가 잡을 수 있다.
 - 검증: `frontend`의 `npm run test`, `npm run build`.
-- ADR: E12 테스트 러너 ADR을 재사용한다.
+- ADR: 참여 결과별 이동과 역할별 운영 액션 테스트 범위를 문서화한다.
+- 구현 메모(2026-03-18): `frontend/src/pages/JoinParty.flow.test.jsx`를 추가해 즉시 참여 성공 시 파티 상세 복귀, 잔여 수량 부족 시 대기열 등록 후 내 파티 이동을 검증했다. `frontend/src/pages/PartyDetail.operationFlow.test.jsx`에서는 호스트의 정산/픽업 확정과 참여자의 송금 완료, 픽업 확인, 호스트 후기 작성 흐름을 역할별 fixture로 분리해 검증했다. 기존 `JoinParty.safetyFeedback`, `PartyDetail.favorite`, `PartyDetail.safety`, `PartyDetail.trustSignals` 테스트와 함께 실행해 관련 화면 회귀를 묶었다. 검증은 `cd frontend && npm test -- --run src/pages/JoinParty.flow.test.jsx src/pages/JoinParty.safetyFeedback.test.jsx src/pages/PartyDetail.operationFlow.test.jsx src/pages/PartyDetail.favorite.test.jsx src/pages/PartyDetail.safety.test.jsx src/pages/PartyDetail.trustSignals.test.jsx`, `cd frontend && npm run build`로 진행했다.
 
 ### [ ] E20-3 채팅 및 안전 기능 테스트
 - 목표: 채팅, 신고/차단, 알림 설정 같은 상호작용이 회귀 없이 유지되게 한다.
