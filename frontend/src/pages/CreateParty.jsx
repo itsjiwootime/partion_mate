@@ -4,6 +4,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { buildCreatePartyPreview } from '../utils/createPartyPreview';
 
 const storageOptions = [
   { value: 'ROOM_TEMPERATURE', label: '상온' },
@@ -48,6 +49,25 @@ function formatDeadlinePreview(deadlineDate, deadlineTime) {
   return `${deadlineDate} ${deadlineTime}`;
 }
 
+function formatAmountRange(minAmount, maxAmount) {
+  if (minAmount === maxAmount) {
+    return formatCurrency(minAmount);
+  }
+
+  return `${formatCurrency(minAmount)} ~ ${formatCurrency(maxAmount)}`;
+}
+
+function getWarningToneClass(tone) {
+  switch (tone) {
+    case 'critical':
+      return 'border-red-200 bg-red-50 text-red-700';
+    case 'caution':
+      return 'border-amber-200 bg-amber-50 text-amber-700';
+    default:
+      return 'border-sky-200 bg-sky-50 text-sky-700';
+  }
+}
+
 function CreateParty() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -79,13 +99,17 @@ function CreateParty() {
   const [error, setError] = useState('');
   const [coords, setCoords] = useState({ lat: 37.5665, lon: 126.978 });
 
-  const perUnit = useMemo(() => {
-    const total = Number(form.totalPrice) || 0;
-    const qty = Number(form.totalQuantity) || 0;
-    return total > 0 && qty > 0 ? Math.round(total / qty) : 0;
-  }, [form.totalPrice, form.totalQuantity]);
-
-  const hostExpected = useMemo(() => perUnit * (Number(form.hostRequestedQuantity) || 0), [form.hostRequestedQuantity, perUnit]);
+  const preview = useMemo(
+    () =>
+      buildCreatePartyPreview({
+        totalPrice: form.totalPrice,
+        totalQuantity: form.totalQuantity,
+        hostRequestedQuantity: form.hostRequestedQuantity,
+        minimumShareUnit: form.minimumShareUnit,
+        unitLabel: form.unitLabel,
+      }),
+    [form.totalPrice, form.totalQuantity, form.hostRequestedQuantity, form.minimumShareUnit, form.unitLabel],
+  );
 
   const selectedBranch = useMemo(
     () => branches.find((branch) => String(branch.id) === String(form.branchId)) ?? null,
@@ -409,7 +433,10 @@ function CreateParty() {
                     className="flex-1 accent-mint-500"
                     aria-label="제품 총 수량"
                   />
-                  <span className="text-sm font-semibold text-ink">{form.totalQuantity}개</span>
+                  <span className="text-sm font-semibold text-ink">
+                    {form.totalQuantity}
+                    {preview.unitLabel}
+                  </span>
                 </div>
                 <button
                   type="button"
@@ -423,9 +450,15 @@ function CreateParty() {
 
             <div className="rounded-xl bg-mint-500/10 px-4 py-3 text-sm font-semibold text-mint-800 space-y-1">
               <div>
-                개당 예상 가격: <span className="text-lg font-bold text-mint-700">{formatCurrency(perUnit)}</span>
+                1단위 기준 예상 금액:{' '}
+                <span className="text-lg font-bold text-mint-700">
+                  {formatAmountRange(preview.baseUnitAmount, preview.unitAmountMax)}
+                </span>
               </div>
-              <div className="text-xs text-ink/70">총 가격 ÷ 총 수량으로 계산됩니다.</div>
+              <div className="text-xs text-ink/70">
+                총 가격과 총 수량 기준입니다.
+                {preview.remainderAmount > 0 ? ` 남는 ${preview.remainderAmount}원은 정산 시 수량이 큰 쪽부터 1원씩 배분됩니다.` : ''}
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -442,7 +475,10 @@ function CreateParty() {
               <p className="helper-text">생성자가 먼저 가져갈 수량입니다.</p>
             </div>
             <div className="rounded-xl bg-ink/5 px-4 py-3 text-sm font-semibold text-ink">
-              호스트 예상 부담금: <span className="text-lg font-bold text-ink">{formatCurrency(hostExpected)}</span>
+              호스트 예상 부담금:{' '}
+              <span className="text-lg font-bold text-ink">
+                {formatAmountRange(preview.hostExpectedAmountMin, preview.hostExpectedAmountMax)}
+              </span>
             </div>
           </section>
 
@@ -537,6 +573,67 @@ function CreateParty() {
               {form.unitLabel || '개'} 단위로 참여하게 됩니다.
             </div>
           </section>
+
+          <section className="card-elevated p-4 space-y-4">
+            <div className="flex items-center gap-2 text-sm font-semibold text-mint-700">
+              <Coins size={18} />
+              <span>참여 조건 미리보기</span>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-2xl border border-mint-100 bg-mint-50 px-4 py-3">
+                <p className="text-xs text-mint-800">참여자에게 열리는 수량</p>
+                <p className="mt-1 text-lg font-semibold text-ink">
+                  {preview.recruitableQuantity}
+                  {preview.unitLabel}
+                </p>
+                <p className="mt-1 text-xs text-ink/60">총 수량에서 호스트 수량을 제외한 값입니다.</p>
+              </div>
+
+              <div className="rounded-2xl border border-mint-100 bg-mint-50 px-4 py-3">
+                <p className="text-xs text-mint-800">최소 기준 참여 1명 예상 금액</p>
+                <p className="mt-1 text-lg font-semibold text-ink">
+                  {formatAmountRange(preview.minimumParticipantAmountMin, preview.minimumParticipantAmountMax)}
+                </p>
+                <p className="mt-1 text-xs text-ink/60">
+                  최소 {preview.minimumShareUnit}
+                  {preview.unitLabel} 기준입니다.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-mint-100 bg-mint-50 px-4 py-3">
+                <p className="text-xs text-mint-800">최소 단위 기준 최대 참여자 수</p>
+                <p className="mt-1 text-lg font-semibold text-ink">{preview.maxParticipantSlots}명</p>
+                <p className="mt-1 text-xs text-ink/60">모든 참여자가 최소 단위만 가져간다고 가정한 값입니다.</p>
+              </div>
+
+              <div className="rounded-2xl border border-mint-100 bg-mint-50 px-4 py-3">
+                <p className="text-xs text-mint-800">호스트 수량 미리보기</p>
+                <p className="mt-1 text-lg font-semibold text-ink">
+                  {preview.hostRequestedQuantity}
+                  {preview.unitLabel}
+                </p>
+                <p className="mt-1 text-xs text-ink/60">호스트가 먼저 가져갈 수량입니다.</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {preview.warnings.length > 0 ? (
+                preview.warnings.map((warning) => (
+                  <div
+                    key={warning.code}
+                    className={`rounded-2xl border px-4 py-3 text-sm leading-6 ${getWarningToneClass(warning.tone)}`}
+                  >
+                    {warning.message}
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-2xl border border-mint-100 bg-mint-50 px-4 py-3 text-sm text-mint-800">
+                  현재 입력 기준으로는 참여 조건이 자연스럽게 보입니다.
+                </div>
+              )}
+            </div>
+          </section>
         </>
       )}
 
@@ -614,18 +711,28 @@ function CreateParty() {
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <div className="rounded-2xl border border-mint-100 bg-mint-50 px-4 py-3">
                 <p className="text-xs text-mint-800">총 가격</p>
                 <p className="mt-1 text-lg font-semibold text-ink">{formatCurrency(Number(form.totalPrice) || 0)}</p>
               </div>
               <div className="rounded-2xl border border-mint-100 bg-mint-50 px-4 py-3">
-                <p className="text-xs text-mint-800">개당 예상 가격</p>
-                <p className="mt-1 text-lg font-semibold text-ink">{formatCurrency(perUnit)}</p>
+                <p className="text-xs text-mint-800">1단위 기준 예상 금액</p>
+                <p className="mt-1 text-lg font-semibold text-ink">
+                  {formatAmountRange(preview.baseUnitAmount, preview.unitAmountMax)}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-mint-100 bg-mint-50 px-4 py-3">
+                <p className="text-xs text-mint-800">최소 기준 참여 1명 예상 금액</p>
+                <p className="mt-1 text-lg font-semibold text-ink">
+                  {formatAmountRange(preview.minimumParticipantAmountMin, preview.minimumParticipantAmountMax)}
+                </p>
               </div>
               <div className="rounded-2xl border border-mint-100 bg-mint-50 px-4 py-3">
                 <p className="text-xs text-mint-800">호스트 예상 부담금</p>
-                <p className="mt-1 text-lg font-semibold text-ink">{formatCurrency(hostExpected)}</p>
+                <p className="mt-1 text-lg font-semibold text-ink">
+                  {formatAmountRange(preview.hostExpectedAmountMin, preview.hostExpectedAmountMax)}
+                </p>
               </div>
             </div>
 
@@ -633,8 +740,14 @@ function CreateParty() {
               <div className="rounded-2xl border border-ink/10 px-4 py-3 text-sm text-ink/75">
                 <p className="text-xs text-ink/50">소분 기준</p>
                 <p className="mt-1 font-semibold text-ink">
-                  총 {form.totalQuantity}개 · 최소 {form.minimumShareUnit}
-                  {form.unitLabel}
+                  총 {form.totalQuantity}
+                  {preview.unitLabel} · 최소 {form.minimumShareUnit}
+                  {preview.unitLabel}
+                </p>
+                <p className="mt-2 text-xs text-ink/55">
+                  호스트 {preview.hostRequestedQuantity}
+                  {preview.unitLabel} 제외 후 참여자에게 {preview.recruitableQuantity}
+                  {preview.unitLabel}가 열립니다.
                 </p>
               </div>
               <div className="rounded-2xl border border-ink/10 px-4 py-3 text-sm text-ink/75">
@@ -643,8 +756,26 @@ function CreateParty() {
                   {storageOptions.find((option) => option.value === form.storageType)?.label} ·{' '}
                   {packagingOptions.find((option) => option.value === form.packagingType)?.label}
                 </p>
+                <p className="mt-2 text-xs text-ink/55">
+                  {preview.maxParticipantSlots > 0
+                    ? `최소 단위 기준 최대 ${preview.maxParticipantSlots}명까지 자연스럽게 모집할 수 있습니다.`
+                    : '현재 입력 기준으로는 최소 단위 참여자를 더 받기 어렵습니다.'}
+                </p>
               </div>
             </div>
+
+            {preview.warnings.length > 0 && (
+              <div className="space-y-2">
+                {preview.warnings.map((warning) => (
+                  <div
+                    key={`summary-${warning.code}`}
+                    className={`rounded-2xl border px-4 py-3 text-sm leading-6 ${getWarningToneClass(warning.tone)}`}
+                  >
+                    {warning.message}
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div className="rounded-2xl border border-ink/10 px-4 py-3 text-sm text-ink/75">
               <p className="text-xs text-ink/50">거래 안내</p>

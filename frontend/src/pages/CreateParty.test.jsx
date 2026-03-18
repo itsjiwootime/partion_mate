@@ -127,4 +127,48 @@ describe('CreateParty', () => {
       expect(screen.getByText('지점 상세')).toBeInTheDocument();
     });
   });
+
+  it('입력값에_따라_참여_조건_미리보기를_갱신한다', async () => {
+    // given
+    addToastMock.mockReset();
+    api.getNearbyStores.mockReset();
+    api.createParty.mockReset();
+
+    api.getNearbyStores.mockResolvedValue([
+      {
+        id: 1,
+        name: '코스트코 양재점',
+        distance: 1.2,
+      },
+    ]);
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter initialEntries={['/parties/create?storeId=1']}>
+        <Routes>
+          <Route path="/parties/create" element={<CreateParty />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    // when
+    await screen.findByText('파티 기본 정보');
+    await user.type(screen.getByLabelText('제품명'), '올리브 오일 2L');
+    await user.click(screen.getByRole('button', { name: '다음 단계' }));
+
+    await screen.findByText('참여 조건 미리보기');
+    await user.clear(screen.getByLabelText('제품 총 가격'));
+    await user.type(screen.getByLabelText('제품 총 가격'), '25000');
+    await user.clear(screen.getByLabelText('호스트 가져갈 수량'));
+    await user.type(screen.getByLabelText('호스트 가져갈 수량'), '3');
+    await user.clear(screen.getByLabelText('최소 소분 단위'));
+    await user.type(screen.getByLabelText('최소 소분 단위'), '2');
+
+    // then
+    expect(screen.getByText('참여자에게 열리는 수량')).toBeInTheDocument();
+    expect(screen.getByText('1개')).toBeInTheDocument();
+    expect(screen.getByText('12,500원')).toBeInTheDocument();
+    expect(screen.getByText('0명')).toBeInTheDocument();
+    expect(screen.getByText('호스트 수량을 제외하고 남는 1개로는 최소 참여 기준 2개를 채우기 어렵습니다.')).toBeInTheDocument();
+  });
 });
