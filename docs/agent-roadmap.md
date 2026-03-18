@@ -616,12 +616,13 @@
 - ADR: 프로필 수정 가능 범위와 검증 정책을 문서화한다.
 - 구현 메모(2026-03-18): `PATCH /api/users/me`를 추가해 닉네임과 주소를 수정할 수 있게 했고, 닉네임 중복은 `409 CONFLICT`로 막았다. 주소가 바뀌었는데 좌표를 함께 보내지 않으면 기존 저장 좌표를 비워 홈 화면이 잘못된 기준 좌표를 쓰지 않게 했다. `frontend/src/pages/Profile.jsx`는 읽기/편집 모드 전환, 저장/취소 버튼, 저장 성공 후 `AuthContext.refreshProfile()` 호출을 추가해 헤더와 채팅의 전역 사용자명도 즉시 갱신한다. 검증은 `./mvnw -q -Dtest=UserProfileUpdateIntegrationTest,UserProfileControllerTest test`, `frontend npm test -- --run src/pages/Profile.edit.test.jsx src/pages/Profile.notificationSettings.test.jsx`, `frontend npm run build`로 진행했다.
 
-### [ ] E18-2 주소 및 위치 재설정 UX
+### [x] E18-2 주소 및 위치 재설정 UX
 - 목표: 저장 주소와 현재 탐색 기준 위치를 더 명확하게 관리하게 한다.
 - 범위: 주소 검색 재설정, 좌표 재계산, 기본 위치/브라우저 위치 안내, 프로필 연동.
 - 완료 조건: 사용자가 주소 변경 후 홈/지점 탐색 기준이 자연스럽게 갱신된다.
 - 검증: 위치 변경 수동 테스트, 프론트 빌드, API 연동 확인.
 - ADR: 저장 주소와 일시적 브라우저 위치 사용 정책을 문서화한다.
+- 구현 메모(2026-03-18): `frontend/src/utils/addressLocation.js`를 추가해 카카오 주소 검색과 geocode를 프로필 수정에서도 재사용할 수 있게 했다. `frontend/src/pages/Profile.jsx`는 `주소 검색으로 위치 다시 설정` 버튼, 저장된 기준 위치 표시, 수동 주소 입력 시 좌표 초기화 상태 안내를 추가했고, 주소 검색으로 다시 잡은 좌표는 `PATCH /api/users/me` 저장 요청에 함께 보낸다. `frontend/src/pages/Home.jsx`는 저장 좌표가 없을 때 기본 위치 사용 이유와 프로필 이동 CTA, 브라우저 위치 임시 전환 안내를 노출한다. 검증은 `frontend npm test -- --run src/pages/Profile.edit.test.jsx src/pages/Profile.notificationSettings.test.jsx src/pages/Home.locationGuide.test.jsx`, `frontend npm run build`로 진행했다.
 
 ### [ ] E18-3 알림 및 정산 설정
 - 목표: 사용자가 알림 수신과 정산 관련 기본 정보를 스스로 관리할 수 있게 한다.

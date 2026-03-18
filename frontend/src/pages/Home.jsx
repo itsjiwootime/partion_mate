@@ -20,6 +20,7 @@ function Home() {
   const { isAuthed } = useAuth();
   const [currentLocation, setCurrentLocation] = useState('기본 위치');
   const [coordNote, setCoordNote] = useState('');
+  const [locationGuide, setLocationGuide] = useState('');
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -51,7 +52,10 @@ function Home() {
           setCoords({ lat: me.latitude, lon: me.longitude });
           setCurrentLocation('내 주소 기준');
           setCoordNote(`(${me.latitude.toFixed(4)}, ${me.longitude.toFixed(4)})`);
+          setLocationGuide(`${me.address || '저장된 주소'} 기준으로 주변 지점을 보여주고 있습니다.`);
           setUseBrowserLocation(false);
+        } else if (me.address) {
+          setLocationGuide('프로필 주소는 있지만 기준 좌표가 없어 기본 위치를 사용 중입니다. 프로필에서 주소 검색으로 위치를 다시 설정할 수 있습니다.');
         }
       } catch {
         // 무시: 프로필 호출 실패시 기본 좌표 사용
@@ -71,6 +75,11 @@ function Home() {
         setCoords({ lat: pos.coords.latitude, lon: pos.coords.longitude });
         setCurrentLocation('내 위치(브라우저) 기준');
         setCoordNote(`(${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)})`);
+        setLocationGuide(
+          storedCoords
+            ? '현재는 브라우저 위치를 임시 기준으로 보고 있습니다. 버튼으로 내 주소 기준 위치로 돌아갈 수 있습니다.'
+            : '저장된 주소 좌표가 없어 현재는 브라우저 위치를 임시 기준으로 보고 있습니다.',
+        );
         setUseBrowserLocation(true);
       },
       () => setError('위치 접근이 거부되었습니다. 내 주소 기준이나 기본 위치를 사용합니다.'),
@@ -83,11 +92,13 @@ function Home() {
       setCoords(storedCoords);
       setCurrentLocation('내 주소 기준');
       setCoordNote(`(${storedCoords.lat.toFixed(4)}, ${storedCoords.lon.toFixed(4)})`);
+      setLocationGuide('프로필에 저장된 주소 기준 위치로 돌아왔습니다.');
       setUseBrowserLocation(false);
     } else {
       setCoords(DEFAULT_COORDS);
       setCurrentLocation('기본 위치');
       setCoordNote(`(${DEFAULT_COORDS.lat.toFixed(4)}, ${DEFAULT_COORDS.lon.toFixed(4)})`);
+      setLocationGuide('저장된 주소 좌표가 없어 기본 위치를 사용 중입니다. 프로필에서 주소 검색으로 위치를 다시 설정하거나 브라우저 위치를 사용할 수 있습니다.');
       setUseBrowserLocation(false);
     }
   };
@@ -178,6 +189,16 @@ function Home() {
             <ChevronDown size={14} />
           </button>
         </div>
+        {locationGuide && (
+          <div className="mt-3 rounded-2xl border border-ink/10 bg-ink/5 px-4 py-3 text-sm text-ink/70">
+            <p>{locationGuide}</p>
+            {isAuthed && !storedCoords && !useBrowserLocation && (
+              <button type="button" onClick={() => navigate('/me')} className="btn-ghost mt-3 px-0 text-sm">
+                프로필에서 위치 다시 설정
+              </button>
+            )}
+          </div>
+        )}
         <p className="mt-2 section-subtitle">
           가까운 지점에서 함께 구매할 수 있는 파티를 찾아보세요.
         </p>

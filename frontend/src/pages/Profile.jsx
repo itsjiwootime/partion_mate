@@ -13,6 +13,7 @@ import {
   unsubscribeFromWebPush,
 } from '../utils/webPush';
 import { Bell, Heart, Mail, MapPin, ShieldCheck, Star, User } from 'lucide-react';
+import { geocodeAddress, searchAddressWithPostcode } from '../utils/addressLocation';
 
 function formatRating(value) {
   return Number(value ?? 0).toFixed(1);
@@ -60,15 +61,31 @@ function resolvePushSummary({ pushConfigEnabled, pushSupported, permission, curr
   };
 }
 
+function formatCoordinateLabel(latitude, longitude) {
+  if (latitude == null || longitude == null) {
+    return '저장된 위치 좌표 없음';
+  }
+
+  return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+}
+
 function Profile() {
   const { isAuthed, logout, refreshProfile } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
+  const kakaoMapKey = import.meta.env.VITE_KAKAO_MAP_KEY;
   const [user, setUser] = useState(null);
-  const [profileForm, setProfileForm] = useState({ name: '', address: '' });
+  const [profileForm, setProfileForm] = useState({
+    name: '',
+    address: '',
+    latitude: null,
+    longitude: null,
+    coordinateReady: false,
+  });
   const [editingProfile, setEditingProfile] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [locationLoading, setLocationLoading] = useState(false);
   const [error, setError] = useState('');
   const [notificationPreferences, setNotificationPreferences] = useState([]);
   const [settingsLoading, setSettingsLoading] = useState(false);
@@ -99,6 +116,9 @@ function Profile() {
     setProfileForm({
       name: user.name || '',
       address: user.address || '',
+      latitude: user.latitude ?? null,
+      longitude: user.longitude ?? null,
+      coordinateReady: user.latitude != null && user.longitude != null,
     });
   }, [user]);
 
@@ -213,6 +233,13 @@ function Profile() {
     setProfileForm((prev) => ({
       ...prev,
       [key]: event.target.value,
+      ...(key === 'address'
+        ? {
+            latitude: null,
+            longitude: null,
+            coordinateReady: false,
+          }
+        : {}),
     }));
   };
 
@@ -222,7 +249,37 @@ function Profile() {
     setProfileForm({
       name: user?.name || '',
       address: user?.address || '',
+      latitude: user?.latitude ?? null,
+      longitude: user?.longitude ?? null,
+      coordinateReady: user?.latitude != null && user?.longitude != null,
     });
+  };
+
+  const handleOpenAddressSearch = async () => {
+    try {
+      setLocationLoading(true);
+      setError('');
+      const nextAddress = await searchAddressWithPostcode();
+      if (!nextAddress) {
+        return;
+      }
+
+      const coords = await geocodeAddress(nextAddress, kakaoMapKey);
+      setProfileForm((prev) => ({
+        ...prev,
+        address: nextAddress,
+        latitude: Number(coords.latitude),
+        longitude: Number(coords.longitude),
+        coordinateReady: true,
+      }));
+      addToast('주소와 기준 위치를 다시 설정했습니다.', 'success');
+    } catch (e) {
+      const message = e?.message || '주소 검색을 완료하지 못했습니다.';
+      setError(message);
+      addToast(message, 'error');
+    } finally {
+      setLocationLoading(false);
+    }
   };
 
   const handleProfileSave = async (event) => {
@@ -249,6 +306,12 @@ function Profile() {
       const updatedUser = await api.updateMe({
         name: nextName,
         address: nextAddress,
+        ...(profileForm.coordinateReady && profileForm.latitude != null && profileForm.longitude != null
+          ? {
+              latitude: profileForm.latitude,
+              longitude: profileForm.longitude,
+            }
+          : {}),
       });
       setUser(updatedUser);
       await refreshProfile?.();
@@ -332,8 +395,34 @@ function Profile() {
                 <p>{user.address}</p>
               )}
             </div>
-            <div className="rounded-2xl border border-ink/10 bg-ink/5 px-4 py-3 text-xs text-ink/60">
-              주소를 수정하면 저장된 위치 좌표는 초기화될 수 있습니다. 주변 지점 기준 위치 재설정은 다음 단계에서 보강합니다.
+            <div className="rounded-2xl border border-ink/10 bg-ink/5 px-4 py-3 text-xs text-ink/60 space-y-2">
+              <p>
+                저장된 기준 위치: {formatCoordinateLabel(editingProfile ? profileForm.latitude : user.latitude, editingProfile ? profileForm.longitude : user.longitude)}
+              </p>
+              {editingProfile ? (
+                <>
+                  <p>
+                    주소를 직접 수정하면 좌표가 초기화됩니다. 주소 검색으로 다시 잡으면 홈과 주변 지점 기준 위치가 함께 갱신됩니다.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={handleOpenAddressSearch}
+                      className="btn-secondary px-4 py-2 text-sm"
+                      disabled={locationLoading || savingProfile}
+                    >
+                      {locationLoading ? '주소 확인 중...' : '주소 검색으로 위치 다시 설정'}
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-ink/50">
+                    브라우저 위치는 홈에서 임시 탐색 기준으로 사용할 수 있습니다.
+                  </p>
+                </>
+              ) : (
+                <p>
+                  주소와 위치 기준을 다시 맞추려면 프로필 수정에서 주소 검색을 사용하세요. 홈에서는 브라우저 위치로 임시 전환할 수 있습니다.
+                </p>
+              )}
             </div>
             {editingProfile ? (
               <div className="flex gap-2">
