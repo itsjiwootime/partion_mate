@@ -1,5 +1,6 @@
 package com.project.partition_mate.service;
 
+import com.project.partition_mate.domain.ExternalNotificationDelivery;
 import com.project.partition_mate.domain.OutboxEvent;
 import com.project.partition_mate.domain.OutboxEventStatus;
 import com.project.partition_mate.domain.OutboxEventType;
@@ -11,6 +12,7 @@ import com.project.partition_mate.domain.UserNotificationType;
 import com.project.partition_mate.repository.OutboxEventRepository;
 import com.project.partition_mate.repository.PartyRepository;
 import com.project.partition_mate.repository.StoreRepository;
+import com.project.partition_mate.repository.ExternalNotificationDeliveryRepository;
 import com.project.partition_mate.repository.UserNotificationRepository;
 import com.project.partition_mate.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -43,6 +45,9 @@ class NotificationOutboxProcessorIntegrationTest {
     private UserNotificationRepository userNotificationRepository;
 
     @Autowired
+    private ExternalNotificationDeliveryRepository externalNotificationDeliveryRepository;
+
+    @Autowired
     private StoreRepository storeRepository;
 
     @Autowired
@@ -53,6 +58,7 @@ class NotificationOutboxProcessorIntegrationTest {
 
     @AfterEach
     void tearDown() {
+        externalNotificationDeliveryRepository.deleteAll();
         userNotificationRepository.deleteAll();
         outboxEventRepository.deleteAll();
         partyRepository.deleteAll();
@@ -102,9 +108,9 @@ class NotificationOutboxProcessorIntegrationTest {
         // when
         int firstProcessedCount = notificationOutboxProcessor.processPendingEvents(now);
         OutboxEvent firstRetryEvent = outboxEventRepository.findById(invalidEvent.getId()).orElseThrow();
-        int secondProcessedCount = notificationOutboxProcessor.processPendingEvents(now.plusSeconds(30));
+        int secondProcessedCount = notificationOutboxProcessor.processPendingEvents(now.plusMinutes(1));
         OutboxEvent secondRetryEvent = outboxEventRepository.findById(invalidEvent.getId()).orElseThrow();
-        int thirdProcessedCount = notificationOutboxProcessor.processPendingEvents(now.plusMinutes(1));
+        int thirdProcessedCount = notificationOutboxProcessor.processPendingEvents(now.plusMinutes(2));
         OutboxEvent thirdRetryEvent = outboxEventRepository.findById(invalidEvent.getId()).orElseThrow();
 
         // then
@@ -113,11 +119,12 @@ class NotificationOutboxProcessorIntegrationTest {
         assertThat(firstRetryEvent.getNextAttemptAt()).isEqualTo(now.plusMinutes(1));
 
         assertThat(secondProcessedCount).isEqualTo(0);
-        assertThat(secondRetryEvent.getRetryCount()).isEqualTo(1);
+        assertThat(secondRetryEvent.getRetryCount()).isEqualTo(2);
+        assertThat(secondRetryEvent.getStatus()).isEqualTo(OutboxEventStatus.PENDING);
 
         assertThat(thirdProcessedCount).isEqualTo(0);
-        assertThat(thirdRetryEvent.getRetryCount()).isEqualTo(2);
-        assertThat(thirdRetryEvent.getStatus()).isEqualTo(OutboxEventStatus.PENDING);
+        assertThat(thirdRetryEvent.getRetryCount()).isEqualTo(3);
+        assertThat(thirdRetryEvent.getStatus()).isEqualTo(OutboxEventStatus.FAILED);
         assertThat(userNotificationRepository.findAll()).isEmpty();
     }
 
@@ -156,6 +163,39 @@ class NotificationOutboxProcessorIntegrationTest {
                 .hasSize(1)
                 .extracting(UserNotification::getType)
                 .containsExactly(UserNotificationType.PARTY_JOIN_CONFIRMED);
+    }
+
+    @Test
+    void 외부구독이_없으면_external_delivery를_생성하지_않는다() {
+        // given
+        LocalDateTime now = LocalDateTime.now();
+        Store store = storeRepository.saveAndFlush(createStore());
+        User user = userRepository.saveAndFlush(createUser("delivery-member"));
+        Party party = partyRepository.saveAndFlush(new Party(
+                "외부 발송 중복 테스트",
+                "세제",
+                15000,
+                store,
+                2,
+                "https://open.kakao.com/o/test",
+                now.plusHours(2)
+        ));
+        notificationOutboxService.publishWaitingPromoted(party, user, 1);
+        OutboxEvent event = outboxEventRepository.findAll().getFirst();
+        LocalDateTime processingTime = event.getNextAttemptAt().plusSeconds(1);
+
+        // when
+        notificationOutboxProcessor.processPendingEvents(processingTime);
+        event = outboxEventRepository.findById(event.getId()).orElseThrow();
+        ReflectionTestUtils.setField(event, "status", OutboxEventStatus.PENDING);
+        ReflectionTestUtils.setField(event, "nextAttemptAt", processingTime.plusMinutes(1));
+        ReflectionTestUtils.setField(event, "processedAt", null);
+        outboxEventRepository.saveAndFlush(event);
+        notificationOutboxProcessor.processPendingEvents(processingTime.plusMinutes(1));
+
+        // then
+        assertThat(externalNotificationDeliveryRepository.findAll())
+                .hasSize(0);
     }
 
     private Store createStore() {

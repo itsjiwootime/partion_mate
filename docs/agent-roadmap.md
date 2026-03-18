@@ -546,12 +546,13 @@
 - ADR: 알림 설정 범위와 딥링크 정책을 문서화한다.
 - 구현 메모(2026-03-18): `user_notification_preference` 엔티티와 `GET/PUT /api/users/me/notification-preferences`를 추가해 Web Push 지원 타입별 외부 알림 on/off를 계정 기준으로 저장하게 했다. `GET /api/push-subscriptions/config`로 VAPID 공개 키와 서버 활성화 상태를 노출하고, `WebPushNotificationService`는 사용자 설정을 읽어 `WAITING_PROMOTED`, `PICKUP_UPDATED`, `PARTY_CLOSED`, `WAITING_EXPIRED` 발송 여부를 결정한다. 딥링크는 `NotificationDeepLinkResolver`로 중앙화해 `참여 확정/대기열 승격 -> 채팅방`, `픽업 확정/조건 변경 -> 파티 상세`, `종료/대기열 만료 -> 알림 내역` 규칙을 고정했다. 프론트는 `frontend/public/push-sw.js`와 `frontend/src/utils/webPush.js`를 추가해 Service Worker 등록, 현재 브라우저 연결/해제, 프로필 알림 설정 UI를 구현했고, 알림 내역 화면도 `linkUrl`에 따라 버튼 라벨을 분기했다. 검증은 `./mvnw -q -Dtest=UserNotificationPreferenceServiceIntegrationTest,NotificationDeepLinkResolverTest,UserNotificationPreferenceControllerTest,NotificationOutboxWebPushIntegrationTest test`, `./mvnw -q -DskipTests compile`, `frontend npm test -- --run src/pages/Profile.notificationSettings.test.jsx src/pages/Notifications.deepLink.test.jsx`, `frontend npm run build`로 진행했다.
 
-### [ ] E15-3 외부 알림 실패 처리 및 추적
+### [x] E15-3 외부 알림 실패 처리 및 추적
 - 목표: 외부 알림 실패 시 재시도, 중복 방지, 앱 내 fallback을 명확히 한다.
 - 범위: outbox 상태 확장, 실패 로그, 재시도 정책, 중복 방지 키.
 - 완료 조건: 외부 발송 장애가 있어도 앱 내 알림은 유지되고 실패 상태를 추적할 수 있다.
 - 검증: 실패/재시도 테스트, 중복 방지 테스트.
 - ADR: 외부 알림 실패 대응과 fallback 정책을 문서화한다.
+- 구현 메모(2026-03-18): `outbox_event.status`에 `FAILED`를 추가하고, outbox 워커는 앱 내 알림 저장과 `external_notification_delivery` 생성까지만 책임지도록 분리했다. 외부 delivery는 `delivery_key = outboxEventId:userNotificationId:WEB_PUSH:subscriptionId` 유니크 제약으로 중복 생성을 막고, `PENDING/SENT/FAILED`, `attempt_count`, `last_status_code`, `last_failure_reason`, `last_error_message`를 남긴다. 재시도는 `429`, `5xx`, gateway 예외에만 적용하고 `+1분`, `+5분`, 최종 실패의 3회 정책을 사용한다. `404/410`과 구독 없음, 그 외 `4xx`는 즉시 `FAILED`로 마감하며 `404/410` 구독은 저장소에서 삭제한다. 검증은 `./mvnw -q -Dtest=NotificationOutboxProcessorIntegrationTest,NotificationOutboxWebPushIntegrationTest test`, `./mvnw -q -DskipTests compile`로 진행했다.
 
 ## Epic 16. 파티 탐색 UX 강화
 

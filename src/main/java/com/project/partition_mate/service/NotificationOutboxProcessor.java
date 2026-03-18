@@ -25,27 +25,28 @@ import java.util.List;
 public class NotificationOutboxProcessor {
 
     private static final int RETRY_DELAY_MINUTES = 1;
+    private static final int MAX_RETRY_COUNT = 3;
 
     private final OutboxEventRepository outboxEventRepository;
     private final UserRepository userRepository;
     private final UserNotificationRepository userNotificationRepository;
+    private final ExternalNotificationDeliveryService externalNotificationDeliveryService;
     private final NotificationDeepLinkResolver notificationDeepLinkResolver;
-    private final WebPushNotificationService webPushNotificationService;
     private final ObjectMapper objectMapper;
     private final Clock clock;
 
     public NotificationOutboxProcessor(OutboxEventRepository outboxEventRepository,
                                        UserRepository userRepository,
                                        UserNotificationRepository userNotificationRepository,
+                                       ExternalNotificationDeliveryService externalNotificationDeliveryService,
                                        NotificationDeepLinkResolver notificationDeepLinkResolver,
-                                       WebPushNotificationService webPushNotificationService,
                                        ObjectMapper objectMapper,
                                        Clock clock) {
         this.outboxEventRepository = outboxEventRepository;
         this.userRepository = userRepository;
         this.userNotificationRepository = userNotificationRepository;
+        this.externalNotificationDeliveryService = externalNotificationDeliveryService;
         this.notificationDeepLinkResolver = notificationDeepLinkResolver;
-        this.webPushNotificationService = webPushNotificationService;
         this.objectMapper = objectMapper;
         this.clock = clock;
     }
@@ -68,7 +69,11 @@ public class NotificationOutboxProcessor {
                 process(event, now);
                 processedCount++;
             } catch (Exception ex) {
-                event.scheduleRetry(now.plusMinutes(RETRY_DELAY_MINUTES), ex.getMessage());
+                if (event.getRetryCount() + 1 >= MAX_RETRY_COUNT) {
+                    event.markFailed(now, ex.getMessage());
+                } else {
+                    event.scheduleRetry(now.plusMinutes(RETRY_DELAY_MINUTES), ex.getMessage());
+                }
             }
         }
 
@@ -221,21 +226,29 @@ public class NotificationOutboxProcessor {
                                   String linkUrl,
                                   LocalDateTime createdAt) {
         String externalKey = externalKey(event, recipient.getId(), notificationType);
-        if (userNotificationRepository.existsByExternalKey(externalKey)) {
-            return;
-        }
+        UserNotification notification = userNotificationRepository.findByExternalKey(externalKey)
+                .orElseGet(() -> userNotificationRepository.save(
+                        UserNotification.create(
+                                recipient,
+                                notificationType,
+                                title,
+                                message,
+                                linkUrl,
+                                externalKey,
+                                createdAt
+                        )
+                ));
 
-        UserNotification notification = UserNotification.create(
+        externalNotificationDeliveryService.enqueueWebPushDeliveries(
+                event,
+                notification,
                 recipient,
                 notificationType,
                 title,
                 message,
                 linkUrl,
-                externalKey,
                 createdAt
         );
-        userNotificationRepository.save(notification);
-        webPushNotificationService.deliver(recipient, notificationType, title, message, linkUrl);
     }
 
     private String externalKey(OutboxEvent event, Long userId, UserNotificationType notificationType) {

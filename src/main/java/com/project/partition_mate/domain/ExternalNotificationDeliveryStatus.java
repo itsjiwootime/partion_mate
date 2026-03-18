@@ -1,7 +1,7 @@
 package com.project.partition_mate.domain;
 
-public enum OutboxEventStatus {
+public enum ExternalNotificationDeliveryStatus {
     PENDING,
-    PROCESSED,
+    SENT,
     FAILED
 }

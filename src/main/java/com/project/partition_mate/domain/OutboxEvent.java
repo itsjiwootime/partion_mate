@@ -92,12 +92,21 @@ public class OutboxEvent {
     public void markProcessed(LocalDateTime processedAt) {
         this.status = OutboxEventStatus.PROCESSED;
         this.processedAt = Objects.requireNonNull(processedAt, "processedAt은 필수입니다.");
+        this.nextAttemptAt = processedAt;
         this.lastError = null;
     }
 
     public void scheduleRetry(LocalDateTime nextAttemptAt, String lastError) {
+        this.status = OutboxEventStatus.PENDING;
         this.retryCount += 1;
         this.nextAttemptAt = Objects.requireNonNull(nextAttemptAt, "nextAttemptAt은 필수입니다.");
+        this.lastError = abbreviate(lastError);
+    }
+
+    public void markFailed(LocalDateTime failedAt, String lastError) {
+        this.status = OutboxEventStatus.FAILED;
+        this.retryCount += 1;
+        this.nextAttemptAt = Objects.requireNonNull(failedAt, "failedAt은 필수입니다.");
         this.lastError = abbreviate(lastError);
     }
 

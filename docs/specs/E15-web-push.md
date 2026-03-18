@@ -55,7 +55,8 @@
 - 없는 구독이면 `404 Not Found`
 
 ## 발송 규칙
-- 기존 outbox 워커가 앱 내 알림을 저장한 직후 Web Push를 best-effort로 보낸다.
+- outbox 워커는 앱 내 알림을 저장한 뒤 `external_notification_delivery` 작업을 생성한다.
+- 실제 Web Push 발송과 재시도는 별도 delivery 스케줄러가 처리한다.
 - 외부 푸시 대상 알림 타입
   - `WAITING_PROMOTED`
   - `PICKUP_UPDATED`
@@ -84,5 +85,4 @@
 - `url` 값은 `E15-2` 딥링크 정책에 따라 타입별로 `채팅방`, `파티 상세`, `알림 내역` 목적지로 달라질 수 있다.
 
 ## 현재 한계
-- 외부 푸시 실패는 로그만 남기고 outbox 재시도 사유로 승격하지 않는다.
-- `404`, `410` 응답을 준 구독은 즉시 삭제하지만, 그 외 실패 추적과 재시도 정책은 `E15-3`에서 다룬다.
+- 외부 발송 실패 상태는 `external_notification_delivery`에 남지만, 이를 조회하는 운영 API는 아직 없다.

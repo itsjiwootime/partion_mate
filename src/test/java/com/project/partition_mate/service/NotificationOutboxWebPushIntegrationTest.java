@@ -1,5 +1,7 @@
 package com.project.partition_mate.service;
 
+import com.project.partition_mate.domain.ExternalNotificationDelivery;
+import com.project.partition_mate.domain.ExternalNotificationDeliveryStatus;
 import com.project.partition_mate.domain.OutboxEvent;
 import com.project.partition_mate.domain.OutboxEventType;
 import com.project.partition_mate.domain.PackagingType;
@@ -14,6 +16,7 @@ import com.project.partition_mate.domain.UserNotificationType;
 import com.project.partition_mate.domain.WebPushSubscription;
 import com.project.partition_mate.dto.ConfirmPickupScheduleRequest;
 import com.project.partition_mate.repository.OutboxEventRepository;
+import com.project.partition_mate.repository.ExternalNotificationDeliveryRepository;
 import com.project.partition_mate.repository.PartyMemberRepository;
 import com.project.partition_mate.repository.PartyRepository;
 import com.project.partition_mate.repository.StoreRepository;
@@ -68,6 +71,9 @@ class NotificationOutboxWebPushIntegrationTest {
     private NotificationOutboxProcessor notificationOutboxProcessor;
 
     @Autowired
+    private ExternalNotificationDeliveryService externalNotificationDeliveryService;
+
+    @Autowired
     private WebPushSubscriptionRepository webPushSubscriptionRepository;
 
     @Autowired
@@ -75,6 +81,9 @@ class NotificationOutboxWebPushIntegrationTest {
 
     @Autowired
     private OutboxEventRepository outboxEventRepository;
+
+    @Autowired
+    private ExternalNotificationDeliveryRepository externalNotificationDeliveryRepository;
 
     @Autowired
     private UserNotificationRepository userNotificationRepository;
@@ -101,6 +110,7 @@ class NotificationOutboxWebPushIntegrationTest {
     void tearDown() {
         SecurityContextHolder.clearContext();
         recordingWebPushGateway.reset();
+        externalNotificationDeliveryRepository.deleteAll();
         userNotificationRepository.deleteAll();
         outboxEventRepository.deleteAll();
         userNotificationPreferenceRepository.deleteAll();
@@ -127,15 +137,21 @@ class NotificationOutboxWebPushIntegrationTest {
         ));
         saveSubscription(user, "https://push.example.com/subscriptions/promoted");
         notificationOutboxService.publishWaitingPromoted(party, user, 1);
+        LocalDateTime processingTime = outboxEventRepository.findAll().getFirst().getNextAttemptAt().plusSeconds(1);
 
         // when
-        int processedCount = notificationOutboxProcessor.processPendingEvents(LocalDateTime.now());
+        int processedCount = notificationOutboxProcessor.processPendingEvents(processingTime);
+        int deliveryProcessedCount = externalNotificationDeliveryService.processPendingDeliveries(processingTime);
 
         // then
         assertThat(processedCount).isEqualTo(1);
+        assertThat(deliveryProcessedCount).isEqualTo(1);
         assertThat(userNotificationRepository.findAll())
                 .extracting(UserNotification::getType)
                 .containsExactly(UserNotificationType.WAITING_PROMOTED);
+        assertThat(externalNotificationDeliveryRepository.findAll())
+                .extracting(ExternalNotificationDelivery::getStatus)
+                .containsExactly(ExternalNotificationDeliveryStatus.SENT);
         assertThat(recordingWebPushGateway.attempts).hasSize(1);
         assertThat(recordingWebPushGateway.attempts.getFirst().payloadJson()).contains("\"type\":\"WAITING_PROMOTED\"");
         assertThat(recordingWebPushGateway.attempts.getFirst().payloadJson()).contains("\"url\":\"/chat/" + party.getId() + "\"");
@@ -153,10 +169,13 @@ class NotificationOutboxWebPushIntegrationTest {
 
         // when
         partyService.confirmPickupSchedule(party.getId(), pickupRequest("강남역 1번 출구", LocalDateTime.now().plusHours(5)));
-        int processedCount = notificationOutboxProcessor.processPendingEvents(LocalDateTime.now());
+        LocalDateTime processingTime = outboxEventRepository.findAll().getFirst().getNextAttemptAt().plusSeconds(1);
+        int processedCount = notificationOutboxProcessor.processPendingEvents(processingTime);
+        int deliveryProcessedCount = externalNotificationDeliveryService.processPendingDeliveries(processingTime);
 
         // then
         assertThat(processedCount).isEqualTo(1);
+        assertThat(deliveryProcessedCount).isEqualTo(1);
         assertThat(outboxEventRepository.findAll())
                 .extracting(OutboxEvent::getEventType)
                 .containsExactly(OutboxEventType.PICKUP_UPDATED);
@@ -185,12 +204,17 @@ class NotificationOutboxWebPushIntegrationTest {
         saveSubscription(user, endpoint);
         recordingWebPushGateway.withStatus(endpoint, 410);
         notificationOutboxService.publishWaitingPromoted(party, user, 1);
+        LocalDateTime processingTime = outboxEventRepository.findAll().getFirst().getNextAttemptAt().plusSeconds(1);
 
         // when
-        notificationOutboxProcessor.processPendingEvents(LocalDateTime.now());
+        notificationOutboxProcessor.processPendingEvents(processingTime);
+        externalNotificationDeliveryService.processPendingDeliveries(processingTime);
 
         // then
         assertThat(webPushSubscriptionRepository.findAll()).isEmpty();
+        assertThat(externalNotificationDeliveryRepository.findAll())
+                .extracting(ExternalNotificationDelivery::getStatus)
+                .containsExactly(ExternalNotificationDeliveryStatus.FAILED);
     }
 
     @Test
@@ -212,15 +236,96 @@ class NotificationOutboxWebPushIntegrationTest {
                 UserNotificationPreference.create(user, UserNotificationType.WAITING_PROMOTED, false, LocalDateTime.now())
         );
         notificationOutboxService.publishWaitingPromoted(party, user, 1);
+        LocalDateTime processingTime = outboxEventRepository.findAll().getFirst().getNextAttemptAt().plusSeconds(1);
 
         // when
-        notificationOutboxProcessor.processPendingEvents(LocalDateTime.now());
+        notificationOutboxProcessor.processPendingEvents(processingTime);
+        int deliveryProcessedCount = externalNotificationDeliveryService.processPendingDeliveries(processingTime);
 
         // then
         assertThat(userNotificationRepository.findAll())
                 .extracting(UserNotification::getType)
                 .containsExactly(UserNotificationType.WAITING_PROMOTED);
+        assertThat(deliveryProcessedCount).isEqualTo(0);
         assertThat(recordingWebPushGateway.attempts).isEmpty();
+        assertThat(externalNotificationDeliveryRepository.findAll()).isEmpty();
+    }
+
+    @Test
+    void 외부발송이_실패하면_앱내알림은_유지되고_재시도후_failed로_남는다() {
+        // given
+        LocalDateTime now = LocalDateTime.now();
+        Store store = storeRepository.saveAndFlush(createStore("재시도 지점"));
+        User user = userRepository.saveAndFlush(createUser("member"));
+        Party party = partyRepository.saveAndFlush(new Party(
+                "재시도 테스트",
+                "세제",
+                15000,
+                store,
+                2,
+                "https://open.kakao.com/o/push",
+                now.plusHours(2)
+        ));
+        String endpoint = "https://push.example.com/subscriptions/retry";
+        saveSubscription(user, endpoint);
+        recordingWebPushGateway.withStatus(endpoint, 503);
+        notificationOutboxService.publishWaitingPromoted(party, user, 1);
+        LocalDateTime processingTime = outboxEventRepository.findAll().getFirst().getNextAttemptAt().plusSeconds(1);
+
+        // when
+        notificationOutboxProcessor.processPendingEvents(processingTime);
+        int firstDeliveryCount = externalNotificationDeliveryService.processPendingDeliveries(processingTime);
+        int secondDeliveryCount = externalNotificationDeliveryService.processPendingDeliveries(processingTime.plusMinutes(1));
+        int thirdDeliveryCount = externalNotificationDeliveryService.processPendingDeliveries(processingTime.plusMinutes(6));
+
+        // then
+        assertThat(firstDeliveryCount).isEqualTo(1);
+        assertThat(secondDeliveryCount).isEqualTo(1);
+        assertThat(thirdDeliveryCount).isEqualTo(1);
+        assertThat(userNotificationRepository.findAll())
+                .extracting(UserNotification::getType)
+                .containsExactly(UserNotificationType.WAITING_PROMOTED);
+        assertThat(outboxEventRepository.findAll())
+                .extracting(OutboxEvent::getStatus)
+                .containsExactly(com.project.partition_mate.domain.OutboxEventStatus.PROCESSED);
+        assertThat(externalNotificationDeliveryRepository.findAll())
+                .hasSize(1)
+                .extracting(ExternalNotificationDelivery::getStatus)
+                .containsExactly(ExternalNotificationDeliveryStatus.FAILED);
+        assertThat(recordingWebPushGateway.attempts).hasSize(3);
+    }
+
+    @Test
+    void 같은_outbox를_다시_처리해도_external_delivery_key로_중복생성을_막는다() {
+        // given
+        LocalDateTime now = LocalDateTime.now();
+        Store store = storeRepository.saveAndFlush(createStore("중복 방지 지점"));
+        User user = userRepository.saveAndFlush(createUser("member"));
+        Party party = partyRepository.saveAndFlush(new Party(
+                "중복 방지 테스트",
+                "휴지",
+                20000,
+                store,
+                2,
+                "https://open.kakao.com/o/push",
+                now.plusHours(3)
+        ));
+        saveSubscription(user, "https://push.example.com/subscriptions/dedup");
+        notificationOutboxService.publishWaitingPromoted(party, user, 1);
+        OutboxEvent event = outboxEventRepository.findAll().getFirst();
+        LocalDateTime processingTime = event.getNextAttemptAt().plusSeconds(1);
+
+        // when
+        notificationOutboxProcessor.processPendingEvents(processingTime);
+        event = outboxEventRepository.findById(event.getId()).orElseThrow();
+        ReflectionTestUtils.setField(event, "status", com.project.partition_mate.domain.OutboxEventStatus.PENDING);
+        ReflectionTestUtils.setField(event, "nextAttemptAt", processingTime.plusMinutes(1));
+        ReflectionTestUtils.setField(event, "processedAt", null);
+        outboxEventRepository.saveAndFlush(event);
+        notificationOutboxProcessor.processPendingEvents(processingTime.plusMinutes(1));
+
+        // then
+        assertThat(externalNotificationDeliveryRepository.findAll()).hasSize(1);
     }
 
     private Store createStore(String name) {
