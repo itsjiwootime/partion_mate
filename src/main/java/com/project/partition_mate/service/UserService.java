@@ -4,6 +4,8 @@ import com.project.partition_mate.domain.WaitingQueueEntry;
 import com.project.partition_mate.domain.WaitingQueueStatus;
 import com.project.partition_mate.domain.User;
 import com.project.partition_mate.domain.PartyMember;
+import com.project.partition_mate.dto.NotificationPreferenceResponse;
+import com.project.partition_mate.dto.UpdateNotificationPreferencesRequest;
 import com.project.partition_mate.dto.UserNotificationResponse;
 import com.project.partition_mate.dto.MyJoinedPartyResponse;
 import com.project.partition_mate.dto.ReviewResponse;
@@ -32,6 +34,7 @@ public class UserService {
     private final WaitingQueueRepository waitingQueueRepository;
     private final UserNotificationRepository userNotificationRepository;
     private final TrustScoreService trustScoreService;
+    private final UserNotificationPreferenceService userNotificationPreferenceService;
 
     public User getUserByEmail(String email) {
 
@@ -178,6 +181,15 @@ public class UserService {
         return userNotificationRepository.findAllByUserOrderByCreatedAtDesc(user).stream()
                 .map(UserNotificationResponse::from)
                 .toList();
+    }
+
+    public List<NotificationPreferenceResponse> getNotificationPreferences(User user) {
+        return userNotificationPreferenceService.getPreferences(user);
+    }
+
+    public List<NotificationPreferenceResponse> updateNotificationPreferences(User user,
+                                                                              UpdateNotificationPreferencesRequest request) {
+        return userNotificationPreferenceService.updatePreferences(user, request);
     }
 
     public TrustSummaryResponse getTrustSummary(User user) {

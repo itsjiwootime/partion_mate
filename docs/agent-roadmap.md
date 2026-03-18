@@ -538,12 +538,13 @@
 - ADR: 외부 알림 1차 채널로 Web Push를 선택한 이유를 문서화한다.
 - 구현 메모(2026-03-18): `web_push_subscription` 엔티티와 `PUT/GET/DELETE /api/push-subscriptions`를 추가해 브라우저 구독을 사용자별로 저장할 수 있게 했다. `NotificationOutboxProcessor`는 앱 내 알림을 저장한 직후 `WebPushNotificationService`를 통해 `WAITING_PROMOTED`, `PICKUP_UPDATED`, `PARTY_CLOSED`, `WAITING_EXPIRED` 타입만 Web Push로 best-effort 발송하고, `404/410`을 돌려준 구독은 즉시 삭제한다. 또한 픽업 일정 확정 시 `PICKUP_UPDATED` outbox 이벤트와 앱 내 알림을 새로 생성하도록 연결했다. `WebPushSubscriptionServiceIntegrationTest`, `NotificationOutboxWebPushIntegrationTest`, `NotificationOutboxProcessorIntegrationTest`와 `./mvnw -q -DskipTests compile`로 저장/발송/회귀를 검증했다.
 
-### [ ] E15-2 알림 설정 및 딥링크
+### [x] E15-2 알림 설정 및 딥링크
 - 목표: 사용자가 어떤 외부 알림을 받을지 선택하고 클릭 시 정확한 화면으로 이동하게 한다.
 - 범위: 사용자 알림 설정 모델, 설정 API, 딥링크 규칙, 프론트 설정 화면 연동.
 - 완료 조건: 알림 종류별 on/off가 저장되고 외부 알림에서 상세/채팅/알림 화면으로 복귀한다.
 - 검증: 설정 저장 테스트, 딥링크 라우팅 확인, 프론트 빌드.
 - ADR: 알림 설정 범위와 딥링크 정책을 문서화한다.
+- 구현 메모(2026-03-18): `user_notification_preference` 엔티티와 `GET/PUT /api/users/me/notification-preferences`를 추가해 Web Push 지원 타입별 외부 알림 on/off를 계정 기준으로 저장하게 했다. `GET /api/push-subscriptions/config`로 VAPID 공개 키와 서버 활성화 상태를 노출하고, `WebPushNotificationService`는 사용자 설정을 읽어 `WAITING_PROMOTED`, `PICKUP_UPDATED`, `PARTY_CLOSED`, `WAITING_EXPIRED` 발송 여부를 결정한다. 딥링크는 `NotificationDeepLinkResolver`로 중앙화해 `참여 확정/대기열 승격 -> 채팅방`, `픽업 확정/조건 변경 -> 파티 상세`, `종료/대기열 만료 -> 알림 내역` 규칙을 고정했다. 프론트는 `frontend/public/push-sw.js`와 `frontend/src/utils/webPush.js`를 추가해 Service Worker 등록, 현재 브라우저 연결/해제, 프로필 알림 설정 UI를 구현했고, 알림 내역 화면도 `linkUrl`에 따라 버튼 라벨을 분기했다. 검증은 `./mvnw -q -Dtest=UserNotificationPreferenceServiceIntegrationTest,NotificationDeepLinkResolverTest,UserNotificationPreferenceControllerTest,NotificationOutboxWebPushIntegrationTest test`, `./mvnw -q -DskipTests compile`, `frontend npm test -- --run src/pages/Profile.notificationSettings.test.jsx src/pages/Notifications.deepLink.test.jsx`, `frontend npm run build`로 진행했다.
 
 ### [ ] E15-3 외부 알림 실패 처리 및 추적
 - 목표: 외부 알림 실패 시 재시도, 중복 방지, 앱 내 fallback을 명확히 한다.

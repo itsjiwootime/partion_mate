@@ -10,23 +10,15 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.EnumSet;
 import java.util.List;
-import java.util.Set;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class WebPushNotificationService {
 
-    private static final Set<UserNotificationType> EXTERNAL_PUSH_TYPES = EnumSet.of(
-            UserNotificationType.WAITING_PROMOTED,
-            UserNotificationType.PICKUP_UPDATED,
-            UserNotificationType.PARTY_CLOSED,
-            UserNotificationType.WAITING_EXPIRED
-    );
-
     private final WebPushSubscriptionRepository webPushSubscriptionRepository;
+    private final UserNotificationPreferenceService userNotificationPreferenceService;
     private final WebPushGateway webPushGateway;
     private final ObjectMapper objectMapper;
 
@@ -35,7 +27,11 @@ public class WebPushNotificationService {
                         String title,
                         String message,
                         String linkUrl) {
-        if (!EXTERNAL_PUSH_TYPES.contains(notificationType)) {
+        if (!notificationType.supportsWebPush()) {
+            return;
+        }
+
+        if (!userNotificationPreferenceService.isWebPushEnabled(recipient, notificationType)) {
             return;
         }
 

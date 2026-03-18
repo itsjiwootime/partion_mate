@@ -9,6 +9,7 @@ import com.project.partition_mate.domain.StorageType;
 import com.project.partition_mate.domain.Store;
 import com.project.partition_mate.domain.User;
 import com.project.partition_mate.domain.UserNotification;
+import com.project.partition_mate.domain.UserNotificationPreference;
 import com.project.partition_mate.domain.UserNotificationType;
 import com.project.partition_mate.domain.WebPushSubscription;
 import com.project.partition_mate.dto.ConfirmPickupScheduleRequest;
@@ -17,6 +18,7 @@ import com.project.partition_mate.repository.PartyMemberRepository;
 import com.project.partition_mate.repository.PartyRepository;
 import com.project.partition_mate.repository.StoreRepository;
 import com.project.partition_mate.repository.UserNotificationRepository;
+import com.project.partition_mate.repository.UserNotificationPreferenceRepository;
 import com.project.partition_mate.repository.UserRepository;
 import com.project.partition_mate.repository.WebPushSubscriptionRepository;
 import com.project.partition_mate.security.CustomUserDetails;
@@ -78,6 +80,9 @@ class NotificationOutboxWebPushIntegrationTest {
     private UserNotificationRepository userNotificationRepository;
 
     @Autowired
+    private UserNotificationPreferenceRepository userNotificationPreferenceRepository;
+
+    @Autowired
     private PartyService partyService;
 
     @Autowired
@@ -98,6 +103,7 @@ class NotificationOutboxWebPushIntegrationTest {
         recordingWebPushGateway.reset();
         userNotificationRepository.deleteAll();
         outboxEventRepository.deleteAll();
+        userNotificationPreferenceRepository.deleteAll();
         webPushSubscriptionRepository.deleteAll();
         partyMemberRepository.deleteAll();
         partyRepository.deleteAll();
@@ -132,7 +138,7 @@ class NotificationOutboxWebPushIntegrationTest {
                 .containsExactly(UserNotificationType.WAITING_PROMOTED);
         assertThat(recordingWebPushGateway.attempts).hasSize(1);
         assertThat(recordingWebPushGateway.attempts.getFirst().payloadJson()).contains("\"type\":\"WAITING_PROMOTED\"");
-        assertThat(recordingWebPushGateway.attempts.getFirst().payloadJson()).contains("\"url\":\"/parties/" + party.getId() + "\"");
+        assertThat(recordingWebPushGateway.attempts.getFirst().payloadJson()).contains("\"url\":\"/chat/" + party.getId() + "\"");
     }
 
     @Test
@@ -185,6 +191,36 @@ class NotificationOutboxWebPushIntegrationTest {
 
         // then
         assertThat(webPushSubscriptionRepository.findAll()).isEmpty();
+    }
+
+    @Test
+    void 웹푸시_설정이_off면_앱내알림만_저장하고_web_push는_보내지_않는다() {
+        // given
+        Store store = storeRepository.saveAndFlush(createStore("설정 off 지점"));
+        User user = userRepository.saveAndFlush(createUser("member"));
+        Party party = partyRepository.saveAndFlush(new Party(
+                "설정 off 테스트",
+                "세제",
+                15000,
+                store,
+                2,
+                "https://open.kakao.com/o/push",
+                LocalDateTime.now().plusHours(2)
+        ));
+        saveSubscription(user, "https://push.example.com/subscriptions/off");
+        userNotificationPreferenceRepository.saveAndFlush(
+                UserNotificationPreference.create(user, UserNotificationType.WAITING_PROMOTED, false, LocalDateTime.now())
+        );
+        notificationOutboxService.publishWaitingPromoted(party, user, 1);
+
+        // when
+        notificationOutboxProcessor.processPendingEvents(LocalDateTime.now());
+
+        // then
+        assertThat(userNotificationRepository.findAll())
+                .extracting(UserNotification::getType)
+                .containsExactly(UserNotificationType.WAITING_PROMOTED);
+        assertThat(recordingWebPushGateway.attempts).isEmpty();
     }
 
     private Store createStore(String name) {

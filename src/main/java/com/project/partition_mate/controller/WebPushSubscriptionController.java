@@ -3,6 +3,7 @@ package com.project.partition_mate.controller;
 import com.project.partition_mate.domain.User;
 import com.project.partition_mate.dto.UpsertWebPushSubscriptionRequest;
 import com.project.partition_mate.dto.WebPushSubscriptionResponse;
+import com.project.partition_mate.dto.WebPushConfigurationResponse;
 import com.project.partition_mate.security.CustomUserDetails;
 import com.project.partition_mate.service.WebPushSubscriptionService;
 import jakarta.validation.Valid;
@@ -35,6 +36,11 @@ public class WebPushSubscriptionController {
     @GetMapping
     public ResponseEntity<List<WebPushSubscriptionResponse>> getMySubscriptions() {
         return ResponseEntity.ok(webPushSubscriptionService.getSubscriptions(getCurrentUser()));
+    }
+
+    @GetMapping("/config")
+    public ResponseEntity<WebPushConfigurationResponse> getConfiguration() {
+        return ResponseEntity.ok(webPushSubscriptionService.getConfiguration());
     }
 
     @DeleteMapping("/{subscriptionId}")

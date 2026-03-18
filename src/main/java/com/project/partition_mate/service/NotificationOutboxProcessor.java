@@ -29,6 +29,7 @@ public class NotificationOutboxProcessor {
     private final OutboxEventRepository outboxEventRepository;
     private final UserRepository userRepository;
     private final UserNotificationRepository userNotificationRepository;
+    private final NotificationDeepLinkResolver notificationDeepLinkResolver;
     private final WebPushNotificationService webPushNotificationService;
     private final ObjectMapper objectMapper;
     private final Clock clock;
@@ -36,12 +37,14 @@ public class NotificationOutboxProcessor {
     public NotificationOutboxProcessor(OutboxEventRepository outboxEventRepository,
                                        UserRepository userRepository,
                                        UserNotificationRepository userNotificationRepository,
+                                       NotificationDeepLinkResolver notificationDeepLinkResolver,
                                        WebPushNotificationService webPushNotificationService,
                                        ObjectMapper objectMapper,
                                        Clock clock) {
         this.outboxEventRepository = outboxEventRepository;
         this.userRepository = userRepository;
         this.userNotificationRepository = userNotificationRepository;
+        this.notificationDeepLinkResolver = notificationDeepLinkResolver;
         this.webPushNotificationService = webPushNotificationService;
         this.objectMapper = objectMapper;
         this.clock = clock;
@@ -99,7 +102,7 @@ public class NotificationOutboxProcessor {
                 UserNotificationType.PARTY_JOIN_CONFIRMED,
                 "파티 참여가 완료되었습니다",
                 partyTitle + " 파티 참여가 확정되었습니다.",
-                "/parties/" + partyId,
+                notificationDeepLinkResolver.resolve(UserNotificationType.PARTY_JOIN_CONFIRMED, partyId),
                 now
         );
     }
@@ -117,7 +120,7 @@ public class NotificationOutboxProcessor {
                 UserNotificationType.WAITING_PROMOTED,
                 "대기열에서 승격되었습니다",
                 partyTitle + " 파티에서 " + requestedQuantity + "개 요청이 참여로 승격되었습니다.",
-                "/parties/" + partyId,
+                notificationDeepLinkResolver.resolve(UserNotificationType.WAITING_PROMOTED, partyId),
                 now
         );
     }
@@ -136,7 +139,7 @@ public class NotificationOutboxProcessor {
                     UserNotificationType.PICKUP_UPDATED,
                     "픽업 일정이 확정되었습니다",
                     partyTitle + " 파티 픽업 일정이 " + pickupPlace + ", " + pickupTime + "로 확정되었습니다.",
-                    "/parties/" + partyId,
+                    notificationDeepLinkResolver.resolve(UserNotificationType.PICKUP_UPDATED, partyId),
                     now
             );
         }
@@ -156,7 +159,7 @@ public class NotificationOutboxProcessor {
                     UserNotificationType.PARTY_UPDATED,
                     "파티 조건이 변경되었습니다",
                     partyTitle + " 파티 조건이 변경되었습니다. " + changeSummary,
-                    "/parties/" + partyId,
+                    notificationDeepLinkResolver.resolve(UserNotificationType.PARTY_UPDATED, partyId),
                     now
             );
         }
@@ -168,7 +171,7 @@ public class NotificationOutboxProcessor {
                     UserNotificationType.PARTY_UPDATED,
                     "대기 중인 파티 조건이 변경되었습니다",
                     partyTitle + " 파티 조건이 변경되었습니다. " + changeSummary,
-                    "/parties/" + partyId,
+                    notificationDeepLinkResolver.resolve(UserNotificationType.PARTY_UPDATED, partyId),
                     now
             );
         }
@@ -190,7 +193,7 @@ public class NotificationOutboxProcessor {
                     closeReason == PartyCloseReason.HOST_CANCELED
                             ? partyTitle + " 파티를 호스트가 취소했습니다."
                             : partyTitle + " 파티가 마감 시간에 도달해 종료되었습니다.",
-                    "/parties/" + partyId,
+                    notificationDeepLinkResolver.resolve(UserNotificationType.PARTY_CLOSED, partyId),
                     now
             );
         }
@@ -204,7 +207,7 @@ public class NotificationOutboxProcessor {
                     closeReason == PartyCloseReason.HOST_CANCELED
                             ? partyTitle + " 파티를 호스트가 취소해 대기열이 종료되었습니다."
                             : partyTitle + " 파티가 종료되어 대기열이 만료되었습니다.",
-                    "/parties/" + partyId,
+                    notificationDeepLinkResolver.resolve(UserNotificationType.WAITING_EXPIRED, partyId),
                     now
             );
         }

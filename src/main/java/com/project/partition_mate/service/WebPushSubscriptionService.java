@@ -1,8 +1,10 @@
 package com.project.partition_mate.service;
 
+import com.project.partition_mate.config.WebPushProperties;
 import com.project.partition_mate.domain.User;
 import com.project.partition_mate.domain.WebPushSubscription;
 import com.project.partition_mate.dto.UpsertWebPushSubscriptionRequest;
+import com.project.partition_mate.dto.WebPushConfigurationResponse;
 import com.project.partition_mate.dto.WebPushSubscriptionResponse;
 import com.project.partition_mate.exception.BusinessException;
 import com.project.partition_mate.repository.WebPushSubscriptionRepository;
@@ -19,6 +21,7 @@ import java.util.List;
 public class WebPushSubscriptionService {
 
     private final WebPushSubscriptionRepository webPushSubscriptionRepository;
+    private final WebPushProperties webPushProperties;
     private final Clock clock;
 
     @Transactional
@@ -52,6 +55,11 @@ public class WebPushSubscriptionService {
         return webPushSubscriptionRepository.findAllByUserOrderByUpdatedAtDesc(user).stream()
                 .map(WebPushSubscriptionResponse::from)
                 .toList();
+    }
+
+    public WebPushConfigurationResponse getConfiguration() {
+        boolean enabled = webPushProperties.isEnabled() && webPushProperties.hasCredentials();
+        return WebPushConfigurationResponse.of(enabled, enabled ? webPushProperties.getPublicKey() : "");
     }
 
     @Transactional

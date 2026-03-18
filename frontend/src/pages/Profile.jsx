@@ -2,19 +2,81 @@ import { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { LoadingState } from '../components/Feedback';
-import { Mail, MapPin, ShieldCheck, Star, User } from 'lucide-react';
+import {
+  getCurrentPushSubscription,
+  getNotificationPermissionState,
+  isWebPushSupported,
+  serializePushSubscription,
+  subscribeToWebPush,
+  unsubscribeFromWebPush,
+} from '../utils/webPush';
+import { Bell, Mail, MapPin, ShieldCheck, Star, User } from 'lucide-react';
 
 function formatRating(value) {
   return Number(value ?? 0).toFixed(1);
 }
 
+function resolvePushSummary({ pushConfigEnabled, pushSupported, permission, currentBrowserSubscribed, subscriptionCount }) {
+  if (!pushConfigEnabled) {
+    return {
+      title: '브라우저 푸시가 아직 비활성화되어 있습니다.',
+      description: '서버 설정이 준비되면 현재 브라우저를 연결해 외부 알림을 받을 수 있습니다.',
+    };
+  }
+
+  if (!pushSupported) {
+    return {
+      title: '현재 브라우저는 웹 푸시를 지원하지 않습니다.',
+      description: '설정은 계정 기준으로 저장되지만, 이 브라우저에서는 외부 알림을 받을 수 없습니다.',
+    };
+  }
+
+  if (permission === 'denied') {
+    return {
+      title: '브라우저 알림 권한이 차단되어 있습니다.',
+      description: '브라우저 사이트 권한에서 알림을 허용해야 현재 브라우저에서 외부 알림을 받을 수 있습니다.',
+    };
+  }
+
+  if (currentBrowserSubscribed) {
+    return {
+      title: '현재 브라우저가 외부 알림 수신에 연결되어 있습니다.',
+      description: `계정에 연결된 브라우저 ${subscriptionCount}개에서 같은 설정을 사용합니다.`,
+    };
+  }
+
+  if (subscriptionCount > 0) {
+    return {
+      title: '다른 브라우저는 연결되어 있지만 현재 브라우저는 미연결 상태입니다.',
+      description: '이 브라우저도 연결하면 같은 계정 알림 설정으로 외부 푸시를 받을 수 있습니다.',
+    };
+  }
+
+  return {
+    title: '현재 브라우저가 외부 알림 수신에 연결되어 있지 않습니다.',
+    description: '브라우저 연결을 켜면 승격, 픽업 확정, 종료 알림을 앱 밖에서도 받을 수 있습니다.',
+  };
+}
+
 function Profile() {
   const { isAuthed, logout } = useAuth();
+  const { addToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const [user, setUser] = useState(null);
   const [error, setError] = useState('');
+  const [notificationPreferences, setNotificationPreferences] = useState([]);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsError, setSettingsError] = useState('');
+  const [savingPreferenceType, setSavingPreferenceType] = useState(null);
+  const [pushConfigEnabled, setPushConfigEnabled] = useState(false);
+  const [pushConfigPublicKey, setPushConfigPublicKey] = useState('');
+  const [subscriptionCount, setSubscriptionCount] = useState(0);
+  const [currentBrowserSubscribed, setCurrentBrowserSubscribed] = useState(false);
+  const [pushPermission, setPushPermission] = useState(getNotificationPermissionState());
+  const [pushActionLoading, setPushActionLoading] = useState(false);
 
   const fetchMe = useCallback(async () => {
     try {
@@ -26,17 +88,125 @@ function Profile() {
     }
   }, []);
 
+  const fetchNotificationSettings = useCallback(async () => {
+    try {
+      setSettingsLoading(true);
+      setSettingsError('');
+
+      const [preferences, config, subscriptions] = await Promise.all([
+        api.getMyNotificationPreferences(),
+        api.getWebPushConfiguration(),
+        api.getPushSubscriptions(),
+      ]);
+
+      const currentSubscription = await getCurrentPushSubscription().catch(() => null);
+
+      setNotificationPreferences(preferences);
+      setPushConfigEnabled(Boolean(config?.enabled));
+      setPushConfigPublicKey(config?.publicKey ?? '');
+      setSubscriptionCount(Array.isArray(subscriptions) ? subscriptions.length : 0);
+      setCurrentBrowserSubscribed(Boolean(currentSubscription?.endpoint));
+      setPushPermission(getNotificationPermissionState());
+    } catch (e) {
+      setSettingsError('알림 설정을 불러오지 못했습니다.');
+    } finally {
+      setSettingsLoading(false);
+    }
+  }, []);
+
+  const handleTogglePreference = useCallback(
+    async (type, nextValue) => {
+      const previousPreferences = notificationPreferences;
+      const nextPreferences = notificationPreferences.map((preference) =>
+        preference.type === type ? { ...preference, webPushEnabled: nextValue } : preference,
+      );
+
+      setNotificationPreferences(nextPreferences);
+      setSavingPreferenceType(type);
+      setSettingsError('');
+
+      try {
+        const savedPreferences = await api.updateMyNotificationPreferences({
+          preferences: nextPreferences.map((preference) => ({
+            type: preference.type,
+            webPushEnabled: preference.webPushEnabled,
+          })),
+        });
+        setNotificationPreferences(savedPreferences);
+        addToast('알림 설정을 저장했습니다.', 'success');
+      } catch (e) {
+        setNotificationPreferences(previousPreferences);
+        setSettingsError(e?.message || '알림 설정을 저장하지 못했습니다.');
+        addToast(e?.message || '알림 설정을 저장하지 못했습니다.', 'error');
+      } finally {
+        setSavingPreferenceType(null);
+      }
+    },
+    [addToast, notificationPreferences],
+  );
+
+  const enableCurrentBrowserPush = useCallback(async () => {
+    try {
+      setPushActionLoading(true);
+      setSettingsError('');
+      const subscription = await subscribeToWebPush(pushConfigPublicKey);
+      await api.upsertPushSubscription(serializePushSubscription(subscription));
+      await fetchNotificationSettings();
+      addToast('현재 브라우저에서 외부 알림을 받을 수 있게 되었습니다.', 'success');
+    } catch (e) {
+      setSettingsError(e?.message || '현재 브라우저를 외부 알림 수신에 연결하지 못했습니다.');
+      addToast(e?.message || '현재 브라우저를 외부 알림 수신에 연결하지 못했습니다.', 'error');
+    } finally {
+      setPushActionLoading(false);
+    }
+  }, [addToast, fetchNotificationSettings, pushConfigPublicKey]);
+
+  const disableCurrentBrowserPush = useCallback(async () => {
+    try {
+      setPushActionLoading(true);
+      setSettingsError('');
+      const currentSubscription = await getCurrentPushSubscription();
+      const subscriptions = await api.getPushSubscriptions();
+      const matchedSubscription = subscriptions.find(
+        (subscription) => subscription.endpoint === currentSubscription?.endpoint,
+      );
+
+      if (matchedSubscription) {
+        await api.deletePushSubscription(matchedSubscription.id);
+      }
+
+      await unsubscribeFromWebPush();
+      await fetchNotificationSettings();
+      addToast('현재 브라우저의 외부 알림 연결을 해제했습니다.', 'success');
+    } catch (e) {
+      setSettingsError(e?.message || '현재 브라우저 외부 알림 연결을 해제하지 못했습니다.');
+      addToast(e?.message || '현재 브라우저 외부 알림 연결을 해제하지 못했습니다.', 'error');
+    } finally {
+      setPushActionLoading(false);
+    }
+  }, [addToast, fetchNotificationSettings]);
+
   useEffect(() => {
     if (!isAuthed) {
       navigate('/login', { replace: true, state: { from: `${location.pathname}${location.search}` } });
       return;
     }
     fetchMe();
-  }, [fetchMe, isAuthed, location.pathname, location.search, navigate]);
+    fetchNotificationSettings();
+  }, [fetchMe, fetchNotificationSettings, isAuthed, location.pathname, location.search, navigate]);
 
   if (!isAuthed) {
     return null;
   }
+
+  const pushSupported = isWebPushSupported();
+  const pushSummary = resolvePushSummary({
+    pushConfigEnabled,
+    pushSupported,
+    permission: pushPermission,
+    currentBrowserSubscribed,
+    subscriptionCount,
+  });
 
   return (
     <div className="space-y-4">
@@ -71,6 +241,78 @@ function Profile() {
         >
           로그아웃
         </button>
+      </div>
+
+      <div className="card-elevated p-4 space-y-4">
+        <div className="flex items-center gap-2">
+          <Bell size={18} className="text-mint-700" />
+          <h2 className="section-title">알림 설정</h2>
+        </div>
+        <div className="rounded-2xl border border-mint-100 bg-mint-50 px-4 py-3 space-y-2">
+          <p className="text-sm font-semibold text-ink">{pushSummary.title}</p>
+          <p className="text-sm text-ink/70">{pushSummary.description}</p>
+          <p className="text-xs text-ink/55">
+            앱 내 알림은 계속 저장되고, 여기서는 브라우저 푸시 수신 여부만 조정합니다.
+          </p>
+        </div>
+
+        {settingsLoading && <LoadingState message="알림 설정을 불러오는 중..." />}
+        {settingsError && <p className="text-sm text-red-600">{settingsError}</p>}
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={currentBrowserSubscribed ? disableCurrentBrowserPush : enableCurrentBrowserPush}
+            className="btn-secondary px-4 py-2 text-sm"
+            disabled={
+              pushActionLoading ||
+              !pushConfigEnabled ||
+              !pushSupported ||
+              (!currentBrowserSubscribed && pushPermission === 'denied')
+            }
+          >
+            {pushActionLoading
+              ? '처리 중...'
+              : currentBrowserSubscribed
+                ? '현재 브라우저 연결 해제'
+                : '현재 브라우저 연결'}
+          </button>
+          <span className="rounded-full border border-ink/10 px-3 py-2 text-xs text-ink/60">
+            연결된 브라우저 {subscriptionCount}개
+          </span>
+        </div>
+
+        <div className="space-y-3">
+          {notificationPreferences.map((preference) => (
+            <label
+              key={preference.type}
+              className="flex items-center justify-between gap-4 rounded-2xl border border-ink/10 px-4 py-3"
+            >
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-ink">{preference.label}</p>
+                <p className="text-sm text-ink/65">{preference.description}</p>
+                <p className="text-xs text-ink/50">알림 클릭 시 이동: {preference.deepLinkTargetLabel}</p>
+              </div>
+              {preference.webPushSupported ? (
+                <div className="text-right">
+                  <input
+                    type="checkbox"
+                    checked={preference.webPushEnabled}
+                    onChange={(event) => handleTogglePreference(preference.type, event.target.checked)}
+                    disabled={!pushConfigEnabled || savingPreferenceType === preference.type}
+                    aria-label={`${preference.label} 브라우저 푸시`}
+                    className="h-4 w-4 accent-mint-500"
+                  />
+                  <p className="mt-2 text-[11px] text-ink/50">
+                    {savingPreferenceType === preference.type ? '저장 중...' : '브라우저 푸시'}
+                  </p>
+                </div>
+              ) : (
+                <span className="rounded-full bg-ink/5 px-3 py-2 text-xs text-ink/55">앱 내 알림만 지원</span>
+              )}
+            </label>
+          ))}
+        </div>
       </div>
 
       {user?.trustSummary && (

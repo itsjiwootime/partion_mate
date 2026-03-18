@@ -175,4 +175,12 @@ public class BusinessException extends RuntimeException {
     public static BusinessException blockedChatAccessNotAllowed() {
         return new BusinessException("차단 관계가 있는 사용자가 포함된 채팅방에는 접근할 수 없습니다.", HttpStatus.FORBIDDEN);
     }
+
+    public static BusinessException duplicateNotificationPreferenceType() {
+        return new BusinessException("같은 알림 타입 설정을 한 번만 보낼 수 있습니다.", HttpStatus.BAD_REQUEST);
+    }
+
+    public static BusinessException notificationTypeDoesNotSupportWebPush(String notificationLabel) {
+        return new BusinessException(notificationLabel + " 알림은 아직 브라우저 푸시를 지원하지 않습니다.", HttpStatus.BAD_REQUEST);
+    }
 }

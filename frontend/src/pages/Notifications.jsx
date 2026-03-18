@@ -5,6 +5,13 @@ import { api } from '../api/client';
 import { EmptyState, LoadingState } from '../components/Feedback';
 import { useAuth } from '../context/AuthContext';
 
+function resolveActionLabel(linkUrl) {
+  if (!linkUrl) return '';
+  if (linkUrl.startsWith('/chat/')) return '관련 채팅 보기';
+  if (linkUrl === '/notifications') return '알림 내역 보기';
+  return '관련 파티 보기';
+}
+
 function Notifications() {
   const { isAuthed } = useAuth();
   const navigate = useNavigate();
@@ -91,7 +98,7 @@ function Notifications() {
                 onClick={() => navigate(notification.linkUrl)}
                 className="btn-secondary px-3 py-2 text-sm"
               >
-                관련 파티 보기
+                {resolveActionLabel(notification.linkUrl)}
                 <ExternalLink size={14} />
               </button>
             )}

@@ -191,6 +191,12 @@ export const api = {
 
   getMyParties: () => fetchJson('/api/users/me/parties'),
   getMyNotifications: () => fetchJson('/api/users/me/notifications'),
+  getMyNotificationPreferences: () => fetchJson('/api/users/me/notification-preferences'),
+  updateMyNotificationPreferences: (payload) =>
+    fetchJson('/api/users/me/notification-preferences', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
   getMyChatRooms: () => fetchJson('/api/chat/rooms'),
   getChatRoomDetail: (partyId) => fetchJson(`/api/chat/rooms/${partyId}`),
   markChatRoomRead: (partyId) =>
@@ -253,6 +259,18 @@ export const api = {
     fetchJson('/party', {
       method: 'POST',
       body: JSON.stringify(payload),
+    }),
+
+  getWebPushConfiguration: () => fetchJson('/api/push-subscriptions/config'),
+  getPushSubscriptions: () => fetchJson('/api/push-subscriptions'),
+  upsertPushSubscription: (payload) =>
+    fetchJson('/api/push-subscriptions', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+  deletePushSubscription: (subscriptionId) =>
+    fetchJson(`/api/push-subscriptions/${subscriptionId}`, {
+      method: 'DELETE',
     }),
 
   getMe: () => fetchJson('/api/users/me'),
