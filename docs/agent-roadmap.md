@@ -634,12 +634,13 @@
 
 ## Epic 19. 신뢰 및 안전 UX 정리
 
-### [ ] E19-1 신고/차단 진입 UI
+### [x] E19-1 신고/차단 진입 UI
 - 목표: 사용자가 상세/채팅/프로필에서 신고와 차단을 쉽게 찾을 수 있게 한다.
 - 범위: 메뉴 진입점, 확인 모달, 사유 선택 UX, 완료 피드백.
 - 완료 조건: 파티 상세, 채팅, 프로필 중 최소 두 화면에서 신고/차단이 일관되게 노출된다.
 - 검증: 프론트 상호작용 테스트, 수동 플로우 확인, `npm run build`.
 - ADR: 신고/차단 진입점과 마찰 수준을 문서화한다.
+- 구현 메모(2026-03-18): `frontend/src/components/SafetyDialogs.jsx`에 공통 신고 모달과 차단 확인 모달을 추가하고, `frontend/src/pages/PartyDetail.jsx`에는 파티/호스트 신고 및 호스트 차단 진입점을 넣었다. `frontend/src/pages/Chat.jsx`는 헤더의 파티 신고와 타인 메시지별 신고/차단 액션을 추가했고, `frontend/src/pages/Profile.jsx`는 차단 사용자 목록과 최근 신고 내역을 보여주는 `신뢰·안전 관리` 카드를 추가했다. 검증은 `frontend npm test -- --run src/pages/PartyDetail.favorite.test.jsx src/pages/PartyDetail.safety.test.jsx src/pages/Chat.safety.test.jsx src/pages/Profile.edit.test.jsx src/pages/Profile.notificationSettings.test.jsx src/pages/Profile.settlementSettings.test.jsx src/pages/Profile.safetyCenter.test.jsx`, `frontend npm run build`로 진행했다.
 
 ### [ ] E19-2 신뢰 배지 및 경고 문구
 - 목표: 참여 전 위험 신호와 신뢰 정보를 한눈에 이해하게 한다.

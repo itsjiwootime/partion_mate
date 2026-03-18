@@ -191,6 +191,22 @@ export const api = {
 
   getMyParties: () => fetchJson('/api/users/me/parties'),
   getFavoriteParties: () => fetchJson('/api/users/me/favorite-parties'),
+  getBlockedUsers: () => fetchJson('/api/blocks'),
+  blockUser: (payload) =>
+    fetchJson('/api/blocks', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  unblockUser: (targetUserId) =>
+    fetchJson(`/api/blocks/${targetUserId}`, {
+      method: 'DELETE',
+    }),
+  createReport: (payload) =>
+    fetchJson('/api/reports', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  getMyReports: () => fetchJson('/api/reports/me'),
   saveFavoriteParty: (partyId) =>
     fetchJson(`/api/users/me/favorite-parties/${partyId}`, {
       method: 'PUT',

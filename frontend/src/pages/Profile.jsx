@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
+import { ConfirmDialog } from '../components/SafetyDialogs';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { LoadingState } from '../components/Feedback';
@@ -12,8 +13,9 @@ import {
   subscribeToWebPush,
   unsubscribeFromWebPush,
 } from '../utils/webPush';
-import { Bell, Heart, Mail, MapPin, ShieldCheck, Star, User } from 'lucide-react';
+import { Bell, Flag, Heart, Mail, MapPin, ShieldAlert, ShieldCheck, Star, User, UserX } from 'lucide-react';
 import { geocodeAddress, searchAddressWithPostcode } from '../utils/addressLocation';
+import { formatReportTargetSummary } from '../utils/safety';
 
 function formatRating(value) {
   return Number(value ?? 0).toFixed(1);
@@ -99,6 +101,12 @@ function Profile() {
   const [currentBrowserSubscribed, setCurrentBrowserSubscribed] = useState(false);
   const [pushPermission, setPushPermission] = useState(getNotificationPermissionState());
   const [pushActionLoading, setPushActionLoading] = useState(false);
+  const [blockedUsers, setBlockedUsers] = useState([]);
+  const [reports, setReports] = useState([]);
+  const [safetyLoading, setSafetyLoading] = useState(false);
+  const [safetyError, setSafetyError] = useState('');
+  const [safetyActionLoading, setSafetyActionLoading] = useState('');
+  const [pendingUnblockUser, setPendingUnblockUser] = useState(null);
 
   const fetchMe = useCallback(async () => {
     try {
@@ -149,6 +157,20 @@ function Profile() {
       setSettingsError('설정 정보를 불러오지 못했습니다.');
     } finally {
       setSettingsLoading(false);
+    }
+  }, []);
+
+  const fetchSafetyCenter = useCallback(async () => {
+    try {
+      setSafetyLoading(true);
+      setSafetyError('');
+      const [nextBlockedUsers, nextReports] = await Promise.all([api.getBlockedUsers(), api.getMyReports()]);
+      setBlockedUsers(Array.isArray(nextBlockedUsers) ? nextBlockedUsers : []);
+      setReports(Array.isArray(nextReports) ? nextReports : []);
+    } catch (e) {
+      setSafetyError('신뢰·안전 정보를 불러오지 못했습니다.');
+    } finally {
+      setSafetyLoading(false);
     }
   }, []);
 
@@ -262,7 +284,8 @@ function Profile() {
     }
     fetchMe();
     fetchNotificationSettings();
-  }, [fetchMe, fetchNotificationSettings, isAuthed, location.pathname, location.search, navigate]);
+    fetchSafetyCenter();
+  }, [fetchMe, fetchNotificationSettings, fetchSafetyCenter, isAuthed, location.pathname, location.search, navigate]);
 
   const handleProfileFieldChange = (key) => (event) => {
     setProfileForm((prev) => ({
@@ -378,6 +401,26 @@ function Profile() {
       addToast(message, 'error');
     } finally {
       setSavingSettlementSettings(false);
+    }
+  };
+
+  const handleConfirmUnblock = async () => {
+    if (!pendingUnblockUser) {
+      return;
+    }
+
+    try {
+      setSafetyActionLoading('unblock');
+      await api.unblockUser(pendingUnblockUser.targetUserId);
+      setBlockedUsers((current) => current.filter((userBlock) => userBlock.targetUserId !== pendingUnblockUser.targetUserId));
+      setPendingUnblockUser(null);
+      addToast('차단을 해제했습니다.', 'success');
+    } catch (e) {
+      const message = e?.message || '차단을 해제하지 못했습니다.';
+      setSafetyError(message);
+      addToast(message, 'error');
+    } finally {
+      setSafetyActionLoading('');
     }
   };
 
@@ -644,6 +687,80 @@ function Profile() {
         </form>
       </div>
 
+      <div className="card-elevated p-4 space-y-4">
+        <div className="flex items-center gap-2">
+          <ShieldAlert size={18} className="text-amber-700" />
+          <h2 className="section-title">신뢰·안전 관리</h2>
+        </div>
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-ink/75">
+          파티 상세와 채팅에서 접수한 신고와 차단 상태를 여기서 다시 확인하고 관리할 수 있습니다.
+        </div>
+
+        {safetyLoading && <LoadingState message="신뢰·안전 정보를 불러오는 중..." />}
+        {safetyError && (
+          <div className="space-y-2">
+            <p className="text-sm text-red-600">{safetyError}</p>
+            <button type="button" onClick={fetchSafetyCenter} className="btn-secondary px-4 py-2 text-sm">
+              다시 불러오기
+            </button>
+          </div>
+        )}
+
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-sm font-semibold text-ink">
+            <UserX size={16} className="text-amber-700" />
+            차단한 사용자
+          </div>
+          {!safetyLoading && blockedUsers.length === 0 && (
+            <p className="rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink/60">
+              현재 차단한 사용자가 없습니다.
+            </p>
+          )}
+          {blockedUsers.map((userBlock) => (
+            <div key={userBlock.id} className="flex items-center justify-between gap-3 rounded-2xl border border-ink/10 px-4 py-3">
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-ink">{userBlock.targetUsername}</p>
+                <p className="text-xs text-ink/50">차단 시각 {userBlock.createdAtLabel}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPendingUnblockUser(userBlock)}
+                className="btn-secondary px-4 py-2 text-sm"
+              >
+                차단 해제
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-sm font-semibold text-ink">
+            <Flag size={16} className="text-rose-600" />
+            최근 신고 내역
+          </div>
+          {!safetyLoading && reports.length === 0 && (
+            <p className="rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink/60">
+              아직 접수한 신고가 없습니다.
+            </p>
+          )}
+          {reports.slice(0, 5).map((report) => (
+            <div key={report.id} className="rounded-2xl border border-ink/10 px-4 py-3 space-y-2">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold text-ink">{formatReportTargetSummary(report)}</p>
+                  <p className="text-xs text-ink/50">
+                    {report.targetTypeLabel} · {report.createdAtLabel}
+                  </p>
+                </div>
+                <span className="rounded-full bg-ink/5 px-3 py-1 text-xs font-semibold text-ink/65">{report.statusLabel}</span>
+              </div>
+              <p className="text-sm text-ink/70">사유: {report.reasonTypeLabel}</p>
+              {report.memo && <p className="text-sm leading-6 text-ink/65">{report.memo}</p>}
+            </div>
+          ))}
+        </div>
+      </div>
+
       {user?.trustSummary && (
         <div className="card-elevated p-4 space-y-3">
           <div className="flex items-center gap-2">
@@ -708,6 +825,22 @@ function Profile() {
           ))}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={Boolean(pendingUnblockUser)}
+        title={pendingUnblockUser ? `${pendingUnblockUser.targetUsername}님 차단을 해제할까요?` : ''}
+        description="차단을 해제하면 이후 같은 파티 참여와 채팅 접근이 다시 가능해질 수 있습니다."
+        confirmLabel="차단 해제"
+        notice="차단을 풀면 다시 같은 파티와 채팅에서 만날 수 있습니다. 필요하면 이후에 다시 차단할 수 있습니다."
+        submitting={safetyActionLoading === 'unblock'}
+        onClose={() => {
+          if (safetyActionLoading === 'unblock') {
+            return;
+          }
+          setPendingUnblockUser(null);
+        }}
+        onConfirm={handleConfirmUnblock}
+      />
     </div>
   );
 }

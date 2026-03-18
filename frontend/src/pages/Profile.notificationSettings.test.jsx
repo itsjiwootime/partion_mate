@@ -9,6 +9,9 @@ const { logoutMock, addToastMock, api, webPush } = vi.hoisted(() => ({
   addToastMock: vi.fn(),
   api: {
     getMe: vi.fn(),
+    getBlockedUsers: vi.fn(),
+    getMyReports: vi.fn(),
+    unblockUser: vi.fn(),
     getMyNotificationPreferences: vi.fn(),
     updateMyNotificationPreferences: vi.fn(),
     getMySettlementSettings: vi.fn(),
@@ -48,6 +51,8 @@ describe('Profile notification settings', () => {
     logoutMock.mockReset();
     addToastMock.mockReset();
     api.getMe.mockReset();
+    api.getBlockedUsers.mockReset();
+    api.getMyReports.mockReset();
     api.getMyNotificationPreferences.mockReset();
     api.updateMyNotificationPreferences.mockReset();
     api.getMySettlementSettings.mockReset();
@@ -82,6 +87,8 @@ describe('Profile notification settings', () => {
         webPushEnabled: false,
       },
     ]);
+    api.getBlockedUsers.mockResolvedValue([]);
+    api.getMyReports.mockResolvedValue([]);
     api.updateMyNotificationPreferences.mockResolvedValue([
       {
         type: 'WAITING_PROMOTED',
@@ -142,6 +149,8 @@ describe('Profile notification settings', () => {
     logoutMock.mockReset();
     addToastMock.mockReset();
     api.getMe.mockReset();
+    api.getBlockedUsers.mockReset();
+    api.getMyReports.mockReset();
     api.getMyNotificationPreferences.mockReset();
     api.updateMyNotificationPreferences.mockReset();
     api.getMySettlementSettings.mockReset();
@@ -176,6 +185,8 @@ describe('Profile notification settings', () => {
         webPushEnabled: false,
       },
     ]);
+    api.getBlockedUsers.mockResolvedValue([]);
+    api.getMyReports.mockResolvedValue([]);
     api.updateMyNotificationPreferences.mockResolvedValue([
       {
         type: 'WAITING_PROMOTED',

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Pin, Send, ArrowLeft, ShieldCheck } from 'lucide-react';
+import { Pin, Send, ArrowLeft, Flag, ShieldAlert, ShieldCheck, UserX } from 'lucide-react';
 import { api } from '../api/client';
+import { ConfirmDialog, ReportDialog } from '../components/SafetyDialogs';
 import { connectChatRoom } from '../utils/chatClient';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -37,6 +38,9 @@ function Chat() {
   const [updatingNotice, setUpdatingNotice] = useState(false);
   const [roomsReloadToken, setRoomsReloadToken] = useState(0);
   const [roomReloadToken, setRoomReloadToken] = useState(0);
+  const [safetyActionLoading, setSafetyActionLoading] = useState('');
+  const [reportDialogState, setReportDialogState] = useState(null);
+  const [blockDialogState, setBlockDialogState] = useState(null);
 
   useEffect(() => {
     roomPartyIdsRef.current = new Set(rooms.map((room) => room.partyId));
@@ -281,6 +285,50 @@ function Chat() {
     }
   };
 
+  const handleSubmitReport = async ({ reasonType, memo }) => {
+    if (!reportDialogState) {
+      return;
+    }
+
+    try {
+      setSafetyActionLoading('report');
+      await api.createReport({
+        targetType: reportDialogState.targetType,
+        partyId: selectedPartyId,
+        targetUserId: reportDialogState.targetUserId ?? null,
+        reasonType,
+        memo,
+      });
+      setReportDialogState(null);
+      addToast('신고를 접수했습니다. 운영 검토 후 필요한 조치를 진행합니다.', 'success');
+    } catch (error) {
+      addToast(error.message || '신고를 접수하지 못했습니다.', 'error');
+    } finally {
+      setSafetyActionLoading('');
+    }
+  };
+
+  const handleConfirmBlock = async () => {
+    if (!blockDialogState) {
+      return;
+    }
+
+    try {
+      setSafetyActionLoading('block');
+      await api.blockUser({
+        targetUserId: blockDialogState.targetUserId,
+      });
+      setBlockDialogState(null);
+      addToast(`${blockDialogState.targetUsername}님을 차단했습니다. 이후 같은 파티와 채팅 참여가 제한됩니다.`, 'success');
+      setRoomsReloadToken((current) => current + 1);
+      setRoomReloadToken((current) => current + 1);
+    } catch (error) {
+      addToast(error.message || '사용자를 차단하지 못했습니다.', 'error');
+    } finally {
+      setSafetyActionLoading('');
+    }
+  };
+
   if (!isAuthed) {
     return null;
   }
@@ -381,6 +429,21 @@ function Chat() {
                 <h2 className="text-lg font-semibold text-ink">{roomDetail.partyTitle}</h2>
                 <p className="text-xs text-ink/50">{roomDetail.storeName}</p>
               </div>
+              <button
+                type="button"
+                onClick={() =>
+                  setReportDialogState({
+                    targetType: 'PARTY',
+                    targetUserId: null,
+                    title: '이 파티 채팅을 신고할까요?',
+                    description: '파티 운영이나 대화 흐름 전반에 문제가 있었다면 사유를 선택해 접수해 주세요.',
+                  })
+                }
+                className="btn-secondary px-4 py-2 text-sm"
+              >
+                <Flag size={15} />
+                파티 신고
+              </button>
             </div>
 
             {roomDetail.pinnedNotice && (
@@ -432,15 +495,53 @@ function Chat() {
                             {item.content} · {item.createdAtLabel}
                           </div>
                         ) : (
-                          <div
-                            className={[
-                              'max-w-[80%] rounded-2xl px-4 py-3',
-                              item.mine ? 'bg-mint-600 text-white' : 'border border-ink/10 bg-white text-ink',
-                            ].join(' ')}
-                          >
-                            <p className={`text-xs font-semibold ${item.mine ? 'text-white/80' : 'text-ink/55'}`}>{item.senderName}</p>
-                            <p className="mt-1 whitespace-pre-line text-sm leading-6">{item.content}</p>
-                            <p className={`mt-2 text-[11px] ${item.mine ? 'text-white/70' : 'text-ink/40'}`}>{item.createdAtLabel}</p>
+                          <div className="space-y-2">
+                            <div
+                              className={[
+                                'max-w-[80%] rounded-2xl px-4 py-3',
+                                item.mine ? 'bg-mint-600 text-white' : 'border border-ink/10 bg-white text-ink',
+                              ].join(' ')}
+                            >
+                              <p className={`text-xs font-semibold ${item.mine ? 'text-white/80' : 'text-ink/55'}`}>{item.senderName}</p>
+                              <p className="mt-1 whitespace-pre-line text-sm leading-6">{item.content}</p>
+                              <p className={`mt-2 text-[11px] ${item.mine ? 'text-white/70' : 'text-ink/40'}`}>{item.createdAtLabel}</p>
+                            </div>
+                            {!item.mine && item.senderId != null && (
+                              <div className="flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setReportDialogState({
+                                      targetType: 'CHAT',
+                                      targetUserId: item.senderId,
+                                      title: `${item.senderName}님의 메시지를 신고할까요?`,
+                                      description: '부적절한 채팅, 스팸, 사기 의심 메시지는 바로 접수할 수 있습니다.',
+                                    })
+                                  }
+                                  className="btn-ghost px-3 py-2 text-xs"
+                                  aria-label={`${item.senderName}님 메시지 신고`}
+                                >
+                                  <Flag size={14} />
+                                  신고
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setBlockDialogState({
+                                      targetUserId: item.senderId,
+                                      targetUsername: item.senderName,
+                                      title: `${item.senderName}님을 차단할까요?`,
+                                      description: '차단 후에는 이 사용자와 같은 파티와 채팅 접근이 제한됩니다.',
+                                    })
+                                  }
+                                  className="btn-ghost px-3 py-2 text-xs text-amber-800"
+                                  aria-label={`${item.senderName}님 메시지 차단`}
+                                >
+                                  <UserX size={14} />
+                                  차단
+                                </button>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -470,9 +571,48 @@ function Chat() {
                   ? '실시간 채팅이 연결되어 있습니다.'
                   : '채팅 연결을 준비 중입니다.'}
             </p>
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-ink/75">
+              <div className="flex items-center gap-2 font-semibold text-ink">
+                <ShieldAlert size={16} className="text-amber-700" />
+                안전 안내
+              </div>
+              <p className="mt-2">
+                파티 운영 문제는 상단의 파티 신고로, 특정 메시지 문제는 각 메시지 아래의 신고 또는 차단으로 바로 접수할 수 있습니다.
+              </p>
+            </div>
           </>
         )}
       </div>
+
+      <ReportDialog
+        open={Boolean(reportDialogState)}
+        title={reportDialogState?.title ?? ''}
+        description={reportDialogState?.description ?? ''}
+        targetType={reportDialogState?.targetType ?? 'PARTY'}
+        submitting={safetyActionLoading === 'report'}
+        onClose={() => {
+          if (safetyActionLoading === 'report') {
+            return;
+          }
+          setReportDialogState(null);
+        }}
+        onSubmit={handleSubmitReport}
+      />
+      <ConfirmDialog
+        open={Boolean(blockDialogState)}
+        title={blockDialogState?.title ?? ''}
+        description={blockDialogState?.description ?? ''}
+        confirmLabel="차단하기"
+        confirmTone="danger"
+        submitting={safetyActionLoading === 'block'}
+        onClose={() => {
+          if (safetyActionLoading === 'block') {
+            return;
+          }
+          setBlockDialogState(null);
+        }}
+        onConfirm={handleConfirmBlock}
+      />
     </div>
   );
 }

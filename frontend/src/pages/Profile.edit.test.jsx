@@ -11,6 +11,9 @@ const { logoutMock, refreshProfileMock, addToastMock, api, webPush, addressLocat
   api: {
     getMe: vi.fn(),
     updateMe: vi.fn(),
+    getBlockedUsers: vi.fn(),
+    getMyReports: vi.fn(),
+    unblockUser: vi.fn(),
     getMyNotificationPreferences: vi.fn(),
     updateMyNotificationPreferences: vi.fn(),
     getMySettlementSettings: vi.fn(),
@@ -59,6 +62,8 @@ describe('Profile edit', () => {
     api.getMe.mockReset();
     api.updateMe.mockReset();
     api.getMyNotificationPreferences.mockReset();
+    api.getBlockedUsers.mockReset();
+    api.getMyReports.mockReset();
     api.getWebPushConfiguration.mockReset();
     api.getPushSubscriptions.mockReset();
     api.getMySettlementSettings.mockReset();
@@ -87,6 +92,8 @@ describe('Profile edit', () => {
       recentReviews: [],
     });
     api.getMyNotificationPreferences.mockResolvedValue([]);
+    api.getBlockedUsers.mockResolvedValue([]);
+    api.getMyReports.mockResolvedValue([]);
     api.getMySettlementSettings.mockResolvedValue({ settlementGuide: '' });
     api.getWebPushConfiguration.mockResolvedValue({ enabled: false, publicKey: '' });
     api.getPushSubscriptions.mockResolvedValue([]);
@@ -133,6 +140,8 @@ describe('Profile edit', () => {
     api.getMe.mockReset();
     api.updateMe.mockReset();
     api.getMyNotificationPreferences.mockReset();
+    api.getBlockedUsers.mockReset();
+    api.getMyReports.mockReset();
     api.getWebPushConfiguration.mockReset();
     api.getPushSubscriptions.mockReset();
     api.getMySettlementSettings.mockReset();
@@ -161,6 +170,8 @@ describe('Profile edit', () => {
       recentReviews: [],
     });
     api.getMyNotificationPreferences.mockResolvedValue([]);
+    api.getBlockedUsers.mockResolvedValue([]);
+    api.getMyReports.mockResolvedValue([]);
     api.getMySettlementSettings.mockResolvedValue({ settlementGuide: '' });
     api.getWebPushConfiguration.mockResolvedValue({ enabled: false, publicKey: '' });
     api.getPushSubscriptions.mockResolvedValue([]);

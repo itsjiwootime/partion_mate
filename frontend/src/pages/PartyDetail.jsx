@@ -3,8 +3,9 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { ArrowLeft, Clock3, Heart, MapPin, MessageSquareText, Package, ShieldCheck, Star, Users, Wallet } from 'lucide-react';
+import { ArrowLeft, Clock3, Flag, Heart, MapPin, MessageSquareText, Package, ShieldAlert, ShieldCheck, Star, UserX, Users, Wallet } from 'lucide-react';
 import { LoadingState } from '../components/Feedback';
+import { ConfirmDialog, ReportDialog } from '../components/SafetyDialogs';
 import { mergeRealtimeParty, normalizePartyDetail } from '../utils/party';
 import { subscribeToPartyStream } from '../utils/partyRealtime';
 
@@ -30,7 +31,7 @@ function PartyDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthed } = useAuth();
+  const { isAuthed, userName } = useAuth();
   const { addToast } = useToast();
   const stateParty = useMemo(() => normalizePartyDetail(location.state?.party), [location.state]);
   const returnTo = `${location.pathname}${location.search}`;
@@ -43,6 +44,8 @@ function PartyDetail() {
   const [pickupForm, setPickupForm] = useState({ pickupPlace: '', pickupTime: '' });
   const [hostReviewForm, setHostReviewForm] = useState(createReviewFormState);
   const [memberReviewForms, setMemberReviewForms] = useState({});
+  const [reportDialogState, setReportDialogState] = useState(null);
+  const [blockDialogState, setBlockDialogState] = useState(null);
 
   useEffect(() => {
     setSettlementForm({
@@ -151,6 +154,18 @@ function PartyDetail() {
   const isJoinedMember = detail?.userRole === 'MEMBER';
   const canJoinNow = !detail?.participationStatus && !isClosedParty && detail?.status !== 'full' && remaining > 0;
   const canJoinWaitingList = !detail?.participationStatus && !isClosedParty && !canJoinNow;
+  const hostUserId = detail?.hostTrust?.userId ?? null;
+  const hostUsername = detail?.hostTrust?.username ?? '호스트';
+  const canManageHostSafety = isAuthed && hostUserId != null && hostUsername !== userName;
+
+  const ensureAuthed = () => {
+    if (isAuthed) {
+      return true;
+    }
+
+    navigate('/login', { state: { from: returnTo } });
+    return false;
+  };
 
   const runAction = async (key, action, successMessage) => {
     try {
@@ -167,6 +182,87 @@ function PartyDetail() {
     } finally {
       setActionLoading('');
     }
+  };
+
+  const handleSubmitReport = async ({ reasonType, memo }) => {
+    if (!reportDialogState) {
+      return;
+    }
+
+    try {
+      setActionLoading('report');
+      await api.createReport({
+        targetType: reportDialogState.targetType,
+        partyId: detail.partyId,
+        targetUserId: reportDialogState.targetUserId ?? null,
+        reasonType,
+        memo,
+      });
+      setReportDialogState(null);
+      addToast('신고를 접수했습니다. 운영 검토 후 필요한 조치를 진행합니다.', 'success');
+    } catch (e) {
+      addToast(e.message || '신고를 접수하지 못했습니다.', 'error');
+    } finally {
+      setActionLoading('');
+    }
+  };
+
+  const handleConfirmBlock = async () => {
+    if (!blockDialogState) {
+      return;
+    }
+
+    try {
+      setActionLoading('block');
+      await api.blockUser({
+        targetUserId: blockDialogState.targetUserId,
+      });
+      setBlockDialogState(null);
+      addToast(`${blockDialogState.targetUsername}님을 차단했습니다. 이후 같은 파티와 채팅 참여가 제한됩니다.`, 'success');
+    } catch (e) {
+      addToast(e.message || '사용자를 차단하지 못했습니다.', 'error');
+    } finally {
+      setActionLoading('');
+    }
+  };
+
+  const openPartyReport = () => {
+    if (!ensureAuthed()) {
+      return;
+    }
+
+    setReportDialogState({
+      targetType: 'PARTY',
+      targetUserId: null,
+      title: '이 파티를 신고할까요?',
+      description: '정산, 노쇼, 사기 의심 등 거래 문제가 있었다면 사유를 선택해 접수해 주세요.',
+    });
+  };
+
+  const openHostReport = () => {
+    if (!ensureAuthed() || !canManageHostSafety) {
+      return;
+    }
+
+    setReportDialogState({
+      targetType: 'USER',
+      targetUserId: hostUserId,
+      title: `${hostUsername}님을 신고할까요?`,
+      description: '호스트와의 거래 과정에서 문제가 있었다면 사유를 선택해 접수해 주세요.',
+    });
+  };
+
+  const openHostBlock = () => {
+    if (!ensureAuthed() || !canManageHostSafety) {
+      return;
+    }
+
+    setBlockDialogState({
+      targetUserId: hostUserId,
+      targetUsername: hostUsername,
+      title: `${hostUsername}님을 차단할까요?`,
+      description: '앞으로 이 사용자와 같은 파티 참여와 채팅 접근이 제한됩니다.',
+    });
   };
 
   const handleSettlementSubmit = async (e) => {
@@ -343,6 +439,35 @@ function PartyDetail() {
           <p className="text-xs text-ink/55">거래 완료율 {detail.hostTrust.completionRate}%</p>
         </div>
       )}
+
+      <div className="card-elevated p-5 space-y-4">
+        <div className="flex items-center gap-2">
+          <ShieldAlert size={18} className="text-amber-700" />
+          <h2 className="section-title">신뢰·안전</h2>
+        </div>
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-ink/75">
+          거래 중 문제가 있었다면 파티 또는 호스트를 바로 신고할 수 있고, 필요하면 사용자 차단으로 이후 상호작용을 막을 수 있습니다.
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={openPartyReport} className="btn-secondary px-4 py-2 text-sm">
+            <Flag size={15} />
+            파티 신고
+          </button>
+          {canManageHostSafety && (
+            <button type="button" onClick={openHostReport} className="btn-secondary px-4 py-2 text-sm">
+              <Flag size={15} />
+              호스트 신고
+            </button>
+          )}
+          {canManageHostSafety && (
+            <button type="button" onClick={openHostBlock} className="btn-secondary px-4 py-2 text-sm text-amber-800">
+              <UserX size={15} />
+              호스트 차단
+            </button>
+          )}
+        </div>
+        <p className="text-xs text-ink/55">신고는 운영 검토로 이어지고, 차단은 즉시 상호작용 제한에 반영됩니다.</p>
+      </div>
 
       <div className="card-elevated p-5 space-y-3">
         <h2 className="section-title">소분 정보</h2>
@@ -809,6 +934,36 @@ function PartyDetail() {
           </div>
         )}
       </div>
+
+      <ReportDialog
+        open={Boolean(reportDialogState)}
+        title={reportDialogState?.title ?? ''}
+        description={reportDialogState?.description ?? ''}
+        targetType={reportDialogState?.targetType ?? 'PARTY'}
+        submitting={actionLoading === 'report'}
+        onClose={() => {
+          if (actionLoading === 'report') {
+            return;
+          }
+          setReportDialogState(null);
+        }}
+        onSubmit={handleSubmitReport}
+      />
+      <ConfirmDialog
+        open={Boolean(blockDialogState)}
+        title={blockDialogState?.title ?? ''}
+        description={blockDialogState?.description ?? ''}
+        confirmLabel="차단하기"
+        confirmTone="danger"
+        submitting={actionLoading === 'block'}
+        onClose={() => {
+          if (actionLoading === 'block') {
+            return;
+          }
+          setBlockDialogState(null);
+        }}
+        onConfirm={handleConfirmBlock}
+      />
     </div>
   );
 }

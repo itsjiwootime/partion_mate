@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { vi } from 'vitest';
@@ -53,8 +53,8 @@ vi.mock('../context/ToastContext', () => ({
 vi.mock('../utils/webPush', () => webPush);
 vi.mock('../utils/addressLocation', () => addressLocation);
 
-describe('Profile settlement settings', () => {
-  it('정산_기본_안내를_저장한다', async () => {
+describe('Profile safety center', () => {
+  it('차단_목록과_신고_내역을_보여주고_차단을_해제한다', async () => {
     // given
     logoutMock.mockReset();
     refreshProfileMock.mockReset();
@@ -62,9 +62,9 @@ describe('Profile settlement settings', () => {
     api.getMe.mockReset();
     api.getBlockedUsers.mockReset();
     api.getMyReports.mockReset();
+    api.unblockUser.mockReset();
     api.getMyNotificationPreferences.mockReset();
     api.getMySettlementSettings.mockReset();
-    api.updateMySettlementSettings.mockReset();
     api.getWebPushConfiguration.mockReset();
     api.getPushSubscriptions.mockReset();
     webPush.getCurrentPushSubscription.mockReset();
@@ -78,15 +78,28 @@ describe('Profile settlement settings', () => {
       trustSummary: null,
       recentReviews: [],
     });
+    api.getBlockedUsers.mockResolvedValue([
+      {
+        id: 1,
+        targetUserId: 77,
+        targetUsername: '민수',
+        createdAtLabel: '2026.03.18 18:00',
+      },
+    ]);
+    api.getMyReports.mockResolvedValue([
+      {
+        id: 9,
+        targetType: 'USER',
+        targetTypeLabel: '상대 사용자',
+        targetUsername: '민수',
+        reasonTypeLabel: '부적절한 채팅',
+        statusLabel: '접수됨',
+        createdAtLabel: '2026.03.18 18:10',
+        memo: '거친 표현이 반복됐습니다.',
+      },
+    ]);
     api.getMyNotificationPreferences.mockResolvedValue([]);
-    api.getBlockedUsers.mockResolvedValue([]);
-    api.getMyReports.mockResolvedValue([]);
-    api.getMySettlementSettings.mockResolvedValue({
-      settlementGuide: '입금 후 채팅에 마지막 4자리를 남겨주세요.',
-    });
-    api.updateMySettlementSettings.mockResolvedValue({
-      settlementGuide: '입금 후 채팅 공지를 확인해주세요.',
-    });
+    api.getMySettlementSettings.mockResolvedValue({ settlementGuide: '' });
     api.getWebPushConfiguration.mockResolvedValue({ enabled: false, publicKey: '' });
     api.getPushSubscriptions.mockResolvedValue([]);
     webPush.getCurrentPushSubscription.mockResolvedValue(null);
@@ -102,18 +115,17 @@ describe('Profile settlement settings', () => {
     );
 
     // when
-    const textarea = await screen.findByRole('textbox', { name: '정산 기본 안내' });
-    await user.clear(textarea);
-    await user.type(textarea, '입금 후 채팅 공지를 확인해주세요.');
-    await user.click(screen.getByRole('button', { name: '정산 기본 안내 저장' }));
+    await screen.findByText('차단한 사용자');
+    await user.click(screen.getByRole('button', { name: '차단 해제' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: '차단 해제' }));
 
     // then
+    expect(screen.getByText('민수')).toBeInTheDocument();
+    expect(screen.getByText('사유: 부적절한 채팅')).toBeInTheDocument();
     await waitFor(() => {
-      expect(api.updateMySettlementSettings).toHaveBeenCalledWith({
-        settlementGuide: '입금 후 채팅 공지를 확인해주세요.',
-      });
+      expect(api.unblockUser).toHaveBeenCalledWith(77);
     });
-    expect(addToastMock).toHaveBeenCalledWith('정산 기본 안내를 저장했습니다.', 'success');
-    expect(screen.getByRole('textbox', { name: '정산 기본 안내' })).toHaveValue('입금 후 채팅 공지를 확인해주세요.');
+    expect(addToastMock).toHaveBeenCalledWith('차단을 해제했습니다.', 'success');
   });
 });
