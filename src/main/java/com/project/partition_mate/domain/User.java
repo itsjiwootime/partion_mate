@@ -29,6 +29,8 @@ public class User {
     @Column(nullable = false)
     private String address;
 
+    @Column(length = 300)
+    private String settlementGuide;
 
     private Double latitude;
 
@@ -68,6 +70,12 @@ public class User {
     public void clearCoordinate() {
         this.latitude = null;
         this.longitude = null;
+    }
+
+    public void updateSettlementGuide(String settlementGuide) {
+        this.settlementGuide = settlementGuide == null || settlementGuide.isBlank()
+                ? null
+                : settlementGuide.trim();
     }
 
     private void validateUsername(String username) {

@@ -13,6 +13,8 @@ const { logoutMock, refreshProfileMock, addToastMock, api, webPush, addressLocat
     updateMe: vi.fn(),
     getMyNotificationPreferences: vi.fn(),
     updateMyNotificationPreferences: vi.fn(),
+    getMySettlementSettings: vi.fn(),
+    updateMySettlementSettings: vi.fn(),
     getWebPushConfiguration: vi.fn(),
     getPushSubscriptions: vi.fn(),
     upsertPushSubscription: vi.fn(),
@@ -59,6 +61,7 @@ describe('Profile edit', () => {
     api.getMyNotificationPreferences.mockReset();
     api.getWebPushConfiguration.mockReset();
     api.getPushSubscriptions.mockReset();
+    api.getMySettlementSettings.mockReset();
     webPush.getCurrentPushSubscription.mockReset();
     webPush.getNotificationPermissionState.mockReset();
     webPush.isWebPushSupported.mockReset();
@@ -84,6 +87,7 @@ describe('Profile edit', () => {
       recentReviews: [],
     });
     api.getMyNotificationPreferences.mockResolvedValue([]);
+    api.getMySettlementSettings.mockResolvedValue({ settlementGuide: '' });
     api.getWebPushConfiguration.mockResolvedValue({ enabled: false, publicKey: '' });
     api.getPushSubscriptions.mockResolvedValue([]);
     webPush.getCurrentPushSubscription.mockResolvedValue(null);
@@ -131,6 +135,7 @@ describe('Profile edit', () => {
     api.getMyNotificationPreferences.mockReset();
     api.getWebPushConfiguration.mockReset();
     api.getPushSubscriptions.mockReset();
+    api.getMySettlementSettings.mockReset();
     webPush.getCurrentPushSubscription.mockReset();
     webPush.getNotificationPermissionState.mockReset();
     webPush.isWebPushSupported.mockReset();
@@ -156,6 +161,7 @@ describe('Profile edit', () => {
       recentReviews: [],
     });
     api.getMyNotificationPreferences.mockResolvedValue([]);
+    api.getMySettlementSettings.mockResolvedValue({ settlementGuide: '' });
     api.getWebPushConfiguration.mockResolvedValue({ enabled: false, publicKey: '' });
     api.getPushSubscriptions.mockResolvedValue([]);
     webPush.getCurrentPushSubscription.mockResolvedValue(null);

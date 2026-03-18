@@ -206,6 +206,12 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(payload),
     }),
+  getMySettlementSettings: () => fetchJson('/api/users/me/settlement-settings'),
+  updateMySettlementSettings: (payload) =>
+    fetchJson('/api/users/me/settlement-settings', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
   getMyChatRooms: () => fetchJson('/api/chat/rooms'),
   getChatRoomDetail: (partyId) => fetchJson(`/api/chat/rooms/${partyId}`),
   markChatRoomRead: (partyId) =>

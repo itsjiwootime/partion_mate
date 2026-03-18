@@ -624,12 +624,13 @@
 - ADR: 저장 주소와 일시적 브라우저 위치 사용 정책을 문서화한다.
 - 구현 메모(2026-03-18): `frontend/src/utils/addressLocation.js`를 추가해 카카오 주소 검색과 geocode를 프로필 수정에서도 재사용할 수 있게 했다. `frontend/src/pages/Profile.jsx`는 `주소 검색으로 위치 다시 설정` 버튼, 저장된 기준 위치 표시, 수동 주소 입력 시 좌표 초기화 상태 안내를 추가했고, 주소 검색으로 다시 잡은 좌표는 `PATCH /api/users/me` 저장 요청에 함께 보낸다. `frontend/src/pages/Home.jsx`는 저장 좌표가 없을 때 기본 위치 사용 이유와 프로필 이동 CTA, 브라우저 위치 임시 전환 안내를 노출한다. 검증은 `frontend npm test -- --run src/pages/Profile.edit.test.jsx src/pages/Profile.notificationSettings.test.jsx src/pages/Home.locationGuide.test.jsx`, `frontend npm run build`로 진행했다.
 
-### [ ] E18-3 알림 및 정산 설정
+### [x] E18-3 알림 및 정산 설정
 - 목표: 사용자가 알림 수신과 정산 관련 기본 정보를 스스로 관리할 수 있게 한다.
 - 범위: 알림 on/off, 채팅/승격/픽업 알림 선택, 정산 메모 또는 계좌 안내 필드.
 - 완료 조건: 설정 화면에서 주요 알림/정산 기본값을 관리할 수 있다.
 - 검증: 설정 저장 테스트, 프론트 빌드, 수동 확인.
 - ADR: 사용자 설정 항목과 저장 범위를 문서화한다.
+- 구현 메모(2026-03-18): 기존 `notification-preferences` API를 재사용해 `브라우저 푸시 전체 받기` 토글을 프론트에서 추가했고, 지원되는 알림 타입 전체를 한 번에 저장하도록 했다. 백엔드는 `settlementGuide` 필드를 `User`에 추가하고 `GET/PUT /api/users/me/settlement-settings`를 만들어 정산 기본 안내를 따로 관리하게 했다. `frontend/src/pages/Profile.jsx`는 정산 기본 안내 카드, 글자 수 표시, 저장 버튼을 추가했고, 검증은 `./mvnw -q -Dtest=UserSettlementSettingsIntegrationTest,UserSettlementSettingsControllerTest test`, `frontend npm test -- --run src/pages/Profile.edit.test.jsx src/pages/Profile.notificationSettings.test.jsx src/pages/Profile.settlementSettings.test.jsx`, `frontend npm run build`로 진행했다.
 
 ## Epic 19. 신뢰 및 안전 UX 정리
 

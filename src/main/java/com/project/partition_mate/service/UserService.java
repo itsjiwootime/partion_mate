@@ -6,7 +6,9 @@ import com.project.partition_mate.domain.User;
 import com.project.partition_mate.domain.PartyMember;
 import com.project.partition_mate.dto.NotificationPreferenceResponse;
 import com.project.partition_mate.dto.PartyResponse;
+import com.project.partition_mate.dto.SettlementSettingsResponse;
 import com.project.partition_mate.dto.UpdateUserProfileRequest;
+import com.project.partition_mate.dto.UpdateSettlementSettingsRequest;
 import com.project.partition_mate.dto.UpdateNotificationPreferencesRequest;
 import com.project.partition_mate.dto.UserNotificationResponse;
 import com.project.partition_mate.dto.MyJoinedPartyResponse;
@@ -223,6 +225,20 @@ public class UserService {
     public List<NotificationPreferenceResponse> updateNotificationPreferences(User user,
                                                                               UpdateNotificationPreferencesRequest request) {
         return userNotificationPreferenceService.updatePreferences(user, request);
+    }
+
+    public SettlementSettingsResponse getSettlementSettings(User user) {
+        return SettlementSettingsResponse.from(user);
+    }
+
+    @Transactional
+    public SettlementSettingsResponse updateSettlementSettings(User user,
+                                                               UpdateSettlementSettingsRequest request) {
+        User persistedUser = userRepository.findById(user.getId())
+                .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
+
+        persistedUser.updateSettlementGuide(request.getSettlementGuide());
+        return SettlementSettingsResponse.from(persistedUser);
     }
 
     public TrustSummaryResponse getTrustSummary(User user) {

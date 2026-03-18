@@ -88,9 +88,11 @@ function Profile() {
   const [locationLoading, setLocationLoading] = useState(false);
   const [error, setError] = useState('');
   const [notificationPreferences, setNotificationPreferences] = useState([]);
+  const [settlementGuide, setSettlementGuide] = useState('');
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [settingsError, setSettingsError] = useState('');
   const [savingPreferenceType, setSavingPreferenceType] = useState(null);
+  const [savingSettlementSettings, setSavingSettlementSettings] = useState(false);
   const [pushConfigEnabled, setPushConfigEnabled] = useState(false);
   const [pushConfigPublicKey, setPushConfigPublicKey] = useState('');
   const [subscriptionCount, setSubscriptionCount] = useState(0);
@@ -127,10 +129,11 @@ function Profile() {
       setSettingsLoading(true);
       setSettingsError('');
 
-      const [preferences, config, subscriptions] = await Promise.all([
+      const [preferences, config, subscriptions, settlementSettings] = await Promise.all([
         api.getMyNotificationPreferences(),
         api.getWebPushConfiguration(),
         api.getPushSubscriptions(),
+        api.getMySettlementSettings(),
       ]);
 
       const currentSubscription = await getCurrentPushSubscription().catch(() => null);
@@ -141,8 +144,9 @@ function Profile() {
       setSubscriptionCount(Array.isArray(subscriptions) ? subscriptions.length : 0);
       setCurrentBrowserSubscribed(Boolean(currentSubscription?.endpoint));
       setPushPermission(getNotificationPermissionState());
+      setSettlementGuide(settlementSettings?.settlementGuide ?? '');
     } catch (e) {
-      setSettingsError('알림 설정을 불러오지 못했습니다.');
+      setSettingsError('설정 정보를 불러오지 못했습니다.');
     } finally {
       setSettingsLoading(false);
     }
@@ -168,6 +172,37 @@ function Profile() {
         });
         setNotificationPreferences(savedPreferences);
         addToast('알림 설정을 저장했습니다.', 'success');
+      } catch (e) {
+        setNotificationPreferences(previousPreferences);
+        setSettingsError(e?.message || '알림 설정을 저장하지 못했습니다.');
+        addToast(e?.message || '알림 설정을 저장하지 못했습니다.', 'error');
+      } finally {
+        setSavingPreferenceType(null);
+      }
+    },
+    [addToast, notificationPreferences],
+  );
+
+  const handleToggleAllPreferences = useCallback(
+    async (nextValue) => {
+      const previousPreferences = notificationPreferences;
+      const nextPreferences = notificationPreferences.map((preference) =>
+        preference.webPushSupported ? { ...preference, webPushEnabled: nextValue } : preference,
+      );
+
+      setNotificationPreferences(nextPreferences);
+      setSavingPreferenceType('ALL');
+      setSettingsError('');
+
+      try {
+        const savedPreferences = await api.updateMyNotificationPreferences({
+          preferences: nextPreferences.map((preference) => ({
+            type: preference.type,
+            webPushEnabled: preference.webPushEnabled,
+          })),
+        });
+        setNotificationPreferences(savedPreferences);
+        addToast(nextValue ? '브라우저 푸시를 전체 활성화했습니다.' : '브라우저 푸시를 전체 비활성화했습니다.', 'success');
       } catch (e) {
         setNotificationPreferences(previousPreferences);
         setSettingsError(e?.message || '알림 설정을 저장하지 못했습니다.');
@@ -326,11 +361,34 @@ function Profile() {
     }
   };
 
+  const handleSettlementGuideSave = async (event) => {
+    event.preventDefault();
+
+    try {
+      setSavingSettlementSettings(true);
+      setSettingsError('');
+      const response = await api.updateMySettlementSettings({
+        settlementGuide,
+      });
+      setSettlementGuide(response?.settlementGuide ?? '');
+      addToast('정산 기본 안내를 저장했습니다.', 'success');
+    } catch (e) {
+      const message = e?.message || '정산 기본 안내를 저장하지 못했습니다.';
+      setSettingsError(message);
+      addToast(message, 'error');
+    } finally {
+      setSavingSettlementSettings(false);
+    }
+  };
+
   if (!isAuthed) {
     return null;
   }
 
   const pushSupported = isWebPushSupported();
+  const supportedWebPushPreferences = notificationPreferences.filter((preference) => preference.webPushSupported);
+  const allSupportedWebPushEnabled =
+    supportedWebPushPreferences.length > 0 && supportedWebPushPreferences.every((preference) => preference.webPushEnabled);
   const pushSummary = resolvePushSummary({
     pushConfigEnabled,
     pushSupported,
@@ -506,6 +564,26 @@ function Profile() {
           </span>
         </div>
 
+        {supportedWebPushPreferences.length > 0 && (
+          <label className="flex items-center justify-between gap-4 rounded-2xl border border-mint-100 bg-mint-50 px-4 py-3">
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-ink">브라우저 푸시 전체 받기</p>
+              <p className="text-sm text-ink/65">지원되는 승격, 픽업, 종료 알림을 한 번에 켜거나 끕니다.</p>
+            </div>
+            <div className="text-right">
+              <input
+                type="checkbox"
+                checked={allSupportedWebPushEnabled}
+                onChange={(event) => handleToggleAllPreferences(event.target.checked)}
+                disabled={!pushConfigEnabled || savingPreferenceType === 'ALL'}
+                aria-label="브라우저 푸시 전체 받기"
+                className="h-4 w-4 accent-mint-500"
+              />
+              <p className="mt-2 text-[11px] text-ink/50">{savingPreferenceType === 'ALL' ? '저장 중...' : '전체 토글'}</p>
+            </div>
+          </label>
+        )}
+
         <div className="space-y-3">
           {notificationPreferences.map((preference) => (
             <label
@@ -537,6 +615,33 @@ function Profile() {
             </label>
           ))}
         </div>
+      </div>
+
+      <div className="card-elevated p-4 space-y-4">
+        <div className="flex items-center gap-2">
+          <ShieldCheck size={18} className="text-mint-700" />
+          <h2 className="section-title">정산 기본 안내</h2>
+        </div>
+        <p className="text-sm text-ink/65">
+          호스트가 정산이나 송금 공지를 올릴 때 반복해서 적는 내용을 기본 문구로 관리합니다.
+        </p>
+        <form className="space-y-3" onSubmit={handleSettlementGuideSave}>
+          <textarea
+            rows="4"
+            value={settlementGuide}
+            onChange={(event) => setSettlementGuide(event.target.value)}
+            className="input"
+            aria-label="정산 기본 안내"
+            placeholder="예) 입금 후 채팅에 마지막 4자리를 남겨주세요. 확인 후 픽업 공지를 드립니다."
+          />
+          <div className="flex items-center justify-between gap-3 text-xs text-ink/55">
+            <span>비워두면 별도 기본 안내 없이 사용합니다.</span>
+            <span>{settlementGuide.trim().length}/300</span>
+          </div>
+          <button type="submit" className="btn-primary w-full" disabled={savingSettlementSettings}>
+            {savingSettlementSettings ? '저장 중...' : '정산 기본 안내 저장'}
+          </button>
+        </form>
       </div>
 
       {user?.trustSummary && (

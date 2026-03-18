@@ -4,7 +4,9 @@ import com.project.partition_mate.domain.User;
 import com.project.partition_mate.dto.MyJoinedPartyResponse;
 import com.project.partition_mate.dto.NotificationPreferenceResponse;
 import com.project.partition_mate.dto.PartyResponse;
+import com.project.partition_mate.dto.SettlementSettingsResponse;
 import com.project.partition_mate.dto.UpdateUserProfileRequest;
+import com.project.partition_mate.dto.UpdateSettlementSettingsRequest;
 import com.project.partition_mate.dto.UpdateNotificationPreferencesRequest;
 import com.project.partition_mate.dto.UserNotificationResponse;
 import com.project.partition_mate.dto.UserResponse;
@@ -121,5 +123,25 @@ public class UserController {
         User user = principal.getUser();
 
         return ResponseEntity.ok(userService.updateNotificationPreferences(user, request));
+    }
+
+    @GetMapping("/me/settlement-settings")
+    public ResponseEntity<SettlementSettingsResponse> getMySettlementSettings() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        CustomUserDetails principal = (CustomUserDetails) authentication.getPrincipal();
+        User user = principal.getUser();
+
+        return ResponseEntity.ok(userService.getSettlementSettings(user));
+    }
+
+    @PutMapping("/me/settlement-settings")
+    public ResponseEntity<SettlementSettingsResponse> updateMySettlementSettings(
+            @RequestBody @Valid UpdateSettlementSettingsRequest request
+    ) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        CustomUserDetails principal = (CustomUserDetails) authentication.getPrincipal();
+        User user = principal.getUser();
+
+        return ResponseEntity.ok(userService.updateSettlementSettings(user, request));
     }
 }
