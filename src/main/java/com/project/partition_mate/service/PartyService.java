@@ -131,6 +131,7 @@ public class PartyService {
 
         validatePartyOpenForJoin(party, now);
         validateNotAlreadyJoinedOrWaiting(party, member);
+        validateRequestedQuantityMeetsMinimumShareUnit(party, request.getMemberRequestQuantity());
         NoShowPolicyService.Decision noShowDecision = noShowPolicyService.evaluate(member);
         if (noShowDecision.shouldBlock()) {
             throw BusinessException.noShowParticipationRestricted();
@@ -537,6 +538,10 @@ public class PartyService {
     }
 
     private boolean shouldExpireWaitingEntryDuringPromotion(Party party, WaitingQueueEntry waitingEntry) {
+        if (isBelowMinimumShareUnit(party, waitingEntry.getRequestedQuantity())) {
+            return true;
+        }
+
         User waitingUser = waitingEntry.getUser();
         if (userBlockPolicyService.hasBlockedParticipantInParty(party, waitingUser.getId())) {
             return true;
@@ -554,6 +559,19 @@ public class PartyService {
         if (waitingQueueRepository.existsByPartyAndUserAndStatus(party, member, WaitingQueueStatus.WAITING)) {
             throw BusinessException.alreadyWaiting();
         }
+    }
+
+    private void validateRequestedQuantityMeetsMinimumShareUnit(Party party, Integer requestedQuantity) {
+        if (isBelowMinimumShareUnit(party, requestedQuantity)) {
+            throw BusinessException.requestedQuantityBelowMinimumShareUnit(
+                    party.getMinimumShareUnit(),
+                    party.getUnitLabel()
+            );
+        }
+    }
+
+    private boolean isBelowMinimumShareUnit(Party party, Integer requestedQuantity) {
+        return requestedQuantity < party.getMinimumShareUnit();
     }
 
     private JoinPartyResponse.Warning createJoinWarning(NoShowPolicyService.Decision noShowDecision) {

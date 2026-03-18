@@ -3,6 +3,8 @@ package com.project.partition_mate.service;
 import com.project.partition_mate.domain.Party;
 import com.project.partition_mate.domain.PartyMember;
 import com.project.partition_mate.domain.PartyStatus;
+import com.project.partition_mate.domain.PackagingType;
+import com.project.partition_mate.domain.StorageType;
 import com.project.partition_mate.domain.Store;
 import com.project.partition_mate.domain.User;
 import com.project.partition_mate.domain.WaitingQueueStatus;
@@ -86,6 +88,24 @@ class PartyWaitingQueueIntegrationTest {
     }
 
     @Test
+    void 최소_소분_단위보다_작은_요청수량으로_참여하면_예외가_발생한다() {
+        // given
+        Store store = storeRepository.saveAndFlush(createStore());
+        User host = userRepository.saveAndFlush(createUser("host"));
+        Party party = createParty(store, host, 5, 1, 2);
+        User joiningUser = userRepository.saveAndFlush(createUser("joining-user"));
+        setAuth(joiningUser);
+
+        JoinPartyRequest request = joinRequest(1);
+
+        // when
+        // then
+        assertThatThrownBy(() -> partyService.joinParty(party.getId(), request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("요청 수량은 최소 2개 이상이어야 합니다.");
+    }
+
+    @Test
     void 참여자가_취소하면_대기열_첫번째_사용자가_자동_승격된다() {
         // given
         Store store = storeRepository.saveAndFlush(createStore());
@@ -152,6 +172,45 @@ class PartyWaitingQueueIntegrationTest {
     }
 
     @Test
+    void 최소_소분_단위보다_작은_대기요청은_자동_승격_대신_만료된다() {
+        // given
+        Store store = storeRepository.saveAndFlush(createStore());
+        User host = userRepository.saveAndFlush(createUser("host"));
+        Party party = createParty(store, host, 5, 1, 2);
+        User memberA = userRepository.saveAndFlush(createUser("member-a"));
+        User memberB = userRepository.saveAndFlush(createUser("member-b"));
+        joinDirectly(party, memberA, 1);
+        joinDirectly(party, memberB, 1);
+
+        User waitingInvalid = userRepository.saveAndFlush(createUser("waiting-invalid"));
+        User waitingValid = userRepository.saveAndFlush(createUser("waiting-valid"));
+        enqueue(party, waitingInvalid, 1);
+        enqueue(party, waitingValid, 2);
+
+        setAuth(memberB);
+
+        // when
+        partyService.cancelJoin(party.getId());
+
+        // then
+        Party reloaded = partyRepository.findById(party.getId()).orElseThrow();
+        assertThat(waitingQueueRepository.findAllByPartyAndStatusOrderByQueuedAtAsc(reloaded, WaitingQueueStatus.WAITING))
+                .isEmpty();
+        assertThat(waitingQueueRepository.findAll())
+                .filteredOn(entry -> entry.getUser().getId().equals(waitingInvalid.getId()))
+                .extracting(entry -> entry.getStatus())
+                .containsExactly(WaitingQueueStatus.EXPIRED);
+        assertThat(waitingQueueRepository.findAll())
+                .filteredOn(entry -> entry.getUser().getId().equals(waitingValid.getId()))
+                .extracting(entry -> entry.getStatus())
+                .containsExactly(WaitingQueueStatus.PROMOTED);
+        assertThat(partyMemberRepository.findByParty(reloaded))
+                .extracting(pm -> pm.getUser().getId())
+                .contains(waitingValid.getId())
+                .doesNotContain(waitingInvalid.getId());
+    }
+
+    @Test
     void 호스트가_취소를_요청하면_예외가_발생한다() {
         // given
         Store store = storeRepository.saveAndFlush(createStore());
@@ -185,6 +244,32 @@ class PartyWaitingQueueIntegrationTest {
 
     private Party createParty(Store store, User host, int totalQuantity, int hostRequestedQuantity) {
         Party party = new Party("테스트 파티", "테스트 상품", 30000, store, totalQuantity, "https://open.kakao.com/o/test");
+        PartyMember hostMember = PartyMember.joinAsHost(party, host, hostRequestedQuantity);
+        party.acceptMember(hostMember);
+        return partyRepository.saveAndFlush(party);
+    }
+
+    private Party createParty(Store store, User host, int totalQuantity, int hostRequestedQuantity, int minimumShareUnit) {
+        Party party = new Party(
+                "테스트 파티",
+                "테스트 상품",
+                30000,
+                store,
+                totalQuantity,
+                null,
+                java.time.LocalDateTime.now().plusDays(1),
+                "개",
+                minimumShareUnit,
+                StorageType.ROOM_TEMPERATURE,
+                PackagingType.ORIGINAL_PACKAGE,
+                false,
+                false,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
         PartyMember hostMember = PartyMember.joinAsHost(party, host, hostRequestedQuantity);
         party.acceptMember(hostMember);
         return partyRepository.saveAndFlush(party);

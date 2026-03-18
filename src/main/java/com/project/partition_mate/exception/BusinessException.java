@@ -168,6 +168,10 @@ public class BusinessException extends RuntimeException {
         return new BusinessException("최근 노쇼가 2회 연속 기록되어 새 거래를 1회 완료하기 전까지 파티에 참여할 수 없습니다.", HttpStatus.FORBIDDEN);
     }
 
+    public static BusinessException requestedQuantityBelowMinimumShareUnit(int minimumShareUnit, String unitLabel) {
+        return new BusinessException("요청 수량은 최소 " + minimumShareUnit + unitLabel + " 이상이어야 합니다.", HttpStatus.BAD_REQUEST);
+    }
+
     public static BusinessException webPushSubscriptionNotFound() {
         return new BusinessException("웹 푸시 구독 내역이 없습니다.", HttpStatus.NOT_FOUND);
     }
