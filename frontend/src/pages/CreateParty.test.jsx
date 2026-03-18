@@ -123,6 +123,7 @@ describe('CreateParty', () => {
     });
     expect(api.createParty.mock.calls[0][0]).not.toHaveProperty('openChatUrl');
     expect(addToastMock).toHaveBeenCalledWith('파티가 생성되었습니다.', 'success');
+    expect(localStorage.getItem('pm_create_party_draft')).toBeNull();
     await waitFor(() => {
       expect(screen.getByText('지점 상세')).toBeInTheDocument();
     });
@@ -170,5 +171,61 @@ describe('CreateParty', () => {
     expect(screen.getByText('12,500원')).toBeInTheDocument();
     expect(screen.getByText('0명')).toBeInTheDocument();
     expect(screen.getByText('호스트 수량을 제외하고 남는 1개로는 최소 참여 기준 2개를 채우기 어렵습니다.')).toBeInTheDocument();
+  });
+
+  it('저장된_초안을_배너에서_복구한다', async () => {
+    // given
+    addToastMock.mockReset();
+    api.getNearbyStores.mockReset();
+    api.createParty.mockReset();
+
+    api.getNearbyStores.mockResolvedValue([
+      {
+        id: 1,
+        name: '코스트코 양재점',
+        distance: 1.2,
+      },
+    ]);
+    const user = userEvent.setup();
+
+    const { unmount } = render(
+      <MemoryRouter initialEntries={['/parties/create?storeId=1']}>
+        <Routes>
+          <Route path="/parties/create" element={<CreateParty />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('파티 기본 정보');
+    await user.type(screen.getByLabelText('제품명'), '올리브 오일 2L');
+    await user.click(screen.getByRole('button', { name: '다음 단계' }));
+    await screen.findByText('가격 및 수량 설정');
+    await user.clear(screen.getByLabelText('제품 총 가격'));
+    await user.type(screen.getByLabelText('제품 총 가격'), '32000');
+
+    await waitFor(() => {
+      expect(localStorage.getItem('pm_create_party_draft')).toContain('올리브 오일 2L');
+    });
+
+    unmount();
+
+    // when
+    render(
+      <MemoryRouter initialEntries={['/parties/create?storeId=1']}>
+        <Routes>
+          <Route path="/parties/create" element={<CreateParty />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('작성 중이던 파티 초안이 있습니다.');
+    await user.click(screen.getByRole('button', { name: '초안 복구' }));
+
+    // then
+    expect(addToastMock).toHaveBeenCalledWith('작성 중이던 파티 초안을 복구했습니다.', 'success');
+    await screen.findByText('가격 및 수량 설정');
+    expect(screen.getByLabelText('제품 총 가격')).toHaveValue(32000);
+    await user.click(screen.getByRole('button', { name: '이전 단계' }));
+    expect(screen.getByLabelText('제품명')).toHaveValue('올리브 오일 2L');
   });
 });

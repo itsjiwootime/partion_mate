@@ -598,12 +598,13 @@
 - ADR: 생성 화면 미리보기 정보 범위와 계산 기준을 문서화한다.
 - 구현 메모(2026-03-18): `frontend/src/utils/createPartyPreview.js`를 추가해 총 가격/총 수량/호스트 수량/최소 소분 단위 기준의 예상 금액 범위와 참여 난이도 경고를 순수 함수로 계산하게 했다. `frontend/src/pages/CreateParty.jsx`는 2단계에서 `참여 조건 미리보기` 섹션을 추가해 참여자에게 열리는 수량, 최소 기준 참여 1명 예상 금액, 최소 단위 기준 최대 참여자 수, 호스트 수량 미리보기를 실시간으로 보여주고, 최종 확인 단계에서도 같은 계산 값을 재사용한다. 검증은 `frontend npm test -- --run src/utils/createPartyPreview.test.js src/pages/CreateParty.test.jsx`, `frontend npm run build`로 진행했다.
 
-### [ ] E17-3 생성 초안 및 복구
+### [x] E17-3 생성 초안 및 복구
 - 목표: 긴 입력 도중 이탈해도 작성 중인 정보를 복구할 수 있게 한다.
 - 범위: 로컬 초안 저장, 복구 배너, 제출 성공 시 초기화, 스키마 버전 처리.
 - 완료 조건: 작성 도중 새로고침 또는 이탈 후에도 사용자가 초안을 복구할 수 있다.
 - 검증: 초안 저장/복구 테스트, 수동 브라우저 확인.
 - ADR: 초안 저장 위치와 만료 정책을 문서화한다.
+- 구현 메모(2026-03-18): `frontend/src/utils/createPartyDraft.js`를 추가해 `pm_create_party_draft` 키 기준의 초안 저장/복구/삭제, 버전 검사, 7일 TTL, 구조 검증을 한곳에 모았다. `frontend/src/pages/CreateParty.jsx`는 저장된 초안이 있으면 상단 복구 배너를 보여주고 `초안 복구` 또는 `새로 작성`을 선택하게 했으며, 선택 이후에는 입력 변경과 단계 이동을 자동 저장하고 생성 성공 시 초안을 지운다. 검증은 `frontend npm test -- --run src/utils/createPartyDraft.test.js src/pages/CreateParty.test.jsx`, `frontend npm run build`로 진행했다.
 
 ## Epic 18. 내 정보 및 사용자 설정
 

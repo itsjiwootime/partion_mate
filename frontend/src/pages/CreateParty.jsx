@@ -4,6 +4,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { clearCreatePartyDraft, loadCreatePartyDraft, saveCreatePartyDraft } from '../utils/createPartyDraft';
 import { buildCreatePartyPreview } from '../utils/createPartyPreview';
 
 const storageOptions = [
@@ -37,6 +38,26 @@ const createSteps = [
   },
 ];
 
+function createInitialForm(storeId) {
+  return {
+    branchId: storeId,
+    productName: '',
+    totalPrice: '',
+    totalQuantity: 4,
+    deadlineDate: '',
+    deadlineTime: '',
+    description: '',
+    title: '',
+    hostRequestedQuantity: 1,
+    unitLabel: '개',
+    minimumShareUnit: 1,
+    storageType: storageOptions[0].value,
+    packagingType: packagingOptions[0].value,
+    hostProvidesPackaging: true,
+    onSiteSplit: false,
+  };
+}
+
 function formatCurrency(value) {
   return `${value.toLocaleString('ko-KR')}원`;
 }
@@ -68,6 +89,19 @@ function getWarningToneClass(tone) {
   }
 }
 
+function formatDraftSavedAt(savedAt) {
+  if (!savedAt) {
+    return '';
+  }
+
+  return new Intl.DateTimeFormat('ko-KR', {
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(savedAt));
+}
+
 function CreateParty() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -76,28 +110,15 @@ function CreateParty() {
   const { addToast } = useToast();
   const [branches, setBranches] = useState([]);
   const [branchesLoading, setBranchesLoading] = useState(false);
-  const [currentStep, setCurrentStep] = useState(0);
   const defaultStoreId = searchParams.get('storeId') ?? '';
-  const [form, setForm] = useState({
-    branchId: defaultStoreId,
-    productName: '',
-    totalPrice: '',
-    totalQuantity: 4,
-    deadlineDate: '',
-    deadlineTime: '',
-    description: '',
-    title: '',
-    hostRequestedQuantity: 1,
-    unitLabel: '개',
-    minimumShareUnit: 1,
-    storageType: storageOptions[0].value,
-    packagingType: packagingOptions[0].value,
-    hostProvidesPackaging: true,
-    onSiteSplit: false,
-  });
+  const initialForm = useMemo(() => createInitialForm(defaultStoreId), [defaultStoreId]);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [form, setForm] = useState(initialForm);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [coords, setCoords] = useState({ lat: 37.5665, lon: 126.978 });
+  const [draftHydrated, setDraftHydrated] = useState(false);
+  const [draftNotice, setDraftNotice] = useState(null);
 
   const preview = useMemo(
     () =>
@@ -122,6 +143,21 @@ function CreateParty() {
   );
 
   useEffect(() => {
+    setForm(initialForm);
+    setCurrentStep(0);
+    setDraftHydrated(false);
+    setDraftNotice(null);
+  }, [initialForm]);
+
+  useEffect(() => {
+    const draft = loadCreatePartyDraft({ initialForm, maxStep: createSteps.length - 1 });
+    if (draft) {
+      setDraftNotice(draft);
+    }
+    setDraftHydrated(true);
+  }, [initialForm]);
+
+  useEffect(() => {
     const fetchBranches = async () => {
       try {
         setBranchesLoading(true);
@@ -140,6 +176,18 @@ function CreateParty() {
     fetchBranches();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [coords.lat, coords.lon]);
+
+  useEffect(() => {
+    if (!draftHydrated || draftNotice || submitting) {
+      return;
+    }
+
+    saveCreatePartyDraft({
+      form,
+      initialForm,
+      currentStep,
+    });
+  }, [currentStep, draftHydrated, draftNotice, form, initialForm, submitting]);
 
   const handleChange = (key) => (event) => {
     setForm((prev) => ({ ...prev, [key]: event.target.value }));
@@ -228,6 +276,26 @@ function CreateParty() {
     setCurrentStep((prev) => Math.min(createSteps.length - 1, prev + 1));
   };
 
+  const handleRestoreDraft = () => {
+    if (!draftNotice) {
+      return;
+    }
+
+    setForm(draftNotice.form);
+    setCurrentStep(draftNotice.currentStep);
+    setDraftNotice(null);
+    setError('');
+    addToast('작성 중이던 파티 초안을 복구했습니다.', 'success');
+  };
+
+  const handleDiscardDraft = () => {
+    clearCreatePartyDraft();
+    setDraftNotice(null);
+    setForm(initialForm);
+    setCurrentStep(0);
+    setError('');
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
@@ -262,6 +330,8 @@ function CreateParty() {
         onSiteSplit: Boolean(form.onSiteSplit),
         guideNote: form.description.trim(),
       });
+      clearCreatePartyDraft();
+      setDraftNotice(null);
       addToast('파티가 생성되었습니다.', 'success');
       navigate(`/branch/${form.branchId}`);
     } catch (requestError) {
@@ -275,6 +345,27 @@ function CreateParty() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5 pb-10">
+      {draftNotice && (
+        <section className="card-elevated border border-amber-200 bg-amber-50 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-amber-800">작성 중이던 파티 초안이 있습니다.</p>
+              <p className="text-sm text-amber-700">
+                {draftNotice.form.productName || draftNotice.form.title || '이전 작성 내용'} · {formatDraftSavedAt(draftNotice.savedAt)} 저장
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button type="button" onClick={handleDiscardDraft} className="btn-secondary px-4 py-2 text-sm">
+                새로 작성
+              </button>
+              <button type="button" onClick={handleRestoreDraft} className="btn-primary px-4 py-2 text-sm">
+                초안 복구
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
       <section className="card-elevated p-4 space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
