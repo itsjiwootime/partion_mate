@@ -29,17 +29,20 @@ public class NotificationOutboxProcessor {
     private final OutboxEventRepository outboxEventRepository;
     private final UserRepository userRepository;
     private final UserNotificationRepository userNotificationRepository;
+    private final WebPushNotificationService webPushNotificationService;
     private final ObjectMapper objectMapper;
     private final Clock clock;
 
     public NotificationOutboxProcessor(OutboxEventRepository outboxEventRepository,
                                        UserRepository userRepository,
                                        UserNotificationRepository userNotificationRepository,
+                                       WebPushNotificationService webPushNotificationService,
                                        ObjectMapper objectMapper,
                                        Clock clock) {
         this.outboxEventRepository = outboxEventRepository;
         this.userRepository = userRepository;
         this.userNotificationRepository = userNotificationRepository;
+        this.webPushNotificationService = webPushNotificationService;
         this.objectMapper = objectMapper;
         this.clock = clock;
     }
@@ -75,6 +78,7 @@ public class NotificationOutboxProcessor {
         switch (event.getEventType()) {
             case PARTY_JOIN_CONFIRMED -> processJoinConfirmed(event, payload, now);
             case WAITING_PROMOTED -> processWaitingPromoted(event, payload, now);
+            case PICKUP_UPDATED -> processPickupUpdated(event, payload, now);
             case PARTY_UPDATED -> processPartyUpdated(event, payload, now);
             case PARTY_CLOSED -> processPartyClosed(event, payload, now);
             default -> throw new IllegalStateException("지원하지 않는 Outbox 이벤트입니다.");
@@ -116,6 +120,26 @@ public class NotificationOutboxProcessor {
                 "/parties/" + partyId,
                 now
         );
+    }
+
+    private void processPickupUpdated(OutboxEvent event, JsonNode payload, LocalDateTime now) {
+        Long partyId = requireLong(payload, "partyId");
+        String partyTitle = requireText(payload, "partyTitle");
+        String pickupPlace = requireText(payload, "pickupPlace");
+        String pickupTime = requireText(payload, "pickupTime");
+        List<Long> joinedUserIds = readLongArray(payload.path("joinedUserIds"));
+
+        for (Long userId : joinedUserIds) {
+            saveNotification(
+                    event,
+                    loadUser(userId),
+                    UserNotificationType.PICKUP_UPDATED,
+                    "픽업 일정이 확정되었습니다",
+                    partyTitle + " 파티 픽업 일정이 " + pickupPlace + ", " + pickupTime + "로 확정되었습니다.",
+                    "/parties/" + partyId,
+                    now
+            );
+        }
     }
 
     private void processPartyUpdated(OutboxEvent event, JsonNode payload, LocalDateTime now) {
@@ -208,6 +232,7 @@ public class NotificationOutboxProcessor {
                 createdAt
         );
         userNotificationRepository.save(notification);
+        webPushNotificationService.deliver(recipient, notificationType, title, message, linkUrl);
     }
 
     private String externalKey(OutboxEvent event, Long userId, UserNotificationType notificationType) {

@@ -50,6 +50,17 @@ public class NotificationOutboxService {
         save("PARTY", party.getId(), OutboxEventType.WAITING_PROMOTED, payload);
     }
 
+    public void publishPickupUpdated(Party party, List<Long> joinedUserIds) {
+        ObjectNode payload = objectMapper.createObjectNode();
+        payload.put("partyId", party.getId());
+        payload.put("partyTitle", party.getTitle());
+        payload.put("pickupPlace", party.getPickupPlace());
+        payload.put("pickupTime", party.getPickupTime() != null ? party.getPickupTime().toString() : null);
+        payload.set("joinedUserIds", toLongArray(joinedUserIds));
+
+        save("PARTY", party.getId(), OutboxEventType.PICKUP_UPDATED, payload);
+    }
+
     public void publishPartyUpdated(Party party,
                                     List<Long> joinedUserIds,
                                     List<Long> waitingUserIds,

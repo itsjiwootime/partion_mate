@@ -530,12 +530,13 @@
 
 ## Epic 15. 외부 알림 확장
 
-### [ ] E15-1 Web Push 구독 저장 및 발송
+### [x] E15-1 Web Push 구독 저장 및 발송
 - 목표: 앱 내 알림 외에 브라우저 푸시로 중요한 상태 변화를 전달한다.
 - 범위: 푸시 구독 저장소, 구독 API, 알림 워커 연동, 발송 payload.
 - 완료 조건: 사용자가 수신에 동의하면 승격/마감/픽업 변경 알림을 외부로 받을 수 있다.
 - 검증: 구독 API 테스트, 발송 서비스 테스트, 브라우저 수동 검증.
 - ADR: 외부 알림 1차 채널로 Web Push를 선택한 이유를 문서화한다.
+- 구현 메모(2026-03-18): `web_push_subscription` 엔티티와 `PUT/GET/DELETE /api/push-subscriptions`를 추가해 브라우저 구독을 사용자별로 저장할 수 있게 했다. `NotificationOutboxProcessor`는 앱 내 알림을 저장한 직후 `WebPushNotificationService`를 통해 `WAITING_PROMOTED`, `PICKUP_UPDATED`, `PARTY_CLOSED`, `WAITING_EXPIRED` 타입만 Web Push로 best-effort 발송하고, `404/410`을 돌려준 구독은 즉시 삭제한다. 또한 픽업 일정 확정 시 `PICKUP_UPDATED` outbox 이벤트와 앱 내 알림을 새로 생성하도록 연결했다. `WebPushSubscriptionServiceIntegrationTest`, `NotificationOutboxWebPushIntegrationTest`, `NotificationOutboxProcessorIntegrationTest`와 `./mvnw -q -DskipTests compile`로 저장/발송/회귀를 검증했다.
 
 ### [ ] E15-2 알림 설정 및 딥링크
 - 목표: 사용자가 어떤 외부 알림을 받을지 선택하고 클릭 시 정확한 화면으로 이동하게 한다.

@@ -28,6 +28,12 @@ app:
     stores:
       enabled: ${STORE_SEED_ENABLED:true}
       resource: ${STORE_SEED_RESOURCE:classpath:seeds/stores.json}
+  web-push:
+    enabled: ${WEB_PUSH_ENABLED:false}
+    subject: ${WEB_PUSH_SUBJECT:mailto:partitionmate@example.com}
+    public-key: ${WEB_PUSH_PUBLIC_KEY:}
+    private-key: ${WEB_PUSH_PRIVATE_KEY:}
+    ttl-seconds: ${WEB_PUSH_TTL_SECONDS:300}
 
 auth:
   refresh:

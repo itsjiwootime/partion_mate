@@ -283,6 +283,10 @@ public class PartyService {
         }
 
         party.updatePickupSchedule(request.getPickupPlace(), request.getPickupTime());
+        List<Long> joinedRecipientIds = resolveJoinedRecipientIds(party, currentUser.getId());
+        if (!joinedRecipientIds.isEmpty()) {
+            notificationOutboxService.publishPickupUpdated(party, joinedRecipientIds);
+        }
         storeQueryCacheSupport.evictStoreQueries(party.getStore().getId());
         partyRealtimeService.publishPartyUpdatedAfterCommit(party, PartyRealtimeTrigger.PICKUP_UPDATED);
         return buildPartyDetailResponse(party, currentUser);
