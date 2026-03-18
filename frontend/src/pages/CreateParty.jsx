@@ -106,7 +106,7 @@ function CreateParty() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { isAuthed } = useAuth();
+  const { isAuthed, userEmail, userName } = useAuth();
   const { addToast } = useToast();
   const [branches, setBranches] = useState([]);
   const [branchesLoading, setBranchesLoading] = useState(false);
@@ -119,6 +119,7 @@ function CreateParty() {
   const [coords, setCoords] = useState({ lat: 37.5665, lon: 126.978 });
   const [draftHydrated, setDraftHydrated] = useState(false);
   const [draftNotice, setDraftNotice] = useState(null);
+  const draftUserKey = useMemo(() => userEmail || userName || 'guest', [userEmail, userName]);
 
   const preview = useMemo(
     () =>
@@ -150,12 +151,17 @@ function CreateParty() {
   }, [initialForm]);
 
   useEffect(() => {
-    const draft = loadCreatePartyDraft({ initialForm, maxStep: createSteps.length - 1 });
+    const draft = loadCreatePartyDraft({
+      initialForm,
+      maxStep: createSteps.length - 1,
+      userKey: draftUserKey,
+      expectedStoreId: defaultStoreId,
+    });
     if (draft) {
       setDraftNotice(draft);
     }
     setDraftHydrated(true);
-  }, [initialForm]);
+  }, [defaultStoreId, draftUserKey, initialForm]);
 
   useEffect(() => {
     const fetchBranches = async () => {
@@ -186,8 +192,9 @@ function CreateParty() {
       form,
       initialForm,
       currentStep,
+      userKey: draftUserKey,
     });
-  }, [currentStep, draftHydrated, draftNotice, form, initialForm, submitting]);
+  }, [currentStep, draftHydrated, draftNotice, draftUserKey, form, initialForm, submitting]);
 
   const handleChange = (key) => (event) => {
     setForm((prev) => ({ ...prev, [key]: event.target.value }));
@@ -289,7 +296,7 @@ function CreateParty() {
   };
 
   const handleDiscardDraft = () => {
-    clearCreatePartyDraft();
+    clearCreatePartyDraft({ userKey: draftUserKey });
     setDraftNotice(null);
     setForm(initialForm);
     setCurrentStep(0);
@@ -330,7 +337,7 @@ function CreateParty() {
         onSiteSplit: Boolean(form.onSiteSplit),
         guideNote: form.description.trim(),
       });
-      clearCreatePartyDraft();
+      clearCreatePartyDraft({ userKey: draftUserKey });
       setDraftNotice(null);
       addToast('파티가 생성되었습니다.', 'success');
       navigate(`/branch/${form.branchId}`);

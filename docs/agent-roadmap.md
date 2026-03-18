@@ -604,7 +604,7 @@
 - 완료 조건: 작성 도중 새로고침 또는 이탈 후에도 사용자가 초안을 복구할 수 있다.
 - 검증: 초안 저장/복구 테스트, 수동 브라우저 확인.
 - ADR: 초안 저장 위치와 만료 정책을 문서화한다.
-- 구현 메모(2026-03-18): `frontend/src/utils/createPartyDraft.js`를 추가해 `pm_create_party_draft` 키 기준의 초안 저장/복구/삭제, 버전 검사, 7일 TTL, 구조 검증을 한곳에 모았다. `frontend/src/pages/CreateParty.jsx`는 저장된 초안이 있으면 상단 복구 배너를 보여주고 `초안 복구` 또는 `새로 작성`을 선택하게 했으며, 선택 이후에는 입력 변경과 단계 이동을 자동 저장하고 생성 성공 시 초안을 지운다. 검증은 `frontend npm test -- --run src/utils/createPartyDraft.test.js src/pages/CreateParty.test.jsx`, `frontend npm run build`로 진행했다.
+- 구현 메모(2026-03-18, 2026-03-19 보강): `frontend/src/utils/createPartyDraft.js`를 추가해 초안 저장/복구/삭제, 버전 검사, 7일 TTL, 구조 검증을 한곳에 모았다. 이후 공유 브라우저 문제를 막기 위해 저장 키를 로그인 사용자 기준으로 분리하고, payload에 `storeId`를 함께 저장해 현재 URL의 `storeId`와 일치할 때만 복구 배너를 띄우도록 보강했다. 예전 전역 키(`pm_create_party_draft`)에 남은 초안은 더 이상 읽지 않고 정리한다. `frontend/src/pages/CreateParty.jsx`는 저장된 초안이 있으면 상단 복구 배너를 보여주고 `초안 복구` 또는 `새로 작성`을 선택하게 했으며, 선택 이후에는 입력 변경과 단계 이동을 자동 저장하고 생성 성공 시 초안을 지운다. 검증은 `frontend npm test -- --run src/utils/createPartyDraft.test.js src/pages/CreateParty.test.jsx`, `frontend npm run build`로 진행한다.
 
 ## Epic 18. 내 정보 및 사용자 설정
 

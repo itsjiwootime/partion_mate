@@ -1,4 +1,5 @@
-export const CREATE_PARTY_DRAFT_KEY = 'pm_create_party_draft';
+export const LEGACY_CREATE_PARTY_DRAFT_KEY = 'pm_create_party_draft';
+export const CREATE_PARTY_DRAFT_KEY_PREFIX = 'pm_create_party_draft';
 export const CREATE_PARTY_DRAFT_VERSION = 1;
 const CREATE_PARTY_DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -59,13 +60,37 @@ function normalizeStep(step, maxStep) {
   return Math.max(0, Math.min(maxStep, parsed));
 }
 
+function normalizeDraftUserKey(userKey) {
+  if (typeof userKey !== 'string') {
+    return 'guest';
+  }
+
+  const normalized = userKey.trim().toLowerCase();
+  return normalized || 'guest';
+}
+
+function normalizeStoreId(storeId) {
+  if (storeId == null) {
+    return '';
+  }
+
+  return String(storeId).trim();
+}
+
+export function buildCreatePartyDraftKey({ userKey } = {}) {
+  return `${CREATE_PARTY_DRAFT_KEY_PREFIX}:${normalizeDraftUserKey(userKey)}`;
+}
+
 export function hasCreatePartyDraftContent(form, initialForm) {
   return JSON.stringify(normalizeDraftForm(form, initialForm)) !== JSON.stringify(normalizeDraftForm(initialForm, initialForm));
 }
 
-export function saveCreatePartyDraft({ form, initialForm, currentStep }) {
+export function saveCreatePartyDraft({ form, initialForm, currentStep, userKey }) {
+  const storageKey = buildCreatePartyDraftKey({ userKey });
+  localStorage.removeItem(LEGACY_CREATE_PARTY_DRAFT_KEY);
+
   if (!hasCreatePartyDraftContent(form, initialForm)) {
-    localStorage.removeItem(CREATE_PARTY_DRAFT_KEY);
+    localStorage.removeItem(storageKey);
     return;
   }
 
@@ -73,14 +98,18 @@ export function saveCreatePartyDraft({ form, initialForm, currentStep }) {
     version: CREATE_PARTY_DRAFT_VERSION,
     savedAt: new Date().toISOString(),
     currentStep,
+    storeId: normalizeStoreId(form?.branchId),
     form: normalizeDraftForm(form, initialForm),
   };
 
-  localStorage.setItem(CREATE_PARTY_DRAFT_KEY, JSON.stringify(payload));
+  localStorage.setItem(storageKey, JSON.stringify(payload));
 }
 
-export function loadCreatePartyDraft({ initialForm, maxStep }) {
-  const raw = localStorage.getItem(CREATE_PARTY_DRAFT_KEY);
+export function loadCreatePartyDraft({ initialForm, maxStep, userKey, expectedStoreId }) {
+  const storageKey = buildCreatePartyDraftKey({ userKey });
+  localStorage.removeItem(LEGACY_CREATE_PARTY_DRAFT_KEY);
+
+  const raw = localStorage.getItem(storageKey);
   if (!raw) {
     return null;
   }
@@ -88,19 +117,25 @@ export function loadCreatePartyDraft({ initialForm, maxStep }) {
   try {
     const parsed = JSON.parse(raw);
     if (!isRecord(parsed) || parsed.version !== CREATE_PARTY_DRAFT_VERSION) {
-      localStorage.removeItem(CREATE_PARTY_DRAFT_KEY);
+      localStorage.removeItem(storageKey);
       return null;
     }
 
     const savedAt = Date.parse(parsed.savedAt);
     if (!Number.isFinite(savedAt) || Date.now() - savedAt > CREATE_PARTY_DRAFT_TTL_MS) {
-      localStorage.removeItem(CREATE_PARTY_DRAFT_KEY);
+      localStorage.removeItem(storageKey);
+      return null;
+    }
+
+    const normalizedExpectedStoreId = normalizeStoreId(expectedStoreId);
+    const normalizedDraftStoreId = normalizeStoreId(parsed.storeId ?? parsed.form?.branchId);
+    if (normalizedExpectedStoreId && normalizedDraftStoreId !== normalizedExpectedStoreId) {
       return null;
     }
 
     const form = normalizeDraftForm(parsed.form, initialForm);
     if (!hasCreatePartyDraftContent(form, initialForm)) {
-      localStorage.removeItem(CREATE_PARTY_DRAFT_KEY);
+      localStorage.removeItem(storageKey);
       return null;
     }
 
@@ -110,11 +145,12 @@ export function loadCreatePartyDraft({ initialForm, maxStep }) {
       form,
     };
   } catch {
-    localStorage.removeItem(CREATE_PARTY_DRAFT_KEY);
+    localStorage.removeItem(storageKey);
     return null;
   }
 }
 
-export function clearCreatePartyDraft() {
-  localStorage.removeItem(CREATE_PARTY_DRAFT_KEY);
+export function clearCreatePartyDraft({ userKey } = {}) {
+  localStorage.removeItem(buildCreatePartyDraftKey({ userKey }));
+  localStorage.removeItem(LEGACY_CREATE_PARTY_DRAFT_KEY);
 }

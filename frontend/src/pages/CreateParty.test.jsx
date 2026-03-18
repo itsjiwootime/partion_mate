@@ -1,8 +1,9 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { vi } from 'vitest';
+import { beforeEach, vi } from 'vitest';
 import CreateParty from './CreateParty';
+import { buildCreatePartyDraftKey } from '../utils/createPartyDraft';
 
 const { addToastMock, api } = vi.hoisted(() => ({
   addToastMock: vi.fn(),
@@ -16,6 +17,8 @@ vi.mock('../api/client', () => ({ api }));
 vi.mock('../context/AuthContext', () => ({
   useAuth: () => ({
     isAuthed: true,
+    userEmail: 'tester@test.com',
+    userName: '테스터',
   }),
 }));
 vi.mock('../context/ToastContext', () => ({
@@ -25,6 +28,10 @@ vi.mock('../context/ToastContext', () => ({
 }));
 
 describe('CreateParty', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
   it('기본_정보가_없으면_다음_단계로_이동하지_않는다', async () => {
     // given
     addToastMock.mockReset();
@@ -123,7 +130,7 @@ describe('CreateParty', () => {
     });
     expect(api.createParty.mock.calls[0][0]).not.toHaveProperty('openChatUrl');
     expect(addToastMock).toHaveBeenCalledWith('파티가 생성되었습니다.', 'success');
-    expect(localStorage.getItem('pm_create_party_draft')).toBeNull();
+    expect(localStorage.getItem(buildCreatePartyDraftKey({ userKey: 'tester@test.com' }))).toBeNull();
     await waitFor(() => {
       expect(screen.getByText('지점 상세')).toBeInTheDocument();
     });
@@ -204,7 +211,7 @@ describe('CreateParty', () => {
     await user.type(screen.getByLabelText('제품 총 가격'), '32000');
 
     await waitFor(() => {
-      expect(localStorage.getItem('pm_create_party_draft')).toContain('올리브 오일 2L');
+      expect(localStorage.getItem(buildCreatePartyDraftKey({ userKey: 'tester@test.com' }))).toContain('올리브 오일 2L');
     });
 
     unmount();
@@ -227,5 +234,55 @@ describe('CreateParty', () => {
     expect(screen.getByLabelText('제품 총 가격')).toHaveValue(32000);
     await user.click(screen.getByRole('button', { name: '이전 단계' }));
     expect(screen.getByLabelText('제품명')).toHaveValue('올리브 오일 2L');
+  });
+
+  it('다른_지점으로_진입하면_기존_초안_복구_배너를_보이지_않는다', async () => {
+    // given
+    addToastMock.mockReset();
+    api.getNearbyStores.mockReset();
+    api.createParty.mockReset();
+
+    api.getNearbyStores.mockResolvedValue([
+      {
+        id: 1,
+        name: '코스트코 양재점',
+        distance: 1.2,
+      },
+      {
+        id: 2,
+        name: '트레이더스 월계점',
+        distance: 2.1,
+      },
+    ]);
+    const user = userEvent.setup();
+
+    const { unmount } = render(
+      <MemoryRouter initialEntries={['/parties/create?storeId=1']}>
+        <Routes>
+          <Route path="/parties/create" element={<CreateParty />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('파티 기본 정보');
+    await user.type(screen.getByLabelText('제품명'), '올리브 오일 2L');
+    await user.click(screen.getByRole('button', { name: '다음 단계' }));
+    await screen.findByText('가격 및 수량 설정');
+    await user.clear(screen.getByLabelText('제품 총 가격'));
+    await user.type(screen.getByLabelText('제품 총 가격'), '32000');
+    unmount();
+
+    // when
+    render(
+      <MemoryRouter initialEntries={['/parties/create?storeId=2']}>
+        <Routes>
+          <Route path="/parties/create" element={<CreateParty />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    // then
+    await screen.findByText('파티 기본 정보');
+    expect(screen.queryByText('작성 중이던 파티 초안이 있습니다.')).not.toBeInTheDocument();
   });
 });
