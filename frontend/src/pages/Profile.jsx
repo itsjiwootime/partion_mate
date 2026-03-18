@@ -61,11 +61,14 @@ function resolvePushSummary({ pushConfigEnabled, pushSupported, permission, curr
 }
 
 function Profile() {
-  const { isAuthed, logout } = useAuth();
+  const { isAuthed, logout, refreshProfile } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const [user, setUser] = useState(null);
+  const [profileForm, setProfileForm] = useState({ name: '', address: '' });
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
   const [error, setError] = useState('');
   const [notificationPreferences, setNotificationPreferences] = useState([]);
   const [settingsLoading, setSettingsLoading] = useState(false);
@@ -87,6 +90,17 @@ function Profile() {
       setError('프로필을 불러오지 못했습니다.');
     }
   }, []);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    setProfileForm({
+      name: user.name || '',
+      address: user.address || '',
+    });
+  }, [user]);
 
   const fetchNotificationSettings = useCallback(async () => {
     try {
@@ -195,6 +209,60 @@ function Profile() {
     fetchNotificationSettings();
   }, [fetchMe, fetchNotificationSettings, isAuthed, location.pathname, location.search, navigate]);
 
+  const handleProfileFieldChange = (key) => (event) => {
+    setProfileForm((prev) => ({
+      ...prev,
+      [key]: event.target.value,
+    }));
+  };
+
+  const handleCancelProfileEdit = () => {
+    setEditingProfile(false);
+    setError('');
+    setProfileForm({
+      name: user?.name || '',
+      address: user?.address || '',
+    });
+  };
+
+  const handleProfileSave = async (event) => {
+    event.preventDefault();
+
+    const nextName = profileForm.name.trim();
+    const nextAddress = profileForm.address.trim();
+
+    if (!nextName) {
+      setError('닉네임을 입력해 주세요.');
+      addToast('닉네임을 입력해 주세요.', 'error');
+      return;
+    }
+
+    if (!nextAddress) {
+      setError('주소를 입력해 주세요.');
+      addToast('주소를 입력해 주세요.', 'error');
+      return;
+    }
+
+    try {
+      setSavingProfile(true);
+      setError('');
+      const updatedUser = await api.updateMe({
+        name: nextName,
+        address: nextAddress,
+      });
+      setUser(updatedUser);
+      await refreshProfile?.();
+      setEditingProfile(false);
+      addToast('프로필을 저장했습니다.', 'success');
+    } catch (e) {
+      const message = e?.message || '프로필을 저장하지 못했습니다.';
+      setError(message);
+      addToast(message, 'error');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
   if (!isAuthed) {
     return null;
   }
@@ -220,20 +288,80 @@ function Profile() {
           </button>
         )}
         {user && (
-          <div className="space-y-2 text-sm text-ink">
-            <p className="flex items-center gap-2">
-              <User size={16} className="text-mint-700" />
-              <span className="font-semibold">{user.name}</span>
-            </p>
-            <p className="flex items-center gap-2">
-              <Mail size={16} className="text-mint-700" />
-              <span>{user.email}</span>
-            </p>
-            <p className="flex items-center gap-2">
-              <MapPin size={16} className="text-mint-700" />
-              <span>{user.address}</span>
-            </p>
-          </div>
+          <form className="space-y-3 text-sm text-ink" onSubmit={handleProfileSave}>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium text-ink" htmlFor="profile-name">
+                <User size={16} className="text-mint-700" />
+                <span>닉네임</span>
+              </label>
+              {editingProfile ? (
+                <input
+                  id="profile-name"
+                  type="text"
+                  value={profileForm.name}
+                  onChange={handleProfileFieldChange('name')}
+                  className="input"
+                  aria-label="닉네임"
+                />
+              ) : (
+                <p className="font-semibold">{user.name}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <p className="flex items-center gap-2 text-sm font-medium text-ink">
+                <Mail size={16} className="text-mint-700" />
+                <span>이메일</span>
+              </p>
+              <p>{user.email}</p>
+            </div>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium text-ink" htmlFor="profile-address">
+                <MapPin size={16} className="text-mint-700" />
+                <span>주소</span>
+              </label>
+              {editingProfile ? (
+                <textarea
+                  id="profile-address"
+                  rows="3"
+                  value={profileForm.address}
+                  onChange={handleProfileFieldChange('address')}
+                  className="input"
+                  aria-label="주소"
+                />
+              ) : (
+                <p>{user.address}</p>
+              )}
+            </div>
+            <div className="rounded-2xl border border-ink/10 bg-ink/5 px-4 py-3 text-xs text-ink/60">
+              주소를 수정하면 저장된 위치 좌표는 초기화될 수 있습니다. 주변 지점 기준 위치 재설정은 다음 단계에서 보강합니다.
+            </div>
+            {editingProfile ? (
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleCancelProfileEdit}
+                  className="btn-secondary flex-1"
+                  disabled={savingProfile}
+                >
+                  취소
+                </button>
+                <button type="submit" className="btn-primary flex-1" disabled={savingProfile}>
+                  {savingProfile ? '저장 중...' : '프로필 저장'}
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingProfile(true);
+                  setError('');
+                }}
+                className="btn-secondary w-full"
+              >
+                프로필 수정
+              </button>
+            )}
+          </form>
         )}
         <button
           onClick={() => navigate('/favorite-parties')}

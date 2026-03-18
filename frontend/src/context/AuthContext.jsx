@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { api, setAccessTokenRefreshHandler, setAuthFailureHandler, setAuthToken } from '../api/client';
 
 const AuthContext = createContext(null);
@@ -16,6 +16,21 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('pm_email');
     localStorage.removeItem('pm_username');
   };
+
+  const applyProfile = useCallback((profile) => {
+    setUserName(profile?.name || profile?.email || '');
+    setUserEmail(profile?.email || '');
+  }, []);
+
+  const refreshProfile = useCallback(async () => {
+    try {
+      const me = await api.getMe();
+      applyProfile(me);
+      return me;
+    } catch {
+      return null;
+    }
+  }, [applyProfile]);
 
   useEffect(() => {
     if (token) {
@@ -85,8 +100,7 @@ export function AuthProvider({ children }) {
         if (cancelled) {
           return;
         }
-        setUserName(me.name || me.email || '');
-        setUserEmail(me.email || '');
+        applyProfile(me);
       } catch (err) {
         if (cancelled || err?.status === 401) {
           return;
@@ -99,25 +113,16 @@ export function AuthProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [applyProfile, token]);
 
   const value = useMemo(() => {
-    const setProfileFromServer = async () => {
-      try {
-        const me = await api.getMe();
-        setUserName(me.name || me.email || '');
-        setUserEmail(me.email || '');
-      } catch {
-        // ignore
-      }
-    };
-
     return {
       token,
       userEmail,
       authFailure,
       isAuthed: Boolean(token),
       userName,
+      refreshProfile,
       async login({ email, password }) {
         const res = await api.login({ email, password });
         const trimmed = res.accessToken?.trim();
@@ -125,7 +130,7 @@ export function AuthProvider({ children }) {
         setAuthToken(trimmed);
         setUserEmail(email);
         setAuthFailure(null);
-        await setProfileFromServer();
+        await refreshProfile();
       },
       async signup({ email, password, username, address, latitude, longitude }) {
         await api.signup({ email, password, username, address, latitude, longitude });
@@ -144,7 +149,7 @@ export function AuthProvider({ children }) {
         clearSession();
       },
     };
-  }, [authFailure, token, userEmail, userName]);
+  }, [authFailure, refreshProfile, token, userEmail, userName]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

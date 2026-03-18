@@ -4,6 +4,7 @@ import com.project.partition_mate.domain.User;
 import com.project.partition_mate.dto.MyJoinedPartyResponse;
 import com.project.partition_mate.dto.NotificationPreferenceResponse;
 import com.project.partition_mate.dto.PartyResponse;
+import com.project.partition_mate.dto.UpdateUserProfileRequest;
 import com.project.partition_mate.dto.UpdateNotificationPreferencesRequest;
 import com.project.partition_mate.dto.UserNotificationResponse;
 import com.project.partition_mate.dto.UserResponse;
@@ -17,6 +18,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -41,6 +43,17 @@ public class UserController {
         UserResponse response = userService.getProfile(user);
 
         return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/me")
+    public ResponseEntity<UserResponse> updateCurrentUser(
+            @RequestBody @Valid UpdateUserProfileRequest request
+    ) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        CustomUserDetails principal = (CustomUserDetails) authentication.getPrincipal();
+        User user = principal.getUser();
+
+        return ResponseEntity.ok(userService.updateProfile(user, request));
     }
 
     @GetMapping("/me/parties")

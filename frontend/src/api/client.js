@@ -283,6 +283,11 @@ export const api = {
     }),
 
   getMe: () => fetchJson('/api/users/me'),
+  updateMe: (payload) =>
+    fetchJson('/api/users/me', {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
   handleError: (err) => {
     throw err;
   },

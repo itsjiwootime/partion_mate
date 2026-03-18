@@ -183,4 +183,8 @@ public class BusinessException extends RuntimeException {
     public static BusinessException notificationTypeDoesNotSupportWebPush(String notificationLabel) {
         return new BusinessException(notificationLabel + " 알림은 아직 브라우저 푸시를 지원하지 않습니다.", HttpStatus.BAD_REQUEST);
     }
+
+    public static BusinessException usernameAlreadyExists() {
+        return new BusinessException("이미 사용 중인 닉네임입니다.", HttpStatus.CONFLICT);
+    }
 }
