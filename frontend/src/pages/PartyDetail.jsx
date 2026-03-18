@@ -3,11 +3,12 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { ArrowLeft, Clock3, Flag, Heart, MapPin, MessageSquareText, Package, ShieldAlert, ShieldCheck, Star, UserX, Users, Wallet } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Clock3, Flag, Heart, MapPin, MessageSquareText, Package, ShieldAlert, ShieldCheck, Star, UserX, Users, Wallet } from 'lucide-react';
 import { LoadingState } from '../components/Feedback';
 import { ConfirmDialog, ReportDialog } from '../components/SafetyDialogs';
 import { mergeRealtimeParty, normalizePartyDetail } from '../utils/party';
 import { subscribeToPartyStream } from '../utils/partyRealtime';
+import { getTrustBadge, getTrustHighlights, getTrustWarnings } from '../utils/trustSignals';
 
 function toDateTimeLocalValue(value) {
   if (!value) return '';
@@ -157,6 +158,9 @@ function PartyDetail() {
   const hostUserId = detail?.hostTrust?.userId ?? null;
   const hostUsername = detail?.hostTrust?.username ?? '호스트';
   const canManageHostSafety = isAuthed && hostUserId != null && hostUsername !== userName;
+  const hostTrustBadge = detail?.hostTrust ? getTrustBadge(detail.hostTrust) : null;
+  const hostTrustHighlights = detail?.hostTrust ? getTrustHighlights(detail.hostTrust) : [];
+  const hostTrustWarnings = detail?.hostTrust ? getTrustWarnings(detail.hostTrust) : [];
 
   const ensureAuthed = () => {
     if (isAuthed) {
@@ -355,6 +359,7 @@ function PartyDetail() {
         <p className="text-xs text-ink/50">
           {realtimeState === 'reconnecting' ? '실시간 연결을 다시 시도하는 중입니다.' : '실시간 모집 현황을 반영하고 있습니다.'}
         </p>
+        {hostTrustBadge && <span className={`badge ${hostTrustBadge.className}`}>{hostTrustBadge.label}</span>}
         <h1 className="text-xl font-semibold text-ink">{detail.title}</h1>
         <p className="section-subtitle">{detail.storeName}</p>
         <div className="flex flex-wrap gap-2">
@@ -407,6 +412,26 @@ function PartyDetail() {
           <div className="flex items-center gap-2">
             <ShieldCheck size={18} className="text-mint-700" />
             <h2 className="section-title">호스트 신뢰도</h2>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <span className={`badge ${hostTrustBadge.className}`}>{hostTrustBadge.label}</span>
+            {hostTrustHighlights.map((item) => (
+              <span key={item.label} className={`badge ${item.className}`}>
+                {item.label} {item.value}
+              </span>
+            ))}
+          </div>
+          <p className="text-sm leading-6 text-ink/65">{hostTrustBadge.description}</p>
+          <div className="space-y-2">
+            {hostTrustWarnings.map((warning) => (
+              <div key={warning.title} className={`rounded-2xl border px-4 py-3 text-sm leading-6 ${warning.className}`}>
+                <div className="flex items-center gap-2 font-semibold">
+                  <AlertTriangle size={15} />
+                  {warning.title}
+                </div>
+                <p className="mt-1">{warning.message}</p>
+              </div>
+            ))}
           </div>
           <div className="grid gap-3 md:grid-cols-[1.2fr_1fr]">
             <div className="rounded-2xl border border-mint-100 bg-mint-50 px-4 py-4">

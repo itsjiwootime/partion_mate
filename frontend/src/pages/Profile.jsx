@@ -16,6 +16,7 @@ import {
 import { Bell, Flag, Heart, Mail, MapPin, ShieldAlert, ShieldCheck, Star, User, UserX } from 'lucide-react';
 import { geocodeAddress, searchAddressWithPostcode } from '../utils/addressLocation';
 import { formatReportTargetSummary } from '../utils/safety';
+import { getTrustBadge, getTrustHighlights, getTrustWarnings } from '../utils/trustSignals';
 
 function formatRating(value) {
   return Number(value ?? 0).toFixed(1);
@@ -439,6 +440,9 @@ function Profile() {
     currentBrowserSubscribed,
     subscriptionCount,
   });
+  const trustBadge = user?.trustSummary ? getTrustBadge(user.trustSummary) : null;
+  const trustHighlights = user?.trustSummary ? getTrustHighlights(user.trustSummary) : [];
+  const trustWarnings = user?.trustSummary ? getTrustWarnings(user.trustSummary) : [];
 
   return (
     <div className="space-y-4">
@@ -766,6 +770,26 @@ function Profile() {
           <div className="flex items-center gap-2">
             <ShieldCheck size={18} className="text-mint-700" />
             <h2 className="section-title">신뢰도</h2>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <span className={`badge ${trustBadge.className}`}>{trustBadge.label}</span>
+            {trustHighlights.map((item) => (
+              <span key={item.label} className={`badge ${item.className}`}>
+                {item.label} {item.value}
+              </span>
+            ))}
+          </div>
+          <p className="text-sm leading-6 text-ink/65">{trustBadge.description}</p>
+          <div className="space-y-2">
+            {trustWarnings.map((warning) => (
+              <div key={warning.title} className={`rounded-2xl border px-4 py-3 text-sm leading-6 ${warning.className}`}>
+                <div className="flex items-center gap-2 font-semibold text-inherit">
+                  <ShieldAlert size={15} />
+                  {warning.title}
+                </div>
+                <p className="mt-1">{warning.message}</p>
+              </div>
+            ))}
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-2xl border border-mint-100 bg-mint-50 px-4 py-3">
