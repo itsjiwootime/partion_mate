@@ -1,14 +1,19 @@
 package com.project.partition_mate.controller;
 
 import com.project.partition_mate.domain.Store;
+import com.project.partition_mate.domain.User;
 import com.project.partition_mate.dto.PartyResponse;
 import com.project.partition_mate.dto.StoreResponse;
-import com.project.partition_mate.service.PartyService;
+import com.project.partition_mate.security.CustomUserDetails;
 import com.project.partition_mate.service.StoreService;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
@@ -18,8 +23,6 @@ import java.util.List;
 public class StoreController {
 
     private final StoreService storeService;
-    private final PartyService partyService;
-
 
     @GetMapping("/{id}")
     public ResponseEntity<StoreResponse> getStore(@PathVariable Long id) {
@@ -42,8 +45,18 @@ public class StoreController {
     @GetMapping("/{storeId}/parties")
     public ResponseEntity<List<PartyResponse>> getStoreParties(@PathVariable Long storeId) {
 
-        List<PartyResponse> parties = storeService.findPartiesByStoreId(storeId);
+        List<PartyResponse> parties = storeService.findPartiesByStoreId(storeId, resolveCurrentUserOrNull());
 
         return ResponseEntity.ok(parties);
+    }
+
+    private User resolveCurrentUserOrNull() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication() != null
+                ? SecurityContextHolder.getContext().getAuthentication().getPrincipal()
+                : null;
+        if (!(principal instanceof CustomUserDetails customUserDetails)) {
+            return null;
+        }
+        return customUserDetails.getUser();
     }
 }

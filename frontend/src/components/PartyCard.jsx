@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { CircleDot, Clock3, Star, ArrowRight } from 'lucide-react';
+import { ArrowRight, CircleDot, Clock3, Heart, Star } from 'lucide-react';
 
 function formatCurrency(value) {
   return `${value.toLocaleString('ko-KR')}원`;
@@ -22,6 +22,9 @@ function PartyCard({
   rating,
   chatUnreadCount = 0,
   status = 'active',
+  favorite = false,
+  favoriteBusy = false,
+  onToggleFavorite,
   onViewDetail,
 }) {
   const isClosed = status === 'closed';
@@ -73,19 +76,37 @@ function PartyCard({
           {storeName && <p className="mt-1 text-xs font-medium text-mint-700">{storeName}</p>}
           {chatUnreadCount > 0 && <p className="mt-2 text-xs font-semibold text-mint-700">새 메시지 {chatUnreadCount}개</p>}
         </div>
-        <span
-          className={[
-            'badge',
-            isActive
-              ? 'bg-mint-500/15 text-mint-700'
-              : isClosed
-                ? 'bg-red-50 text-red-700'
-                : 'bg-ink/10 text-ink/60',
-          ].join(' ')}
-        >
-          <CircleDot size={14} />
-          {isActive ? '모집 중' : isClosed ? '종료' : '마감'}
-        </span>
+        <div className="flex flex-col items-end gap-2">
+          {onToggleFavorite && (
+            <button
+              type="button"
+              onClick={onToggleFavorite}
+              disabled={favoriteBusy}
+              aria-pressed={favorite}
+              aria-label={favorite ? '관심 파티 해제' : '관심 파티 저장'}
+              className={[
+                'btn-pill px-3 py-2 text-xs',
+                favorite ? 'bg-rose-100 text-rose-700 hover:bg-rose-200' : '',
+              ].join(' ')}
+            >
+              <Heart size={14} className={favorite ? 'fill-current' : ''} />
+              {favoriteBusy ? '처리 중' : favorite ? '저장됨' : '저장'}
+            </button>
+          )}
+          <span
+            className={[
+              'badge',
+              isActive
+                ? 'bg-mint-500/15 text-mint-700'
+                : isClosed
+                  ? 'bg-red-50 text-red-700'
+                  : 'bg-ink/10 text-ink/60',
+            ].join(' ')}
+          >
+            <CircleDot size={14} />
+            {isActive ? '모집 중' : isClosed ? '종료' : '마감'}
+          </span>
+        </div>
       </header>
 
       <div className="mt-3 grid gap-2 text-sm text-ink/70">

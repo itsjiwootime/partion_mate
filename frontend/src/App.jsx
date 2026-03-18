@@ -4,6 +4,7 @@ import AuthLayout from './components/AuthLayout';
 import Home from './pages/Home';
 import PartyList from './pages/PartyList';
 import CreateParty from './pages/CreateParty';
+import FavoriteParties from './pages/FavoriteParties';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Profile from './pages/Profile';
@@ -26,6 +27,7 @@ function App() {
           <Route path="/parties/:id" element={<PartyDetail />} />
           <Route path="/parties/:id/join" element={<JoinParty />} />
           <Route path="/parties/create" element={<CreateParty />} />
+          <Route path="/favorite-parties" element={<FavoriteParties />} />
           <Route path="/my-parties" element={<MyParties />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/chat" element={<Chat />} />

@@ -190,6 +190,15 @@ export const api = {
   getPartyDetail: (partyId) => fetchJson(`/party/${partyId}`),
 
   getMyParties: () => fetchJson('/api/users/me/parties'),
+  getFavoriteParties: () => fetchJson('/api/users/me/favorite-parties'),
+  saveFavoriteParty: (partyId) =>
+    fetchJson(`/api/users/me/favorite-parties/${partyId}`, {
+      method: 'PUT',
+    }),
+  removeFavoriteParty: (partyId) =>
+    fetchJson(`/api/users/me/favorite-parties/${partyId}`, {
+      method: 'DELETE',
+    }),
   getMyNotifications: () => fetchJson('/api/users/me/notifications'),
   getMyNotificationPreferences: () => fetchJson('/api/users/me/notification-preferences'),
   updateMyNotificationPreferences: (payload) =>

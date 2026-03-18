@@ -112,6 +112,7 @@ export function normalizePartyDetail(input) {
     reviewEligible: input.reviewEligible ?? false,
     canReviewHost: input.canReviewHost ?? false,
     hasReviewedHost: input.hasReviewedHost ?? false,
+    favorite: input.favorite ?? false,
     userRole: input.userRole ?? null,
     hostTrust: normalizeTrustSummary(input.hostTrust),
     hostReviews: Array.isArray(input.hostReviews) ? input.hostReviews.map(normalizeReview).filter(Boolean) : [],

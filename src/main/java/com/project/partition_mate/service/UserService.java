@@ -5,6 +5,7 @@ import com.project.partition_mate.domain.WaitingQueueStatus;
 import com.project.partition_mate.domain.User;
 import com.project.partition_mate.domain.PartyMember;
 import com.project.partition_mate.dto.NotificationPreferenceResponse;
+import com.project.partition_mate.dto.PartyResponse;
 import com.project.partition_mate.dto.UpdateNotificationPreferencesRequest;
 import com.project.partition_mate.dto.UserNotificationResponse;
 import com.project.partition_mate.dto.MyJoinedPartyResponse;
@@ -20,10 +21,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Comparator;
 
 @Service
 @RequiredArgsConstructor
@@ -35,6 +36,7 @@ public class UserService {
     private final UserNotificationRepository userNotificationRepository;
     private final TrustScoreService trustScoreService;
     private final UserNotificationPreferenceService userNotificationPreferenceService;
+    private final FavoritePartyService favoritePartyService;
 
     public User getUserByEmail(String email) {
 
@@ -198,5 +200,17 @@ public class UserService {
 
     public List<ReviewResponse> getRecentReviews(User user, int limit) {
         return trustScoreService.getRecentReviews(user, limit);
+    }
+
+    public List<PartyResponse> getFavoriteParties(User user) {
+        return favoritePartyService.getFavoriteParties(user);
+    }
+
+    public void saveFavoriteParty(User user, Long partyId) {
+        favoritePartyService.save(user, partyId);
+    }
+
+    public void removeFavoriteParty(User user, Long partyId) {
+        favoritePartyService.remove(user, partyId);
     }
 }

@@ -1,23 +1,33 @@
 package com.project.partition_mate.controller;
 
 import com.project.partition_mate.domain.Party;
+import com.project.partition_mate.domain.User;
 import com.project.partition_mate.dto.ConfirmPickupScheduleRequest;
 import com.project.partition_mate.dto.ConfirmSettlementRequest;
-import com.project.partition_mate.dto.CreateReviewRequest;
 import com.project.partition_mate.dto.CreatePartyRequest;
+import com.project.partition_mate.dto.CreateReviewRequest;
+import com.project.partition_mate.dto.JoinPartyRequest;
 import com.project.partition_mate.dto.JoinPartyResponse;
 import com.project.partition_mate.dto.PartyDetailResponse;
 import com.project.partition_mate.dto.PartyResponse;
-import com.project.partition_mate.dto.JoinPartyRequest;
 import com.project.partition_mate.dto.UpdatePartyRequest;
 import com.project.partition_mate.dto.UpdatePaymentStatusRequest;
 import com.project.partition_mate.dto.UpdateTradeStatusRequest;
+import com.project.partition_mate.security.CustomUserDetails;
 import com.project.partition_mate.service.PartyService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
@@ -100,9 +110,7 @@ public class PartyController {
 
     @GetMapping("/all")
     public ResponseEntity<List<PartyResponse>> getAllParty() {
-        List<Party> partyList = partyService.getAllParties();
-
-        return ResponseEntity.ok(partyList.stream().map(PartyResponse::from).toList());
+        return ResponseEntity.ok(partyService.getAllPartyResponses(resolveCurrentUserOrNull()));
     }
 
     @GetMapping("/{id}")
@@ -110,8 +118,15 @@ public class PartyController {
         PartyDetailResponse response = partyService.detailsParty(id);
 
         return ResponseEntity.ok(response);
-
     }
 
-
+    private User resolveCurrentUserOrNull() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication() != null
+                ? SecurityContextHolder.getContext().getAuthentication().getPrincipal()
+                : null;
+        if (!(principal instanceof CustomUserDetails customUserDetails)) {
+            return null;
+        }
+        return customUserDetails.getUser();
+    }
 }

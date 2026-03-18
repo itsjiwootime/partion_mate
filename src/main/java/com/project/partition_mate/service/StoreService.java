@@ -2,6 +2,7 @@ package com.project.partition_mate.service;
 
 import com.project.partition_mate.domain.PartyStatus;
 import com.project.partition_mate.domain.Store;
+import com.project.partition_mate.domain.User;
 import com.project.partition_mate.dto.PartyResponse;
 import com.project.partition_mate.dto.StoreResponse;
 import com.project.partition_mate.repository.PartyRepository;
@@ -23,6 +24,7 @@ public class StoreService {
 
     private final StoreRepository storeRepository;
     private final PartyRepository partyRepository;
+    private final FavoritePartyService favoritePartyService;
 
     public Store findById(Long id) {
 
@@ -36,6 +38,10 @@ public class StoreService {
     @Cacheable(cacheNames = StoreQueryCacheSupport.STORE_PARTIES_CACHE, key = "#storeId")
     public List<PartyResponse> findPartiesByStoreId(Long storeId) {
         return partyRepository.findResponsesByStoreId(storeId);
+    }
+
+    public List<PartyResponse> findPartiesByStoreId(Long storeId, User currentUser) {
+        return favoritePartyService.applyFavoriteFlags(currentUser, findPartiesByStoreId(storeId));
     }
 
     @Cacheable(

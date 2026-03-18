@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { Package, Users, Clock3, ArrowLeft, Link as LinkIcon, Copy, ExternalLink, MapPin, Wallet, ShieldCheck, Star, MessageSquareText } from 'lucide-react';
+import { ArrowLeft, Clock3, Copy, ExternalLink, Heart, Link as LinkIcon, MapPin, MessageSquareText, Package, ShieldCheck, Star, Users, Wallet } from 'lucide-react';
 import { LoadingState } from '../components/Feedback';
 import { mergeRealtimeParty, normalizePartyDetail } from '../utils/party';
 import { subscribeToPartyStream } from '../utils/partyRealtime';
@@ -33,6 +33,7 @@ function PartyDetail() {
   const { isAuthed } = useAuth();
   const { addToast } = useToast();
   const stateParty = useMemo(() => normalizePartyDetail(location.state?.party), [location.state]);
+  const returnTo = `${location.pathname}${location.search}`;
   const [detail, setDetail] = useState(stateParty || null);
   const [loading, setLoading] = useState(!stateParty);
   const [error, setError] = useState('');
@@ -146,6 +147,7 @@ function PartyDetail() {
 
   const isWaitingParty = detail?.participationStatus === 'WAITING';
   const isClosedParty = detail?.status === 'closed';
+  const isHost = detail?.userRole === 'LEADER';
   const isJoinedMember = detail?.userRole === 'MEMBER';
   const canJoinNow = !detail?.participationStatus && !isClosedParty && detail?.status !== 'full' && remaining > 0;
   const canJoinWaitingList = !detail?.participationStatus && !isClosedParty && !canJoinNow;
@@ -209,6 +211,37 @@ function PartyDetail() {
     );
   };
 
+  const handleToggleFavorite = async () => {
+    if (!detail?.partyId) {
+      return;
+    }
+
+    if (!isAuthed) {
+      navigate('/login', { state: { from: returnTo } });
+      return;
+    }
+
+    const previousFavorite = detail.favorite;
+    const nextFavorite = !previousFavorite;
+
+    try {
+      setActionLoading('favorite');
+      setDetail((current) => (current ? { ...current, favorite: nextFavorite } : current));
+      if (nextFavorite) {
+        await api.saveFavoriteParty(detail.partyId);
+        addToast('관심 파티에 저장했습니다.', 'success');
+      } else {
+        await api.removeFavoriteParty(detail.partyId);
+        addToast('관심 파티에서 제거했습니다.', 'success');
+      }
+    } catch (e) {
+      setDetail((current) => (current ? { ...current, favorite: previousFavorite } : current));
+      addToast(e.message || '관심 파티 상태를 변경하지 못했습니다.', 'error');
+    } finally {
+      setActionLoading('');
+    }
+  };
+
   if (loading) return <LoadingState />;
   if (error) return <p className="text-sm text-red-600">{error}</p>;
   if (!detail) return <p className="text-sm text-ink/60">파티 정보를 찾을 수 없습니다.</p>;
@@ -228,6 +261,22 @@ function PartyDetail() {
         </p>
         <h1 className="text-xl font-semibold text-ink">{detail.title}</h1>
         <p className="section-subtitle">{detail.storeName}</p>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={handleToggleFavorite}
+            disabled={actionLoading === 'favorite'}
+            aria-pressed={detail.favorite}
+            aria-label={detail.favorite ? '관심 파티 해제' : '관심 파티 저장'}
+            className={[
+              'btn-pill px-3 py-2 text-sm',
+              detail.favorite ? 'bg-rose-100 text-rose-700 hover:bg-rose-200' : '',
+            ].join(' ')}
+          >
+            <Heart size={15} className={detail.favorite ? 'fill-current' : ''} />
+            {actionLoading === 'favorite' ? '처리 중...' : detail.favorite ? '관심 저장됨' : '관심 저장'}
+          </button>
+        </div>
         {detail.productName && (
           <p className="text-sm font-semibold text-ink">
             제품명: <span className="text-ink/80">{detail.productName}</span>

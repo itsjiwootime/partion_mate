@@ -572,12 +572,13 @@
 - ADR: 기본 정렬과 발견 섹션 정책을 문서화한다.
 - 구현 메모(2026-03-18): `frontend/src/utils/partyDiscovery.js`에 `sort` 모델과 `recommended/deadline/popular/newest` 정렬 계산, 발견 섹션 대표 파티 계산을 추가했다. `frontend/src/pages/PartyList.jsx`는 정렬 select, `마감 임박/인기 파티/신규 파티` 발견 카드, 현재 정렬 상위 3개 카드 강조 badge를 넣었고, `frontend/src/components/PartyCard.jsx`는 강조 tone에 따라 badge와 ring을 보여주도록 확장했다. `frontend/src/pages/Home.jsx`는 `GET /party/all`을 이용한 `지금 발견하기` 섹션을 추가해 대표 파티와 함께 정렬 쿼리로 이동하게 했다. 최신순은 현재 응답에 `createdAt`이 없어 `partyId` 역순으로 추정했다. 검증은 `frontend npm test -- --run src/utils/partyDiscovery.test.js src/pages/PartyList.filters.test.jsx src/pages/Home.quickDiscovery.test.jsx`, `frontend npm run build`로 진행했다.
 
-### [ ] E16-3 관심 파티 저장
+### [x] E16-3 관심 파티 저장
 - 목표: 사용자가 나중에 다시 볼 파티를 저장할 수 있게 한다.
 - 범위: 관심 파티 엔티티/API, 목록/상세 UI, 내 관심 파티 진입점.
 - 완료 조건: 상세와 목록에서 관심 파티를 저장/해제하고 다시 확인할 수 있다.
 - 검증: API 테스트, 프론트 상호작용 테스트, `npm run build`.
 - ADR: 관심 파티 저장 범위와 노출 정책을 문서화한다.
+- 구현 메모(2026-03-18): `FavoriteParty` 엔티티와 `FavoritePartyService`를 추가해 `GET /api/users/me/favorite-parties`, `PUT/DELETE /api/users/me/favorite-parties/{partyId}`를 만들었고, 공개 파티 조회 응답에 로그인 사용자 기준 `favorite` 플래그를 후처리로 덧붙였다. `frontend/src/components/PartyCard.jsx`, `frontend/src/pages/PartyList.jsx`, `frontend/src/pages/PartyDetail.jsx`에 저장/해제 버튼을 추가했고, `frontend/src/pages/FavoriteParties.jsx`와 프로필 진입 버튼으로 내 관심 파티 화면을 연결했다. 검증은 `./mvnw -q -Dtest=FavoritePartyServiceIntegrationTest,UserControllerFavoritePartyTest test`, `frontend npm test -- --run src/pages/PartyList.favorite.test.jsx src/pages/PartyDetail.favorite.test.jsx src/pages/FavoriteParties.test.jsx`, `frontend npm run build`로 진행했다.
 
 ## Epic 17. 파티 생성 UX 고도화
 

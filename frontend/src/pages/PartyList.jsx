@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search, SlidersHorizontal, Sparkles } from 'lucide-react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import PartyCard from '../components/PartyCard';
 import { api } from '../api/client';
 import SectionHeader from '../components/SectionHeader';
@@ -22,12 +22,15 @@ import {
 } from '../utils/partyDiscovery';
 import { subscribeToPartyStream } from '../utils/partyRealtime';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 
 function PartyList() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { isAuthed } = useAuth();
+  const { addToast } = useToast();
   const isAll = id === undefined;
   const branchName = useMemo(() => (isAll ? '전체 파티' : id ?? '지점 선택'), [id, isAll]);
   const [storeInfo, setStoreInfo] = useState(null);
@@ -36,6 +39,7 @@ function PartyList() {
   const [error, setError] = useState('');
   const [realtimeState, setRealtimeState] = useState('connecting');
   const [chatUnreadMap, setChatUnreadMap] = useState({});
+  const [favoriteLoadingId, setFavoriteLoadingId] = useState(null);
   const filters = useMemo(() => parsePartyDiscoveryFilters(searchParams), [searchParams]);
   const filterSummary = useMemo(() => summarizePartyDiscoveryFilters(filters), [filters]);
   const hasActiveFilters = useMemo(() => hasActivePartyDiscoveryFilters(filters), [filters]);
@@ -154,6 +158,41 @@ function PartyList() {
 
   const resetFilters = () => {
     setSearchParams(new URLSearchParams(), { replace: true });
+  };
+
+  const handleToggleFavorite = async (partyId) => {
+    if (!isAuthed) {
+      navigate('/login', { state: { from: `${location.pathname}${location.search}` } });
+      return;
+    }
+
+    const currentParty = parties.find((party) => party.partyId === partyId);
+    if (!currentParty) {
+      return;
+    }
+
+    const nextFavorite = !currentParty.favorite;
+    setFavoriteLoadingId(partyId);
+    setParties((current) =>
+      current.map((party) => (party.partyId === partyId ? { ...party, favorite: nextFavorite } : party)),
+    );
+
+    try {
+      if (nextFavorite) {
+        await api.saveFavoriteParty(partyId);
+        addToast('관심 파티에 저장했습니다.', 'success');
+      } else {
+        await api.removeFavoriteParty(partyId);
+        addToast('관심 파티에서 제거했습니다.', 'success');
+      }
+    } catch (e) {
+      setParties((current) =>
+        current.map((party) => (party.partyId === partyId ? { ...party, favorite: currentParty.favorite } : party)),
+      );
+      addToast(e?.message || '관심 파티 상태를 변경하지 못했습니다.', 'error');
+    } finally {
+      setFavoriteLoadingId(null);
+    }
   };
 
   return (
@@ -401,7 +440,9 @@ function PartyList() {
               chatUnreadCount={chatUnreadMap[party.partyId] ?? 0}
               discoveryBadgeLabel={highlight?.label}
               discoveryBadgeTone={highlight?.tone}
+              favoriteBusy={favoriteLoadingId === party.partyId}
               {...party}
+              onToggleFavorite={() => handleToggleFavorite(party.partyId)}
               onViewDetail={() => navigate(`/parties/${party.partyId}`, { state: { party } })}
             />
           );

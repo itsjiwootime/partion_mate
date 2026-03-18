@@ -18,6 +18,7 @@ import com.project.partition_mate.dto.CreateReviewRequest;
 import com.project.partition_mate.dto.JoinPartyResponse;
 import com.project.partition_mate.dto.JoinPartyRequest;
 import com.project.partition_mate.dto.PartyDetailResponse;
+import com.project.partition_mate.dto.PartyResponse;
 import com.project.partition_mate.dto.PartySettlementMemberResponse;
 import com.project.partition_mate.dto.PartyRealtimeTrigger;
 import com.project.partition_mate.dto.ReviewResponse;
@@ -68,6 +69,7 @@ public class PartyService {
     private final UserBlockPolicyService userBlockPolicyService;
     private final NoShowPolicyService noShowPolicyService;
     private final TrustScoreService trustScoreService;
+    private final FavoritePartyService favoritePartyService;
     private final Clock clock;
 
     @Transactional
@@ -239,8 +241,11 @@ public class PartyService {
         return buildPartyDetailResponse(party, getCurrentUserOrNull());
     }
 
-    public List<Party> getAllParties() {
-        return partyRepository.findAll();
+    public List<PartyResponse> getAllPartyResponses(User currentUser) {
+        List<PartyResponse> responses = partyRepository.findAll().stream()
+                .map(PartyResponse::from)
+                .toList();
+        return favoritePartyService.applyFavoriteFlags(currentUser, responses);
     }
 
     @Transactional
@@ -698,6 +703,7 @@ public class PartyService {
                 && reviewRepository.existsByPartyAndReviewerAndReviewee(party, currentUser, hostUser);
         TrustSummaryResponse hostTrust = hostUser != null ? trustScoreService.getTrustSummary(hostUser) : null;
         List<ReviewResponse> hostReviews = hostUser != null ? trustScoreService.getRecentReviews(hostUser, 3) : List.of();
+        boolean favorite = currentUser != null && favoritePartyService.isFavorite(currentUser, party);
 
         return PartyDetailResponse.from(
                 party,
@@ -716,7 +722,8 @@ public class PartyService {
                 hasReviewedHost,
                 hostTrust,
                 hostReviews,
-                settlementMembers
+                settlementMembers,
+                favorite
         );
     }
 

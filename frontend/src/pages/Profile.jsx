@@ -12,7 +12,7 @@ import {
   subscribeToWebPush,
   unsubscribeFromWebPush,
 } from '../utils/webPush';
-import { Bell, Mail, MapPin, ShieldCheck, Star, User } from 'lucide-react';
+import { Bell, Heart, Mail, MapPin, ShieldCheck, Star, User } from 'lucide-react';
 
 function formatRating(value) {
   return Number(value ?? 0).toFixed(1);
@@ -235,6 +235,13 @@ function Profile() {
             </p>
           </div>
         )}
+        <button
+          onClick={() => navigate('/favorite-parties')}
+          className="btn-secondary w-full"
+        >
+          <Heart size={16} />
+          관심 파티 보기
+        </button>
         <button
           onClick={logout}
           className="btn-secondary w-full"

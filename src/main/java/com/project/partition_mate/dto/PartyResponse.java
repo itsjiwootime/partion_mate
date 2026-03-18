@@ -40,6 +40,7 @@ public class PartyResponse {
     private final String deadlineLabel;
     private final LocalDateTime closedAt;
     private final PartyCloseReason closeReason;
+    private final boolean favorite;
 
     public PartyResponse(Long id,
                          String title,
@@ -74,7 +75,8 @@ public class PartyResponse {
                 null,
                 null,
                 null,
-                null
+                null,
+                false
         );
     }
 
@@ -126,7 +128,8 @@ public class PartyResponse {
                 pickupTime,
                 deadline,
                 closedAt,
-                closeReason
+                closeReason,
+                false
         );
     }
 
@@ -163,7 +166,8 @@ public class PartyResponse {
                 null,
                 null,
                 null,
-                null
+                null,
+                false
         );
     }
 
@@ -191,6 +195,60 @@ public class PartyResponse {
                          LocalDateTime deadline,
                          LocalDateTime closedAt,
                          PartyCloseReason closeReason) {
+        this(
+                id,
+                title,
+                productName,
+                totalPrice,
+                expectedTotalPrice,
+                actualTotalPrice,
+                totalQuantity,
+                status,
+                storeName,
+                currentQuantity,
+                openChatUrl,
+                unitLabel,
+                minimumShareUnit,
+                storageType,
+                packagingType,
+                hostProvidesPackaging,
+                onSiteSplit,
+                guideNote,
+                receiptNote,
+                pickupPlace,
+                pickupTime,
+                deadline,
+                closedAt,
+                closeReason,
+                false
+        );
+    }
+
+    private PartyResponse(Long id,
+                         String title,
+                         String productName,
+                         Integer totalPrice,
+                         Integer expectedTotalPrice,
+                         Integer actualTotalPrice,
+                         Integer totalQuantity,
+                         PartyStatus status,
+                         String storeName,
+                         Integer currentQuantity,
+                         String openChatUrl,
+                         String unitLabel,
+                         Integer minimumShareUnit,
+                         StorageType storageType,
+                         PackagingType packagingType,
+                         boolean hostProvidesPackaging,
+                         boolean onSiteSplit,
+                         String guideNote,
+                         String receiptNote,
+                         String pickupPlace,
+                         LocalDateTime pickupTime,
+                         LocalDateTime deadline,
+                         LocalDateTime closedAt,
+                         PartyCloseReason closeReason,
+                         boolean favorite) {
         this.id = id;
         this.title = title;
         this.productName = productName;
@@ -219,6 +277,7 @@ public class PartyResponse {
         this.deadlineLabel = DateTimeLabelFormatter.format(deadline);
         this.closedAt = closedAt;
         this.closeReason = closeReason;
+        this.favorite = favorite;
     }
 
     public static PartyResponse from(Party party) {
@@ -247,6 +306,36 @@ public class PartyResponse {
                 party.getDeadline(),
                 party.getClosedAt(),
                 party.getCloseReason()
+        );
+    }
+
+    public PartyResponse withFavorite(boolean favorite) {
+        return new PartyResponse(
+                this.id,
+                this.title,
+                this.productName,
+                this.totalPrice,
+                this.expectedTotalPrice,
+                this.actualTotalPrice,
+                this.totalQuantity,
+                this.status,
+                this.storeName,
+                this.currentQuantity,
+                this.openChatUrl,
+                this.unitLabel,
+                this.minimumShareUnit,
+                this.storageType,
+                this.packagingType,
+                this.hostProvidesPackaging,
+                this.onSiteSplit,
+                this.guideNote,
+                this.receiptNote,
+                this.pickupPlace,
+                this.pickupTime,
+                this.deadline,
+                this.closedAt,
+                this.closeReason,
+                favorite
         );
     }
 }

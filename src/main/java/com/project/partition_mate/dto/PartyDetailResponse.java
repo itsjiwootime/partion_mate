@@ -63,6 +63,7 @@ public class PartyDetailResponse {
     private final TrustSummaryResponse hostTrust;
     private final List<ReviewResponse> hostReviews;
     private final List<PartySettlementMemberResponse> settlementMembers;
+    private final boolean favorite;
 
     private PartyDetailResponse(Long id,
                                 String title,
@@ -103,7 +104,8 @@ public class PartyDetailResponse {
                                 boolean hasReviewedHost,
                                 TrustSummaryResponse hostTrust,
                                 List<ReviewResponse> hostReviews,
-                                List<PartySettlementMemberResponse> settlementMembers) {
+                                List<PartySettlementMemberResponse> settlementMembers,
+                                boolean favorite) {
         this.id = id;
         this.title = title;
         this.productName = productName;
@@ -150,6 +152,7 @@ public class PartyDetailResponse {
         this.hostTrust = hostTrust;
         this.hostReviews = hostReviews;
         this.settlementMembers = settlementMembers;
+        this.favorite = favorite;
     }
 
     public static PartyDetailResponse from(Party party,
@@ -168,7 +171,8 @@ public class PartyDetailResponse {
                                            boolean hasReviewedHost,
                                            TrustSummaryResponse hostTrust,
                                            List<ReviewResponse> hostReviews,
-                                           List<PartySettlementMemberResponse> settlementMembers) {
+                                           List<PartySettlementMemberResponse> settlementMembers,
+                                           boolean favorite) {
         return new PartyDetailResponse(
                 party.getId(),
                 party.getTitle(),
@@ -209,7 +213,8 @@ public class PartyDetailResponse {
                 hasReviewedHost,
                 hostTrust,
                 hostReviews,
-                settlementMembers
+                settlementMembers,
+                favorite
         );
     }
 }
