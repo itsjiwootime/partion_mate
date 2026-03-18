@@ -16,7 +16,7 @@
 - 실시간 모집 현황 반영으로 상태 동기화 경험을 보여줄 수 있어야 한다.
 
 ## Project Defaults
-- 대기열 정책은 `FIFO 자동 승격`을 기본으로 한다.
+- 대기열 정책은 `현재 승격 자격이 유지된 대기자 기준 FIFO 자동 승격`을 기본으로 한다.
 - 같은 사용자는 동일 파티에 대해 `참여자` 또는 `대기자` 상태를 중복으로 가질 수 없다.
 - 파티 상태는 기본적으로 `RECRUITING -> FULL -> CLOSED` 흐름을 따른다.
 - 정원이 모두 차면 즉시 `FULL`로 전이한다.
@@ -518,7 +518,7 @@
 - 완료 조건: 차단 후 채팅 진입 또는 새 상호작용이 제한되고 이유를 UI가 노출할 수 있다.
 - 검증: 차단/해제 테스트, 채팅 접근 제한 테스트.
 - ADR: 차단 적용 범위와 예외 규칙을 문서화한다.
-- 구현 메모(2026-03-18): 방향성 있는 `UserBlock` 엔티티와 `POST /api/blocks`, `DELETE /api/blocks/{targetUserId}`, `GET /api/blocks`를 추가했다. 차단 관계는 `UserBlockPolicyService`에서 공통 판별하고, 파티 참여 요청 시 현재 참여자와의 차단 관계가 있으면 참여/대기 등록을 막는다. 채팅은 REST 상세/읽음/공지/메시지 전송과 STOMP 구독 모두에서 차단 관계가 있는 파티 채팅 접근을 막고, 이유는 기존 에러 응답 메시지로 노출하게 했다. `UserBlockServiceIntegrationTest`, `UserBlockInteractionIntegrationTest`, `UserBlockControllerTest`, `ChatStompChannelInterceptorTest`, `ChatRoomFlowIntegrationTest`, `PartyWaitingQueueIntegrationTest`로 CRUD와 상호작용 제한을 검증했다.
+- 구현 메모(2026-03-18): 방향성 있는 `UserBlock` 엔티티와 `POST /api/blocks`, `DELETE /api/blocks/{targetUserId}`, `GET /api/blocks`를 추가했다. 차단 관계는 `UserBlockPolicyService`에서 공통 판별하고, 파티 참여 요청 시 현재 참여자와의 차단 관계가 있으면 참여/대기 등록을 막는다. 대기열 자동 승격 직전에도 같은 차단 규칙을 다시 검사하고, 차단 관계가 생긴 대기자는 `EXPIRED`로 종료한 뒤 다음 대기자를 본다. 채팅은 REST 상세/읽음/공지/메시지 전송과 STOMP 구독 모두에서 차단 관계가 있는 파티 채팅 접근을 막고, 이유는 기존 에러 응답 메시지로 노출하게 했다. `UserBlockServiceIntegrationTest`, `UserBlockInteractionIntegrationTest`, `UserBlockControllerTest`, `ChatStompChannelInterceptorTest`, `ChatRoomFlowIntegrationTest`, `PartyWaitingQueueIntegrationTest`로 CRUD와 상호작용 제한을 검증했다.
 
 ### [x] E14-3 노쇼 누적 정책
 - 목표: 반복 노쇼 사용자의 재참여를 제한할 수 있는 운영 정책을 만든다.
@@ -526,7 +526,7 @@
 - 완료 조건: 노쇼 누적 수에 따라 경고 또는 참여 제한이 일관되게 동작한다.
 - 검증: 정책 단위 테스트, 참여 제한 통합 테스트.
 - ADR: 노쇼 누적 임계치와 제한 정책을 문서화한다.
-- 구현 메모(2026-03-18): `NoShowPolicyService`를 추가해 참여자의 최근 확정 거래 이력에서 `COMPLETED` 이전까지의 연속 `NO_SHOW` 횟수를 현재 누적으로 계산한다. `PartyMember.tradeStatusUpdatedAt`을 새로 저장해 거래 상태 확정 순서를 보존했고, `POST /party/{id}/join`은 최근 연속 노쇼 1회면 `JoinPartyResponse.warning`으로 경고를 노출하고 2회 이상이면 참여와 대기열 등록을 차단한다. 최근 노쇼 뒤에 완료 거래가 1회 기록되면 제한이 자동 해제되며, `NoShowPolicyServiceTest`, `NoShowJoinPolicyIntegrationTest`로 정책 계산과 참여 흐름을 검증했다.
+- 구현 메모(2026-03-18): `NoShowPolicyService`를 추가해 참여자의 최근 확정 거래 이력에서 `COMPLETED` 이전까지의 연속 `NO_SHOW` 횟수를 현재 누적으로 계산한다. `PartyMember.tradeStatusUpdatedAt`을 새로 저장해 거래 상태 확정 순서를 보존했고, `POST /party/{id}/join`은 최근 연속 노쇼 1회면 `JoinPartyResponse.warning`으로 경고를 노출하고 2회 이상이면 참여와 대기열 등록을 차단한다. 대기열 자동 승격 직전에도 같은 제한을 다시 검사하고, 제한 상태가 된 대기자는 `EXPIRED`로 종료한 뒤 다음 대기자를 본다. 최근 노쇼 뒤에 완료 거래가 1회 기록되면 제한이 자동 해제되며, `NoShowPolicyServiceTest`, `NoShowJoinPolicyIntegrationTest`로 정책 계산과 참여 흐름을 검증했다.
 
 ## Epic 15. 외부 알림 확장
 

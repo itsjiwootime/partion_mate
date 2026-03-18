@@ -499,6 +499,11 @@ public class PartyService {
 
         boolean promoted = false;
         for (WaitingQueueEntry waitingEntry : waitingEntries) {
+            if (shouldExpireWaitingEntryDuringPromotion(party, waitingEntry)) {
+                waitingEntry.expire();
+                continue;
+            }
+
             if (party.getRemainingQuantity() < waitingEntry.getRequestedQuantity()) {
                 break;
             }
@@ -529,6 +534,16 @@ public class PartyService {
         }
 
         return promoted;
+    }
+
+    private boolean shouldExpireWaitingEntryDuringPromotion(Party party, WaitingQueueEntry waitingEntry) {
+        User waitingUser = waitingEntry.getUser();
+        if (userBlockPolicyService.hasBlockedParticipantInParty(party, waitingUser.getId())) {
+            return true;
+        }
+
+        NoShowPolicyService.Decision noShowDecision = noShowPolicyService.evaluate(waitingUser);
+        return noShowDecision.shouldBlock();
     }
 
     private void validateNotAlreadyJoinedOrWaiting(Party party, User member) {
