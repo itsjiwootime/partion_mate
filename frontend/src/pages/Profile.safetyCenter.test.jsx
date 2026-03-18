@@ -128,4 +128,65 @@ describe('Profile safety center', () => {
     });
     expect(addToastMock).toHaveBeenCalledWith('차단을 해제했습니다.', 'success');
   });
+
+  it('안전_화면_focus_state로_안내_배너를_보여준다', async () => {
+    // given
+    logoutMock.mockReset();
+    refreshProfileMock.mockReset();
+    addToastMock.mockReset();
+    api.getMe.mockReset();
+    api.getBlockedUsers.mockReset();
+    api.getMyReports.mockReset();
+    api.getMyNotificationPreferences.mockReset();
+    api.getMySettlementSettings.mockReset();
+    api.getWebPushConfiguration.mockReset();
+    api.getPushSubscriptions.mockReset();
+    webPush.getCurrentPushSubscription.mockReset();
+    webPush.getNotificationPermissionState.mockReset();
+    webPush.isWebPushSupported.mockReset();
+
+    api.getMe.mockResolvedValue({
+      name: '테스터',
+      email: 'tester@test.com',
+      address: '서울',
+      trustSummary: null,
+      recentReviews: [],
+    });
+    api.getBlockedUsers.mockResolvedValue([]);
+    api.getMyReports.mockResolvedValue([]);
+    api.getMyNotificationPreferences.mockResolvedValue([]);
+    api.getMySettlementSettings.mockResolvedValue({ settlementGuide: '' });
+    api.getWebPushConfiguration.mockResolvedValue({ enabled: false, publicKey: '' });
+    api.getPushSubscriptions.mockResolvedValue([]);
+    webPush.getCurrentPushSubscription.mockResolvedValue(null);
+    webPush.getNotificationPermissionState.mockReturnValue('default');
+    webPush.isWebPushSupported.mockReturnValue(true);
+
+    render(
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: '/me',
+            state: {
+              focusSafetyCenter: true,
+              safetyNotice: {
+                title: '차단 해제는 여기서 할 수 있어요',
+                description: '차단 목록에서 사용자를 해제하면 이후 같은 채팅 접근이 다시 가능해질 수 있습니다.',
+              },
+            },
+          },
+        ]}
+      >
+        <Profile />
+      </MemoryRouter>,
+    );
+
+    // when
+    await screen.findByText('신뢰·안전 관리');
+
+    // then
+    expect(screen.getByText('차단 해제는 여기서 할 수 있어요')).toBeInTheDocument();
+    expect(screen.getByText('차단 목록에서 사용자를 해제하면 이후 같은 채팅 접근이 다시 가능해질 수 있습니다.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '확인' })).toBeInTheDocument();
+  });
 });

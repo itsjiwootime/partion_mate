@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
+import { SafetyStatusBanner } from '../components/SafetyFeedback';
 import { ConfirmDialog } from '../components/SafetyDialogs';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -78,6 +79,7 @@ function Profile() {
   const navigate = useNavigate();
   const location = useLocation();
   const kakaoMapKey = import.meta.env.VITE_KAKAO_MAP_KEY;
+  const safetyCenterRef = useRef(null);
   const [user, setUser] = useState(null);
   const [profileForm, setProfileForm] = useState({
     name: '',
@@ -108,6 +110,7 @@ function Profile() {
   const [safetyError, setSafetyError] = useState('');
   const [safetyActionLoading, setSafetyActionLoading] = useState('');
   const [pendingUnblockUser, setPendingUnblockUser] = useState(null);
+  const [safetyNotice, setSafetyNotice] = useState(location.state?.safetyNotice ?? null);
 
   const fetchMe = useCallback(async () => {
     try {
@@ -287,6 +290,15 @@ function Profile() {
     fetchNotificationSettings();
     fetchSafetyCenter();
   }, [fetchMe, fetchNotificationSettings, fetchSafetyCenter, isAuthed, location.pathname, location.search, navigate]);
+
+  useEffect(() => {
+    if (location.state?.safetyNotice) {
+      setSafetyNotice(location.state.safetyNotice);
+    }
+    if (location.state?.focusSafetyCenter && typeof safetyCenterRef.current?.scrollIntoView === 'function') {
+      safetyCenterRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [location.state]);
 
   const handleProfileFieldChange = (key) => (event) => {
     setProfileForm((prev) => ({
@@ -691,11 +703,23 @@ function Profile() {
         </form>
       </div>
 
-      <div className="card-elevated p-4 space-y-4">
+      <div ref={safetyCenterRef} className="card-elevated p-4 space-y-4">
         <div className="flex items-center gap-2">
           <ShieldAlert size={18} className="text-amber-700" />
           <h2 className="section-title">신뢰·안전 관리</h2>
         </div>
+        {safetyNotice && (
+          <SafetyStatusBanner
+            title={safetyNotice.title}
+            description={safetyNotice.description}
+            tone="caution"
+            action={
+              <button type="button" onClick={() => setSafetyNotice(null)} className="btn-secondary px-4 py-2 text-xs">
+                확인
+              </button>
+            }
+          />
+        )}
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-ink/75">
           파티 상세와 채팅에서 접수한 신고와 차단 상태를 여기서 다시 확인하고 관리할 수 있습니다.
         </div>

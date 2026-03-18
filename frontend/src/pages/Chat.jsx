@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Pin, Send, ArrowLeft, Flag, ShieldAlert, ShieldCheck, UserX } from 'lucide-react';
 import { api } from '../api/client';
+import { SafetyFallbackCard, SafetyStatusBanner } from '../components/SafetyFeedback';
 import { ConfirmDialog, ReportDialog } from '../components/SafetyDialogs';
 import { connectChatRoom } from '../utils/chatClient';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { EmptyState, LoadingState } from '../components/Feedback';
 import { subscribeToPartyStream } from '../utils/partyRealtime';
+import { isBlockedChatAccessMessage } from '../utils/safety';
 
 function formatPreview(room) {
   if (room.lastMessagePreview) {
@@ -41,6 +43,8 @@ function Chat() {
   const [safetyActionLoading, setSafetyActionLoading] = useState('');
   const [reportDialogState, setReportDialogState] = useState(null);
   const [blockDialogState, setBlockDialogState] = useState(null);
+  const [reportFeedback, setReportFeedback] = useState(null);
+  const [blockedChatFeedback, setBlockedChatFeedback] = useState(null);
 
   useEffect(() => {
     roomPartyIdsRef.current = new Set(rooms.map((room) => room.partyId));
@@ -84,6 +88,8 @@ function Chat() {
       setRoomError('');
       setNotice('');
       setConnectionState('idle');
+      setReportFeedback(null);
+      setBlockedChatFeedback(null);
       return;
     }
 
@@ -92,6 +98,7 @@ function Chat() {
       try {
         setRoomLoading(true);
         setRoomError('');
+        setBlockedChatFeedback(null);
         const data = await api.getChatRoomDetail(selectedPartyId);
         if (!active) return;
         setRoomDetail(data);
@@ -106,6 +113,14 @@ function Chat() {
         }
       } catch (error) {
         if (active) {
+          if (isBlockedChatAccessMessage(error?.message)) {
+            setRoomDetail(null);
+            setBlockedChatFeedback({
+              title: '차단 관계가 있어 이 채팅방에 접근할 수 없어요',
+              description: '현재는 이 채팅방 메시지를 볼 수 없습니다. 차단 해제가 필요하면 프로필의 신뢰·안전 관리로 이동하세요.',
+            });
+            return;
+          }
           setRoomError(error.message || '채팅방을 불러오지 못했습니다.');
         }
       } finally {
@@ -122,7 +137,7 @@ function Chat() {
   }, [isAuthed, roomReloadToken, selectedPartyId]);
 
   useEffect(() => {
-    if (!isAuthed || !token || !selectedPartyId) {
+    if (!isAuthed || !token || !selectedPartyId || blockedChatFeedback) {
       clientRef.current?.deactivate?.();
       clientRef.current = null;
       return undefined;
@@ -181,6 +196,15 @@ function Chat() {
         }
       },
       onError: (error) => {
+        if (isBlockedChatAccessMessage(error?.message)) {
+          setRoomDetail(null);
+          setBlockedChatFeedback({
+            title: '차단 관계가 있어 채팅이 제한되었어요',
+            description: '이제 이 채팅방 접근과 새 메시지 수신이 중단됩니다. 차단 해제가 필요하면 프로필의 신뢰·안전 관리로 이동하세요.',
+          });
+          clientRef.current?.deactivate?.();
+          return;
+        }
         addToast(error.message || '채팅 연결 중 오류가 발생했습니다.', 'error');
       },
     });
@@ -191,7 +215,16 @@ function Chat() {
       client.deactivate();
       clientRef.current = null;
     };
-  }, [addToast, isAuthed, selectedPartyId, token, userName]);
+  }, [addToast, blockedChatFeedback, isAuthed, selectedPartyId, token, userName]);
+
+  const openSafetyCenter = (notice) => {
+    navigate('/me', {
+      state: {
+        focusSafetyCenter: true,
+        safetyNotice: notice,
+      },
+    });
+  };
 
   useEffect(() => {
     if (!isAuthed) {
@@ -300,6 +333,10 @@ function Chat() {
         memo,
       });
       setReportDialogState(null);
+      setReportFeedback({
+        title: '신고가 접수되었어요',
+        description: '처리 상태는 프로필의 신뢰·안전 관리에서 다시 확인할 수 있습니다. 추가로 불편하다면 차단도 바로 진행할 수 있습니다.',
+      });
       addToast('신고를 접수했습니다. 운영 검토 후 필요한 조치를 진행합니다.', 'success');
     } catch (error) {
       addToast(error.message || '신고를 접수하지 못했습니다.', 'error');
@@ -319,9 +356,15 @@ function Chat() {
         targetUserId: blockDialogState.targetUserId,
       });
       setBlockDialogState(null);
+      setReportFeedback(null);
+      setRoomDetail(null);
+      setBlockedChatFeedback({
+        title: `${blockDialogState.targetUsername}님을 차단했습니다`,
+        description: '이 채팅방 접근과 이후 같은 파티 채팅 참여가 제한됩니다. 차단 해제는 프로필의 신뢰·안전 관리에서 할 수 있습니다.',
+      });
+      clientRef.current?.deactivate?.();
       addToast(`${blockDialogState.targetUsername}님을 차단했습니다. 이후 같은 파티와 채팅 참여가 제한됩니다.`, 'success');
       setRoomsReloadToken((current) => current + 1);
-      setRoomReloadToken((current) => current + 1);
     } catch (error) {
       addToast(error.message || '사용자를 차단하지 못했습니다.', 'error');
     } finally {
@@ -410,7 +453,32 @@ function Chat() {
         )}
 
         {selectedPartyId && roomLoading && <LoadingState />}
-        {selectedPartyId && roomError && (
+        {selectedPartyId && !roomLoading && blockedChatFeedback && (
+          <SafetyFallbackCard
+            title={blockedChatFeedback.title}
+            description={blockedChatFeedback.description}
+            action={
+              <button
+                type="button"
+                onClick={() =>
+                  openSafetyCenter({
+                    title: '차단 해제는 신뢰·안전 관리에서 할 수 있어요',
+                    description: '차단 목록에서 사용자를 해제하면 이후 이 채팅방 접근이 다시 가능해질 수 있습니다.',
+                  })
+                }
+                className="btn-secondary px-4 py-2 text-sm"
+              >
+                차단 관리 열기
+              </button>
+            }
+            secondaryAction={
+              <button type="button" onClick={() => navigate('/chat')} className="btn-primary px-4 py-2 text-sm">
+                채팅 목록으로
+              </button>
+            }
+          />
+        )}
+        {selectedPartyId && !blockedChatFeedback && roomError && (
           <div className="space-y-2">
             <p className="text-sm text-red-600">{roomError}</p>
             <button onClick={() => setRoomReloadToken((current) => current + 1)} className="btn-secondary px-4 py-2 text-sm">
@@ -419,8 +487,28 @@ function Chat() {
           </div>
         )}
 
-        {selectedPartyId && roomDetail && !roomLoading && (
+        {selectedPartyId && roomDetail && !roomLoading && !blockedChatFeedback && (
           <>
+            {reportFeedback && (
+              <SafetyStatusBanner
+                title={reportFeedback.title}
+                description={reportFeedback.description}
+                action={
+                  <button
+                    type="button"
+                    onClick={() =>
+                      openSafetyCenter({
+                        title: '최근 신고 내역을 여기서 다시 확인할 수 있어요',
+                        description: '접수된 신고 상태와 메모는 신뢰·안전 관리에서 계속 확인할 수 있습니다.',
+                      })
+                    }
+                    className="btn-secondary px-4 py-2 text-xs"
+                  >
+                    내 신고 내역 보기
+                  </button>
+                }
+              />
+            )}
             <div className="flex items-center justify-between gap-3 border-b border-ink/10 pb-4">
               <div className="space-y-1">
                 <button onClick={() => navigate('/chat')} className="btn-ghost px-0 text-xs lg:hidden">

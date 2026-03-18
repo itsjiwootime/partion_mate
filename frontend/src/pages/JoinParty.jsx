@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client';
+import { SafetyFallbackCard, SafetyStatusBanner } from '../components/SafetyFeedback';
 import { useAuth } from '../context/AuthContext';
 import { Package, ArrowLeft } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { LoadingState } from '../components/Feedback';
 import { normalizePartyDetail } from '../utils/party';
+import { isBlockedPartyInteractionMessage } from '../utils/safety';
 
 function JoinParty() {
   const { id } = useParams();
@@ -19,6 +21,7 @@ function JoinParty() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(!stateDetail);
+  const [blockedFeedback, setBlockedFeedback] = useState(null);
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -29,6 +32,13 @@ function JoinParty() {
         const data = await api.getPartyDetail(id);
         setDetail(normalizePartyDetail(data));
       } catch (err) {
+        if (isBlockedPartyInteractionMessage(err?.message)) {
+          setBlockedFeedback({
+            title: '차단 관계가 있어 이 파티에 참여할 수 없어요',
+            description: '상대 사용자와 차단 관계가 있으면 참여와 대기열 등록이 제한됩니다. 차단 해제는 프로필의 신뢰·안전 관리에서 할 수 있습니다.',
+          });
+          return;
+        }
         setError('파티 정보를 불러오지 못했습니다.');
       } finally {
         setLoading(false);
@@ -74,6 +84,7 @@ function JoinParty() {
     try {
       setSubmitting(true);
       setError('');
+      setBlockedFeedback(null);
       const result = await api.joinParty({ partyId: Number(id), quantity: req });
       const message = result?.message ?? '참여가 완료되었습니다.';
       addToast(message, 'success');
@@ -86,6 +97,14 @@ function JoinParty() {
       navigate(`/parties/${id}`, { replace: true });
     } catch (err) {
       const msg = err.message || '참여 중 오류가 발생했습니다.';
+      if (isBlockedPartyInteractionMessage(msg)) {
+        setBlockedFeedback({
+          title: '차단 관계가 있어 이 파티에 참여할 수 없어요',
+          description: '이제 이 파티 참여와 대기열 등록은 제한됩니다. 차단 해제가 필요하면 프로필의 신뢰·안전 관리로 이동하세요.',
+        });
+        setError('');
+        return;
+      }
       setError(msg);
       addToast(msg, 'error');
     } finally {
@@ -122,7 +141,63 @@ function JoinParty() {
             </p>
           </div>
         )}
-        <form onSubmit={handleSubmit} className="space-y-3">
+        {blockedFeedback && (
+          <SafetyStatusBanner
+            title={blockedFeedback.title}
+            description={blockedFeedback.description}
+            tone="danger"
+            action={
+              <button
+                type="button"
+                onClick={() =>
+                  navigate('/me', {
+                    state: {
+                      focusSafetyCenter: true,
+                      safetyNotice: {
+                        title: '차단 해제는 여기서 할 수 있어요',
+                        description: '차단 목록에서 사용자를 해제하면 이후 같은 파티 참여가 다시 가능해질 수 있습니다.',
+                      },
+                    },
+                  })
+                }
+                className="btn-secondary px-4 py-2 text-xs"
+              >
+                차단 관리 열기
+              </button>
+            }
+          />
+        )}
+        {blockedFeedback ? (
+          <SafetyFallbackCard
+            title="참여 대신 차단 상태를 먼저 확인해 주세요"
+            description="차단 관계가 해제되기 전까지는 이 파티에 참여하거나 대기열에 등록할 수 없습니다."
+            action={
+              <button
+                type="button"
+                onClick={() =>
+                  navigate('/me', {
+                    state: {
+                      focusSafetyCenter: true,
+                      safetyNotice: {
+                        title: '차단 목록을 먼저 확인해 주세요',
+                        description: '상대 사용자를 차단한 상태라면 여기서 해제할 수 있습니다.',
+                      },
+                    },
+                  })
+                }
+                className="btn-secondary px-4 py-2 text-sm"
+              >
+                차단 관리 열기
+              </button>
+            }
+            secondaryAction={
+              <button type="button" onClick={() => navigate('/parties')} className="btn-primary px-4 py-2 text-sm">
+                다른 파티 보기
+              </button>
+            }
+          />
+        ) : null}
+        <form onSubmit={handleSubmit} className="space-y-3" hidden={Boolean(blockedFeedback)}>
           <label className="block text-sm text-ink/70">
             {queueOnly ? '대기 요청 수량' : '요청 수량'}
             <input

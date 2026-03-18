@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client';
+import { SafetyFallbackCard, SafetyStatusBanner } from '../components/SafetyFeedback';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { AlertTriangle, ArrowLeft, Clock3, Flag, Heart, MapPin, MessageSquareText, Package, ShieldAlert, ShieldCheck, Star, UserX, Users, Wallet } from 'lucide-react';
@@ -47,6 +48,8 @@ function PartyDetail() {
   const [memberReviewForms, setMemberReviewForms] = useState({});
   const [reportDialogState, setReportDialogState] = useState(null);
   const [blockDialogState, setBlockDialogState] = useState(null);
+  const [reportFeedback, setReportFeedback] = useState(null);
+  const [blockedPartyFeedback, setBlockedPartyFeedback] = useState(null);
 
   useEffect(() => {
     setSettlementForm({
@@ -161,6 +164,7 @@ function PartyDetail() {
   const hostTrustBadge = detail?.hostTrust ? getTrustBadge(detail.hostTrust) : null;
   const hostTrustHighlights = detail?.hostTrust ? getTrustHighlights(detail.hostTrust) : [];
   const hostTrustWarnings = detail?.hostTrust ? getTrustWarnings(detail.hostTrust) : [];
+  const partyInteractionBlocked = Boolean(blockedPartyFeedback);
 
   const ensureAuthed = () => {
     if (isAuthed) {
@@ -169,6 +173,15 @@ function PartyDetail() {
 
     navigate('/login', { state: { from: returnTo } });
     return false;
+  };
+
+  const openSafetyCenter = (notice) => {
+    navigate('/me', {
+      state: {
+        focusSafetyCenter: true,
+        safetyNotice: notice,
+      },
+    });
   };
 
   const runAction = async (key, action, successMessage) => {
@@ -203,6 +216,10 @@ function PartyDetail() {
         memo,
       });
       setReportDialogState(null);
+      setReportFeedback({
+        title: '신고가 접수되었어요',
+        description: '운영 검토가 시작되면 프로필의 신뢰·안전 관리에서 접수 내역과 상태를 다시 확인할 수 있습니다.',
+      });
       addToast('신고를 접수했습니다. 운영 검토 후 필요한 조치를 진행합니다.', 'success');
     } catch (e) {
       addToast(e.message || '신고를 접수하지 못했습니다.', 'error');
@@ -222,6 +239,11 @@ function PartyDetail() {
         targetUserId: blockDialogState.targetUserId,
       });
       setBlockDialogState(null);
+      setReportFeedback(null);
+      setBlockedPartyFeedback({
+        title: `${blockDialogState.targetUsername}님을 차단했습니다`,
+        description: '이제 이 파티 참여와 채팅 이동이 제한됩니다. 차단 해제는 프로필의 신뢰·안전 관리에서 할 수 있습니다.',
+      });
       addToast(`${blockDialogState.targetUsername}님을 차단했습니다. 이후 같은 파티와 채팅 참여가 제한됩니다.`, 'success');
     } catch (e) {
       addToast(e.message || '사용자를 차단하지 못했습니다.', 'error');
@@ -473,6 +495,47 @@ function PartyDetail() {
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-ink/75">
           거래 중 문제가 있었다면 파티 또는 호스트를 바로 신고할 수 있고, 필요하면 사용자 차단으로 이후 상호작용을 막을 수 있습니다.
         </div>
+        {reportFeedback && (
+          <SafetyStatusBanner
+            title={reportFeedback.title}
+            description={reportFeedback.description}
+            action={
+              <button
+                type="button"
+                onClick={() =>
+                  openSafetyCenter({
+                    title: '최근 신고 내역을 여기서 확인할 수 있어요',
+                    description: '운영 검토 전이라도 접수된 신고 사유와 현재 상태를 다시 확인할 수 있습니다.',
+                  })
+                }
+                className="btn-secondary px-4 py-2 text-xs"
+              >
+                내 신고 내역 보기
+              </button>
+            }
+          />
+        )}
+        {blockedPartyFeedback && (
+          <SafetyStatusBanner
+            title={blockedPartyFeedback.title}
+            description={blockedPartyFeedback.description}
+            tone="danger"
+            action={
+              <button
+                type="button"
+                onClick={() =>
+                  openSafetyCenter({
+                    title: '차단 해제는 신뢰·안전 관리에서 할 수 있어요',
+                    description: '차단 목록에서 해제하면 이후 같은 파티와 채팅 접근이 다시 가능해질 수 있습니다.',
+                  })
+                }
+                className="btn-secondary px-4 py-2 text-xs"
+              >
+                차단 관리 열기
+              </button>
+            }
+          />
+        )}
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={openPartyReport} className="btn-secondary px-4 py-2 text-sm">
             <Flag size={15} />
@@ -914,7 +977,31 @@ function PartyDetail() {
           요청 수량을 선택하고 참여하세요. 최소 {detail.minimumShareUnit}
           {detail.unitLabel} 단위 · 남은 수량 {remaining}개 · 개당 {perUnit.toLocaleString()}원
         </p>
-        {canJoinNow && (
+        {partyInteractionBlocked ? (
+          <SafetyFallbackCard
+            title="차단 후에는 이 파티에 다시 참여할 수 없어요"
+            description="차단한 호스트가 포함된 파티라 참여와 채팅 이동이 제한됩니다. 차단 해제가 필요하면 프로필의 신뢰·안전 관리로 이동하세요."
+            action={
+              <button
+                type="button"
+                onClick={() =>
+                  openSafetyCenter({
+                    title: '차단 해제는 여기서 진행할 수 있어요',
+                    description: '차단 목록에서 사용자를 해제하면 이후 같은 파티 접근이 다시 가능해질 수 있습니다.',
+                  })
+                }
+                className="btn-secondary px-4 py-2 text-sm"
+              >
+                차단 관리 열기
+              </button>
+            }
+            secondaryAction={
+              <button type="button" onClick={() => navigate('/parties')} className="btn-primary px-4 py-2 text-sm">
+                다른 파티 보기
+              </button>
+            }
+          />
+        ) : canJoinNow && (
           <button
             onClick={() => navigate(`/parties/${detail.partyId}/join`, { state: { detail } })}
             className="btn-primary w-full"

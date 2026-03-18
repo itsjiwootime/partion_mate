@@ -650,12 +650,13 @@
 - ADR: 신뢰 정보 강조 우선순위와 경고 표현 원칙을 문서화한다.
 - 구현 메모(2026-03-18): `frontend/src/utils/trustSignals.js`를 추가해 `trustLevel`, `reviewCount`, `completionRate`, `noShowCount`를 기반으로 배지, 하이라이트, 경고 문구를 공통 계산하게 했다. `frontend/src/pages/PartyDetail.jsx`는 파티 상단과 호스트 신뢰도 카드에 배지와 경고 배너를 붙였고, `frontend/src/pages/Profile.jsx`는 내 신뢰도 카드에 같은 규칙으로 하이라이트와 안정/주의 메시지를 노출한다. 검증은 `frontend npm test -- --run src/pages/PartyDetail.favorite.test.jsx src/pages/PartyDetail.safety.test.jsx src/pages/PartyDetail.trustSignals.test.jsx src/pages/Chat.safety.test.jsx src/pages/Profile.edit.test.jsx src/pages/Profile.notificationSettings.test.jsx src/pages/Profile.settlementSettings.test.jsx src/pages/Profile.safetyCenter.test.jsx src/pages/Profile.trustSignals.test.jsx`, `frontend npm run build`로 진행했다.
 
-### [ ] E19-3 차단/신고 후 상태 피드백
+### [x] E19-3 차단/신고 후 상태 피드백
 - 목표: 차단 또는 신고 이후 사용자가 다음에 무엇이 바뀌는지 명확히 이해하게 한다.
 - 범위: 상태 배너, 제한 안내 문구, 채팅/파티 fallback 화면, 해제 진입점.
 - 완료 조건: 차단/신고 이후 빈 화면이나 무응답 대신 이유와 다음 행동이 안내된다.
 - 검증: 프론트 상태 피드백 테스트, 수동 확인, `npm run build`.
 - ADR: 안전 조치 이후 상태 피드백 원칙을 문서화한다.
+- 구현 메모(2026-03-18): `frontend/src/components/SafetyFeedback.jsx`를 추가해 신고 완료 배너와 차단 fallback 카드를 공통화했다. `frontend/src/pages/PartyDetail.jsx`와 `frontend/src/pages/Chat.jsx`는 신고 후 `내 신고 내역 보기` 배너를 보여주고, 차단 후에는 현재 화면에서 즉시 제한 상태를 안내한다. `frontend/src/pages/JoinParty.jsx`는 차단 관계로 참여가 거절될 때 일반 오류 대신 fallback을 노출하고, `frontend/src/pages/Profile.jsx`는 `focusSafetyCenter`, `safetyNotice` state를 읽어 차단 해제와 신고 내역 확인의 도착점 역할을 한다. 검증은 `frontend npm test -- --run src/pages/PartyDetail.favorite.test.jsx src/pages/PartyDetail.safety.test.jsx src/pages/PartyDetail.trustSignals.test.jsx src/pages/Chat.safety.test.jsx src/pages/JoinParty.safetyFeedback.test.jsx src/pages/Profile.edit.test.jsx src/pages/Profile.notificationSettings.test.jsx src/pages/Profile.settlementSettings.test.jsx src/pages/Profile.safetyCenter.test.jsx src/pages/Profile.trustSignals.test.jsx`, `frontend npm run build`로 진행했다.
 
 ## Epic 20. 프론트 핵심 흐름 테스트 확대
 

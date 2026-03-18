@@ -77,8 +77,19 @@ export const REPORT_REASON_OPTIONS = {
   ],
 };
 
+export const BLOCKED_PARTY_INTERACTION_MESSAGE = '차단한 사용자 또는 나를 차단한 사용자가 포함된 파티에는 참여할 수 없습니다.';
+export const BLOCKED_CHAT_ACCESS_MESSAGE = '차단 관계가 있는 사용자가 포함된 채팅방에는 접근할 수 없습니다.';
+
 export function getReportReasonOptions(targetType) {
   return REPORT_REASON_OPTIONS[targetType] ?? REPORT_REASON_OPTIONS.PARTY;
+}
+
+export function isBlockedPartyInteractionMessage(message) {
+  return typeof message === 'string' && message.includes(BLOCKED_PARTY_INTERACTION_MESSAGE);
+}
+
+export function isBlockedChatAccessMessage(message) {
+  return typeof message === 'string' && message.includes(BLOCKED_CHAT_ACCESS_MESSAGE);
 }
 
 export function formatReportTargetSummary(report) {

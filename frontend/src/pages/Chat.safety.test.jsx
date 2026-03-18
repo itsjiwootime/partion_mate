@@ -107,5 +107,7 @@ describe('Chat safety', () => {
       });
     });
     expect(addToastMock).toHaveBeenCalledWith('민수님을 차단했습니다. 이후 같은 파티와 채팅 참여가 제한됩니다.', 'success');
+    expect(screen.getByText('민수님을 차단했습니다')).toBeInTheDocument();
+    expect(screen.getByText('채팅 목록으로')).toBeInTheDocument();
   });
 });
