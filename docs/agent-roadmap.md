@@ -556,12 +556,13 @@
 
 ## Epic 16. 파티 탐색 UX 강화
 
-### [ ] E16-1 검색 및 필터
+### [x] E16-1 검색 및 필터
 - 목표: 사용자가 원하는 파티를 빠르게 좁혀볼 수 있게 한다.
 - 범위: 지점/제품명 검색, 상태 필터, 보관 방식/소분 단위 필터, 빈 상태 UX.
 - 완료 조건: 홈/파티 목록에서 조건 기반 탐색이 가능하고 결과 없음 상태가 자연스럽게 처리된다.
 - 검증: 프론트 컴포넌트 테스트, 수동 탐색 테스트, `npm run build`.
 - ADR: 탐색 필터 노출 범위와 기본값을 문서화한다.
+- 구현 메모(2026-03-18): `frontend/src/utils/partyDiscovery.js`를 추가해 `q`, `status`, `storage`, `unit` 쿼리 파라미터를 정규화하고 파티 제목/상품명/지점명 검색, 상태, 보관 방식, 소분 단위 필터를 프론트에서 적용하게 했다. `frontend/src/pages/PartyList.jsx`는 URL 쿼리 기반 필터 UI, 활성 조건 요약 badge, `전체 n개 중 m개 표시`, 결과 0건 전용 빈 상태를 추가했고, `frontend/src/pages/Home.jsx`에는 빠른 검색과 대표 필터 카드 3종을 넣어 `/parties`로 조건을 넘기게 했다. 카드 탐색 정보 노출을 위해 `frontend/src/components/PartyCard.jsx`에 상품명과 지점명 라인을 보강했다. 검증은 `frontend npm test -- --run src/utils/partyDiscovery.test.js src/pages/PartyList.filters.test.jsx src/pages/Home.quickDiscovery.test.jsx`, `frontend npm run build`로 진행했다.
 
 ### [ ] E16-2 정렬 및 발견 섹션
 - 목표: 마감 임박, 인기, 최신, 거리순 등 발견형 탐색을 강화한다.

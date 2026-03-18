@@ -8,6 +8,8 @@ function formatCurrency(value) {
 function PartyCard({
   partyId,
   title,
+  productName,
+  storeName,
   totalPrice,
   unitLabel = '개',
   minimumShareUnit = 1,
@@ -40,6 +42,8 @@ function PartyCard({
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-ink/60">공동구매</p>
           <h3 className="mt-1 text-lg font-semibold text-ink">{title}</h3>
+          {productName && <p className="mt-1 text-sm text-ink/65">상품명: {productName}</p>}
+          {storeName && <p className="mt-1 text-xs font-medium text-mint-700">{storeName}</p>}
           {chatUnreadCount > 0 && <p className="mt-2 text-xs font-semibold text-mint-700">새 메시지 {chatUnreadCount}개</p>}
         </div>
         <span

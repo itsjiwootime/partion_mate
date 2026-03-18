@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { MapPin, ArrowRight, ChevronDown } from 'lucide-react';
+import { MapPin, ArrowRight, ChevronDown, Search, Refrigerator, Package2, CircleDot } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { EmptyState, LoadingState } from '../components/Feedback';
+import { buildPartyDiscoverySearch } from '../utils/partyDiscovery';
 
 const DEFAULT_COORDS = { lat: 37.5665, lon: 126.978 };
 
@@ -24,8 +25,16 @@ function Home() {
   const [coords, setCoords] = useState(DEFAULT_COORDS); // 기본: 서울 시청
   const [storedCoords, setStoredCoords] = useState(null);
   const [useBrowserLocation, setUseBrowserLocation] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleBranchClick = (id) => navigate(`/branch/${id}`);
+  const navigateToPartyDiscovery = (filters = {}) => {
+    const search = buildPartyDiscoverySearch(filters).toString();
+    navigate({
+      pathname: '/parties',
+      search: search ? `?${search}` : '',
+    });
+  };
 
   useEffect(() => {
     const fetchUserLocation = async () => {
@@ -140,6 +149,56 @@ function Home() {
         <p className="mt-2 section-subtitle">
           가까운 지점에서 함께 구매할 수 있는 파티를 찾아보세요.
         </p>
+      </section>
+
+      <section className="card-elevated p-4 space-y-4">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-wide text-mint-700">빠른 탐색</p>
+          <h2 className="section-title">원하는 파티를 바로 찾아보세요</h2>
+          <p className="section-subtitle">상품명, 지점명, 파티 제목 검색과 대표 필터를 바로 적용할 수 있습니다.</p>
+        </div>
+
+        <div className="input-row">
+          <Search size={16} className="text-mint-700" />
+          <input
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            className="input-control"
+            placeholder="예: 휴지, 코스트코 양재점, 냉동 만두"
+            aria-label="홈 파티 검색"
+          />
+          <button
+            type="button"
+            onClick={() => navigateToPartyDiscovery({ query: searchQuery })}
+            className="btn-primary px-4 py-2 text-sm"
+          >
+            검색
+          </button>
+        </div>
+
+        <div className="grid gap-2 sm:grid-cols-3">
+          <button onClick={() => navigateToPartyDiscovery({ status: 'active' })} className="card p-4 text-left">
+            <div className="flex items-center gap-2 text-sm font-semibold text-mint-700">
+              <CircleDot size={16} />
+              모집 중만
+            </div>
+            <p className="mt-2 text-sm text-ink/65">지금 바로 참여 가능한 파티만 빠르게 모아봅니다.</p>
+          </button>
+          <button onClick={() => navigateToPartyDiscovery({ storage: 'REFRIGERATED' })} className="card p-4 text-left">
+            <div className="flex items-center gap-2 text-sm font-semibold text-mint-700">
+              <Refrigerator size={16} />
+              냉장 식품
+            </div>
+            <p className="mt-2 text-sm text-ink/65">보관이 까다로운 냉장 상품 파티만 바로 찾습니다.</p>
+          </button>
+          <button onClick={() => navigateToPartyDiscovery({ unit: 'ONE' })} className="card p-4 text-left">
+            <div className="flex items-center gap-2 text-sm font-semibold text-mint-700">
+              <Package2 size={16} />
+              1개 소분
+            </div>
+            <p className="mt-2 text-sm text-ink/65">부담이 적은 1개 단위 소분 파티부터 살펴봅니다.</p>
+          </button>
+        </div>
       </section>
 
       <section className="space-y-3">
