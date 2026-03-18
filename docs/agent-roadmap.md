@@ -660,12 +660,13 @@
 
 ## Epic 20. 프론트 핵심 흐름 테스트 확대
 
-### [ ] E20-1 탐색 및 생성 플로우 테스트
+### [x] E20-1 탐색 및 생성 플로우 테스트
 - 목표: 홈 탐색, 필터, 파티 생성 핵심 흐름이 회귀 없이 유지되게 한다.
 - 범위: Home, PartyList, CreateParty 테스트, API mock, 라우터 상호작용.
 - 완료 조건: 탐색과 생성의 핵심 경로가 자동 테스트로 검증된다.
 - 검증: `frontend`의 `npm run test`, `npm run build`.
-- ADR: E12 테스트 러너 ADR을 재사용한다.
+- ADR: 탐색에서 생성으로 이어지는 라우터 회귀 범위와 mock 동기화 방식을 문서화한다.
+- 구현 메모(2026-03-18): `frontend/src/pages/DiscoveryCreateFlow.test.jsx`를 추가해 `Home -> /branch/:id -> /parties/create?storeId=:id` 흐름을 실제 `MemoryRouter` 라우트에서 검증하고, 선택한 지점이 생성 폼의 기본값으로 유지되는지 확인했다. 기존 `Home.quickDiscovery`, `CreateParty` 테스트는 유지하고 `PartyList.filters.test.jsx`에는 `ToastContext` mock을 보강해 현재 컴포넌트 의존성과 테스트 환경을 맞췄다. 검증은 `cd frontend && npm test -- --run src/pages/DiscoveryCreateFlow.test.jsx src/pages/Home.quickDiscovery.test.jsx src/pages/PartyList.filters.test.jsx src/pages/CreateParty.test.jsx`, `cd frontend && npm run build`로 진행했다.
 
 ### [ ] E20-2 참여/정산/후기 플로우 테스트
 - 목표: JoinParty, PartyDetail의 참여 이후 운영 흐름을 자동으로 검증한다.

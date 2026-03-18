@@ -4,7 +4,8 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { vi } from 'vitest';
 import PartyList from './PartyList';
 
-const { api, subscribeToPartyStreamMock } = vi.hoisted(() => ({
+const { addToastMock, api, subscribeToPartyStreamMock } = vi.hoisted(() => ({
+  addToastMock: vi.fn(),
   api: {
     getAllParties: vi.fn(),
     getStoreParties: vi.fn(),
@@ -18,6 +19,11 @@ vi.mock('../api/client', () => ({ api }));
 vi.mock('../context/AuthContext', () => ({
   useAuth: () => ({
     isAuthed: true,
+  }),
+}));
+vi.mock('../context/ToastContext', () => ({
+  useToast: () => ({
+    addToast: addToastMock,
   }),
 }));
 vi.mock('../utils/partyRealtime', () => ({
@@ -94,6 +100,7 @@ const partyFixtures = [
 describe('PartyList filters', () => {
   it('URL_쿼리_필터에_맞는_파티만_보여준다', async () => {
     // given
+    addToastMock.mockReset();
     api.getAllParties.mockReset();
     api.getStoreParties.mockReset();
     api.getStoreDetail.mockReset();
@@ -127,6 +134,7 @@ describe('PartyList filters', () => {
 
   it('조건에_맞는_결과가_없으면_빈상태와_초기화_동작을_보여준다', async () => {
     // given
+    addToastMock.mockReset();
     api.getAllParties.mockReset();
     api.getStoreParties.mockReset();
     api.getStoreDetail.mockReset();
@@ -161,6 +169,7 @@ describe('PartyList filters', () => {
 
   it('발견_섹션에서_정렬을_바꾸면_상위_카드가_강조된다', async () => {
     // given
+    addToastMock.mockReset();
     api.getAllParties.mockReset();
     api.getStoreParties.mockReset();
     api.getStoreDetail.mockReset();
