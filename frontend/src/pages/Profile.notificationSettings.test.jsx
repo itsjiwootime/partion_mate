@@ -241,4 +241,153 @@ describe('Profile notification settings', () => {
     });
     expect(addToastMock).toHaveBeenCalledWith('브라우저 푸시를 전체 활성화했습니다.', 'success');
   });
+
+  it('현재_브라우저_연결을_저장한다', async () => {
+    // given
+    logoutMock.mockReset();
+    addToastMock.mockReset();
+    api.getMe.mockReset();
+    api.getBlockedUsers.mockReset();
+    api.getMyReports.mockReset();
+    api.getMyNotificationPreferences.mockReset();
+    api.updateMyNotificationPreferences.mockReset();
+    api.getMySettlementSettings.mockReset();
+    api.getWebPushConfiguration.mockReset();
+    api.getPushSubscriptions.mockReset();
+    api.upsertPushSubscription.mockReset();
+    api.deletePushSubscription.mockReset();
+    webPush.getCurrentPushSubscription.mockReset();
+    webPush.getNotificationPermissionState.mockReset();
+    webPush.isWebPushSupported.mockReset();
+    webPush.subscribeToWebPush.mockReset();
+    webPush.serializePushSubscription.mockReset();
+    webPush.unsubscribeFromWebPush.mockReset();
+
+    api.getMe.mockResolvedValue({
+      name: '테스터',
+      email: 'tester@test.com',
+      address: '서울',
+      trustSummary: null,
+      recentReviews: [],
+    });
+    api.getBlockedUsers.mockResolvedValue([]);
+    api.getMyReports.mockResolvedValue([]);
+    api.getMyNotificationPreferences.mockResolvedValue([
+      {
+        type: 'WAITING_PROMOTED',
+        label: '대기열 승격',
+        description: '대기열에서 참여로 승격되면 알려줍니다.',
+        deepLinkTargetLabel: '채팅방',
+        webPushSupported: true,
+        webPushEnabled: false,
+      },
+    ]);
+    api.getMySettlementSettings.mockResolvedValue({ settlementGuide: '' });
+    api.getWebPushConfiguration.mockResolvedValue({ enabled: true, publicKey: 'public-key' });
+    api.getPushSubscriptions
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: 7, endpoint: 'https://push.example/sub-1' }]);
+    api.upsertPushSubscription.mockResolvedValue(null);
+    webPush.getCurrentPushSubscription
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ endpoint: 'https://push.example/sub-1' });
+    webPush.getNotificationPermissionState.mockReturnValue('default');
+    webPush.isWebPushSupported.mockReturnValue(true);
+    webPush.subscribeToWebPush.mockResolvedValue({ endpoint: 'https://push.example/sub-1' });
+    webPush.serializePushSubscription.mockReturnValue({ endpoint: 'https://push.example/sub-1' });
+
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter initialEntries={['/me']}>
+        <Profile />
+      </MemoryRouter>,
+    );
+
+    // when
+    await user.click(await screen.findByRole('button', { name: '현재 브라우저 연결' }));
+
+    // then
+    await waitFor(() => {
+      expect(webPush.subscribeToWebPush).toHaveBeenCalledWith('public-key');
+    });
+    expect(api.upsertPushSubscription).toHaveBeenCalledWith({ endpoint: 'https://push.example/sub-1' });
+    expect(addToastMock).toHaveBeenCalledWith('현재 브라우저에서 외부 알림을 받을 수 있게 되었습니다.', 'success');
+    await screen.findByRole('button', { name: '현재 브라우저 연결 해제' });
+  });
+
+  it('현재_브라우저_연결을_해제한다', async () => {
+    // given
+    logoutMock.mockReset();
+    addToastMock.mockReset();
+    api.getMe.mockReset();
+    api.getBlockedUsers.mockReset();
+    api.getMyReports.mockReset();
+    api.getMyNotificationPreferences.mockReset();
+    api.updateMyNotificationPreferences.mockReset();
+    api.getMySettlementSettings.mockReset();
+    api.getWebPushConfiguration.mockReset();
+    api.getPushSubscriptions.mockReset();
+    api.upsertPushSubscription.mockReset();
+    api.deletePushSubscription.mockReset();
+    webPush.getCurrentPushSubscription.mockReset();
+    webPush.getNotificationPermissionState.mockReset();
+    webPush.isWebPushSupported.mockReset();
+    webPush.subscribeToWebPush.mockReset();
+    webPush.serializePushSubscription.mockReset();
+    webPush.unsubscribeFromWebPush.mockReset();
+
+    api.getMe.mockResolvedValue({
+      name: '테스터',
+      email: 'tester@test.com',
+      address: '서울',
+      trustSummary: null,
+      recentReviews: [],
+    });
+    api.getBlockedUsers.mockResolvedValue([]);
+    api.getMyReports.mockResolvedValue([]);
+    api.getMyNotificationPreferences.mockResolvedValue([
+      {
+        type: 'WAITING_PROMOTED',
+        label: '대기열 승격',
+        description: '대기열에서 참여로 승격되면 알려줍니다.',
+        deepLinkTargetLabel: '채팅방',
+        webPushSupported: true,
+        webPushEnabled: true,
+      },
+    ]);
+    api.getMySettlementSettings.mockResolvedValue({ settlementGuide: '' });
+    api.getWebPushConfiguration.mockResolvedValue({ enabled: true, publicKey: 'public-key' });
+    api.getPushSubscriptions
+      .mockResolvedValueOnce([{ id: 9, endpoint: 'https://push.example/sub-2' }])
+      .mockResolvedValueOnce([{ id: 9, endpoint: 'https://push.example/sub-2' }])
+      .mockResolvedValueOnce([]);
+    api.deletePushSubscription.mockResolvedValue(null);
+    webPush.getCurrentPushSubscription
+      .mockResolvedValueOnce({ endpoint: 'https://push.example/sub-2' })
+      .mockResolvedValueOnce({ endpoint: 'https://push.example/sub-2' })
+      .mockResolvedValueOnce(null);
+    webPush.getNotificationPermissionState.mockReturnValue('default');
+    webPush.isWebPushSupported.mockReturnValue(true);
+    webPush.unsubscribeFromWebPush.mockResolvedValue(null);
+
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter initialEntries={['/me']}>
+        <Profile />
+      </MemoryRouter>,
+    );
+
+    // when
+    await user.click(await screen.findByRole('button', { name: '현재 브라우저 연결 해제' }));
+
+    // then
+    await waitFor(() => {
+      expect(api.deletePushSubscription).toHaveBeenCalledWith(9);
+    });
+    expect(webPush.unsubscribeFromWebPush).toHaveBeenCalled();
+    expect(addToastMock).toHaveBeenCalledWith('현재 브라우저의 외부 알림 연결을 해제했습니다.', 'success');
+    await screen.findByRole('button', { name: '현재 브라우저 연결' });
+  });
 });

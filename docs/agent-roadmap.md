@@ -676,12 +676,13 @@
 - ADR: 참여 결과별 이동과 역할별 운영 액션 테스트 범위를 문서화한다.
 - 구현 메모(2026-03-18): `frontend/src/pages/JoinParty.flow.test.jsx`를 추가해 즉시 참여 성공 시 파티 상세 복귀, 잔여 수량 부족 시 대기열 등록 후 내 파티 이동을 검증했다. `frontend/src/pages/PartyDetail.operationFlow.test.jsx`에서는 호스트의 정산/픽업 확정과 참여자의 송금 완료, 픽업 확인, 호스트 후기 작성 흐름을 역할별 fixture로 분리해 검증했다. 기존 `JoinParty.safetyFeedback`, `PartyDetail.favorite`, `PartyDetail.safety`, `PartyDetail.trustSignals` 테스트와 함께 실행해 관련 화면 회귀를 묶었다. 검증은 `cd frontend && npm test -- --run src/pages/JoinParty.flow.test.jsx src/pages/JoinParty.safetyFeedback.test.jsx src/pages/PartyDetail.operationFlow.test.jsx src/pages/PartyDetail.favorite.test.jsx src/pages/PartyDetail.safety.test.jsx src/pages/PartyDetail.trustSignals.test.jsx`, `cd frontend && npm run build`로 진행했다.
 
-### [ ] E20-3 채팅 및 안전 기능 테스트
+### [x] E20-3 채팅 및 안전 기능 테스트
 - 목표: 채팅, 신고/차단, 알림 설정 같은 상호작용이 회귀 없이 유지되게 한다.
 - 범위: Chat 화면 테스트, 설정 화면 테스트, 신고/차단 UI 테스트.
 - 완료 조건: 실시간 채팅 주변 UX와 안전 기능이 자동 테스트 범위에 들어간다.
 - 검증: `frontend`의 `npm run test`, `npm run build`.
-- ADR: E12 테스트 러너 ADR을 재사용한다.
+- ADR: 채팅 상호작용, 브라우저 푸시 설정, 알림 상태 처리 테스트 범위를 문서화한다.
+- 구현 메모(2026-03-18): `frontend/src/pages/Chat.flow.test.jsx`를 추가해 채팅방 선택 후 상세 로드/읽음 처리와 호스트 공지 저장을 검증했다. `frontend/src/pages/Profile.notificationSettings.test.jsx`에는 현재 브라우저 Web Push 연결/해제 케이스를 보강했고, `frontend/src/pages/Notifications.state.test.jsx`로 비로그인 가드와 조회 실패 후 재시도 복구를 추가했다. 기존 `Chat.safety`, `Profile.safetyCenter`, `Notifications.deepLink` 테스트와 함께 실행해 채팅, 안전 센터, 알림 설정의 핵심 상호작용을 한 카드에서 묶었다. 검증은 `cd frontend && npm test -- --run src/pages/Chat.flow.test.jsx src/pages/Chat.safety.test.jsx src/pages/Profile.notificationSettings.test.jsx src/pages/Profile.safetyCenter.test.jsx src/pages/Notifications.deepLink.test.jsx src/pages/Notifications.state.test.jsx`, `cd frontend && npm run build`로 진행했다.
 
 ## Agent Prompt Template
 ```text
