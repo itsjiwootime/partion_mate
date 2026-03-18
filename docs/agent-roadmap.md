@@ -564,12 +564,13 @@
 - ADR: 탐색 필터 노출 범위와 기본값을 문서화한다.
 - 구현 메모(2026-03-18): `frontend/src/utils/partyDiscovery.js`를 추가해 `q`, `status`, `storage`, `unit` 쿼리 파라미터를 정규화하고 파티 제목/상품명/지점명 검색, 상태, 보관 방식, 소분 단위 필터를 프론트에서 적용하게 했다. `frontend/src/pages/PartyList.jsx`는 URL 쿼리 기반 필터 UI, 활성 조건 요약 badge, `전체 n개 중 m개 표시`, 결과 0건 전용 빈 상태를 추가했고, `frontend/src/pages/Home.jsx`에는 빠른 검색과 대표 필터 카드 3종을 넣어 `/parties`로 조건을 넘기게 했다. 카드 탐색 정보 노출을 위해 `frontend/src/components/PartyCard.jsx`에 상품명과 지점명 라인을 보강했다. 검증은 `frontend npm test -- --run src/utils/partyDiscovery.test.js src/pages/PartyList.filters.test.jsx src/pages/Home.quickDiscovery.test.jsx`, `frontend npm run build`로 진행했다.
 
-### [ ] E16-2 정렬 및 발견 섹션
+### [x] E16-2 정렬 및 발견 섹션
 - 목표: 마감 임박, 인기, 최신, 거리순 등 발견형 탐색을 강화한다.
 - 범위: 정렬 UI, 발견 섹션, 카드 강조 규칙, 정렬 API 연동 또는 프론트 계산.
 - 완료 조건: 사용자가 상황에 맞는 정렬과 발견 섹션을 선택할 수 있다.
 - 검증: 프론트 렌더링 테스트, 수동 플로우 확인, `npm run build`.
 - ADR: 기본 정렬과 발견 섹션 정책을 문서화한다.
+- 구현 메모(2026-03-18): `frontend/src/utils/partyDiscovery.js`에 `sort` 모델과 `recommended/deadline/popular/newest` 정렬 계산, 발견 섹션 대표 파티 계산을 추가했다. `frontend/src/pages/PartyList.jsx`는 정렬 select, `마감 임박/인기 파티/신규 파티` 발견 카드, 현재 정렬 상위 3개 카드 강조 badge를 넣었고, `frontend/src/components/PartyCard.jsx`는 강조 tone에 따라 badge와 ring을 보여주도록 확장했다. `frontend/src/pages/Home.jsx`는 `GET /party/all`을 이용한 `지금 발견하기` 섹션을 추가해 대표 파티와 함께 정렬 쿼리로 이동하게 했다. 최신순은 현재 응답에 `createdAt`이 없어 `partyId` 역순으로 추정했다. 검증은 `frontend npm test -- --run src/utils/partyDiscovery.test.js src/pages/PartyList.filters.test.jsx src/pages/Home.quickDiscovery.test.jsx`, `frontend npm run build`로 진행했다.
 
 ### [ ] E16-3 관심 파티 저장
 - 목표: 사용자가 나중에 다시 볼 파티를 저장할 수 있게 한다.

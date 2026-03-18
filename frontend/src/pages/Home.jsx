@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
-import { MapPin, ArrowRight, ChevronDown, Search, Refrigerator, Package2, CircleDot } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { MapPin, ArrowRight, ChevronDown, Search, Refrigerator, Package2, CircleDot, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { EmptyState, LoadingState } from '../components/Feedback';
-import { buildPartyDiscoverySearch } from '../utils/partyDiscovery';
+import { normalizePartySummary } from '../utils/party';
+import { buildDiscoverySections, buildPartyDiscoverySearch } from '../utils/partyDiscovery';
 
 const DEFAULT_COORDS = { lat: 37.5665, lon: 126.978 };
 
@@ -26,6 +27,9 @@ function Home() {
   const [storedCoords, setStoredCoords] = useState(null);
   const [useBrowserLocation, setUseBrowserLocation] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [discoveryParties, setDiscoveryParties] = useState([]);
+  const [discoveryLoading, setDiscoveryLoading] = useState(false);
+  const discoverySections = useMemo(() => buildDiscoverySections(discoveryParties), [discoveryParties]);
 
   const handleBranchClick = (id) => navigate(`/branch/${id}`);
   const navigateToPartyDiscovery = (filters = {}) => {
@@ -95,6 +99,34 @@ function Home() {
       requestBrowserLocation();
     }
   };
+
+  useEffect(() => {
+    let active = true;
+
+    const fetchDiscoveryParties = async () => {
+      try {
+        setDiscoveryLoading(true);
+        const data = await api.getAllParties();
+        if (active) {
+          setDiscoveryParties(data.map(normalizePartySummary));
+        }
+      } catch {
+        if (active) {
+          setDiscoveryParties([]);
+        }
+      } finally {
+        if (active) {
+          setDiscoveryLoading(false);
+        }
+      }
+    };
+
+    fetchDiscoveryParties();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -198,6 +230,68 @@ function Home() {
             </div>
             <p className="mt-2 text-sm text-ink/65">부담이 적은 1개 단위 소분 파티부터 살펴봅니다.</p>
           </button>
+        </div>
+      </section>
+
+      <section className="card-elevated p-4 space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-sm font-semibold text-mint-700">
+              <Sparkles size={16} />
+              지금 발견하기
+            </div>
+            <h2 className="section-title">마감 임박, 인기, 신규 파티를 한 번에</h2>
+            <p className="section-subtitle">상황에 맞는 정렬로 바로 넘어가고, 대표 파티를 먼저 확인할 수 있습니다.</p>
+          </div>
+          <button type="button" onClick={() => navigateToPartyDiscovery({ sort: 'recommended' })} className="btn-ghost">
+            전체 파티 보기
+          </button>
+        </div>
+
+        {discoveryLoading && <LoadingState message="발견할 파티를 고르는 중..." />}
+
+        <div className="grid gap-3 lg:grid-cols-3">
+          {discoverySections.map((section) => {
+            const featured = section.featuredParty;
+
+            return (
+              <button
+                key={section.key}
+                type="button"
+                onClick={() => navigateToPartyDiscovery({ sort: section.sort })}
+                className="card card-hover p-4 text-left"
+              >
+                <span
+                  className={[
+                    'badge',
+                    section.key === 'deadline'
+                      ? 'bg-amber-100 text-amber-900'
+                      : section.key === 'popular'
+                        ? 'bg-sky-100 text-sky-800'
+                        : 'bg-mint-500/15 text-mint-700',
+                  ].join(' ')}
+                >
+                  {section.label}
+                </span>
+                {featured ? (
+                  <>
+                    <p className="mt-3 text-base font-semibold text-ink">{featured.title}</p>
+                    <p className="mt-1 text-xs text-ink/50">{featured.storeName}</p>
+                    <p className="mt-3 text-sm text-ink/70">
+                      {section.key === 'deadline'
+                        ? `마감 ${featured.deadlineLabel ?? '미정'}`
+                        : section.key === 'popular'
+                          ? `달성률 ${Math.min(100, Math.round(((featured.currentQuantity ?? 0) / (featured.targetQuantity || 1)) * 100))}%`
+                          : `최소 ${featured.minimumShareUnit}${featured.unitLabel ?? '개'}부터 참여 가능`}
+                    </p>
+                  </>
+                ) : (
+                  <p className="mt-3 text-sm text-ink/55">{section.emptyDescription}</p>
+                )}
+                <div className="mt-4 text-xs font-semibold text-mint-700">{section.label} 기준으로 보기</div>
+              </button>
+            );
+          })}
         </div>
       </section>
 

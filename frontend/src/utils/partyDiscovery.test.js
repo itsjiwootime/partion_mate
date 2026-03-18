@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildPartyDiscoverySearch,
+  buildDiscoverySections,
   filterParties,
   hasActivePartyDiscoveryFilters,
+  sortParties,
   parsePartyDiscoveryFilters,
   summarizePartyDiscoveryFilters,
 } from './partyDiscovery';
@@ -49,6 +51,7 @@ describe('partyDiscovery', () => {
       status: 'active',
       storage: 'FROZEN',
       unit: 'all',
+      sort: 'recommended',
     });
     expect(nextSearch.toString()).toBe('q=%EC%96%91%EC%9E%AC%EC%A0%90&status=active&storage=FROZEN');
   });
@@ -85,5 +88,54 @@ describe('partyDiscovery', () => {
     // then
     expect(active).toBe(true);
     expect(summary).toEqual(['검색어: 연어', '마감', '냉장', '1개']);
+  });
+
+  it('정렬과_발견_섹션_대표_파티를_계산한다', () => {
+    // given
+    const sortableParties = [
+      {
+        partyId: 11,
+        title: '오늘 마감 연어',
+        status: 'active',
+        deadline: '2099-03-19T18:00:00',
+        currentQuantity: 2,
+        targetQuantity: 4,
+        minimumShareUnit: 1,
+        unitLabel: '개',
+        storeName: '코스트코 양재점',
+      },
+      {
+        partyId: 14,
+        title: '인기 라면',
+        status: 'active',
+        deadline: '2099-03-22T12:00:00',
+        currentQuantity: 8,
+        targetQuantity: 10,
+        minimumShareUnit: 2,
+        unitLabel: '개',
+        storeName: '트레이더스 월계점',
+      },
+      {
+        partyId: 19,
+        title: '신규 과자',
+        status: 'active',
+        deadline: '2099-03-25T12:00:00',
+        currentQuantity: 1,
+        targetQuantity: 6,
+        minimumShareUnit: 1,
+        unitLabel: '개',
+        storeName: '코스트코 공세점',
+      },
+    ];
+
+    // when
+    const popularSorted = sortParties(sortableParties, 'popular');
+    const sections = buildDiscoverySections(sortableParties);
+
+    // then
+    expect(popularSorted.map((party) => party.title)).toEqual(['인기 라면', '오늘 마감 연어', '신규 과자']);
+    expect(sections.find((section) => section.key === 'deadline')?.featuredParty?.title).toBe('오늘 마감 연어');
+    expect(sections.find((section) => section.key === 'popular')?.featuredParty?.title).toBe('인기 라면');
+    expect(sections.find((section) => section.key === 'newest')?.featuredParty?.title).toBe('신규 과자');
   });
 });

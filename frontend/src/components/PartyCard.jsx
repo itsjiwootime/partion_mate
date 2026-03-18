@@ -10,6 +10,8 @@ function PartyCard({
   title,
   productName,
   storeName,
+  discoveryBadgeLabel,
+  discoveryBadgeTone = 'recommended',
   totalPrice,
   unitLabel = '개',
   minimumShareUnit = 1,
@@ -35,13 +37,38 @@ function PartyCard({
     () => Math.min(100, Math.round((currentQuantity / targetQuantity) * 100)),
     [currentQuantity, targetQuantity],
   );
+  const discoveryBadgeClass = useMemo(() => {
+    switch (discoveryBadgeTone) {
+      case 'deadline':
+        return 'bg-amber-100 text-amber-900';
+      case 'popular':
+        return 'bg-sky-100 text-sky-800';
+      case 'newest':
+        return 'bg-mint-100 text-mint-800';
+      default:
+        return 'bg-mint-500/15 text-mint-700';
+    }
+  }, [discoveryBadgeTone]);
+  const discoveryRingClass = useMemo(() => {
+    switch (discoveryBadgeTone) {
+      case 'deadline':
+        return 'ring-1 ring-amber-200';
+      case 'popular':
+        return 'ring-1 ring-sky-200';
+      case 'newest':
+        return 'ring-1 ring-mint-200';
+      default:
+        return 'ring-1 ring-mint-100';
+    }
+  }, [discoveryBadgeTone]);
 
   return (
-    <article className="card card-hover p-4">
+    <article className={['card card-hover p-4', discoveryBadgeLabel ? discoveryRingClass : ''].join(' ')}>
       <header className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-ink/60">공동구매</p>
           <h3 className="mt-1 text-lg font-semibold text-ink">{title}</h3>
+          {discoveryBadgeLabel && <span className={`mt-2 badge ${discoveryBadgeClass}`}>{discoveryBadgeLabel}</span>}
           {productName && <p className="mt-1 text-sm text-ink/65">상품명: {productName}</p>}
           {storeName && <p className="mt-1 text-xs font-medium text-mint-700">{storeName}</p>}
           {chatUnreadCount > 0 && <p className="mt-2 text-xs font-semibold text-mint-700">새 메시지 {chatUnreadCount}개</p>}

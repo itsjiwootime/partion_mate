@@ -19,12 +19,44 @@ export const PARTY_UNIT_FILTERS = [
   { value: 'FIVE_PLUS', label: '5개 이상' },
 ];
 
+export const PARTY_SORT_OPTIONS = [
+  { value: 'recommended', label: '추천순' },
+  { value: 'deadline', label: '마감 임박순' },
+  { value: 'popular', label: '인기순' },
+  { value: 'newest', label: '최신순' },
+];
+
+const PARTY_DISCOVERY_SECTION_META = [
+  {
+    key: 'deadline',
+    label: '마감 임박',
+    description: '곧 마감될 가능성이 큰 파티를 먼저 확인하세요.',
+    emptyDescription: '현재 조건에서 먼저 보여줄 마감 임박 파티가 없습니다.',
+    sort: 'deadline',
+  },
+  {
+    key: 'popular',
+    label: '인기 파티',
+    description: '참여 수량이 빠르게 차는 파티를 우선 살펴보세요.',
+    emptyDescription: '현재 조건에서 먼저 보여줄 인기 파티가 없습니다.',
+    sort: 'popular',
+  },
+  {
+    key: 'newest',
+    label: '신규 파티',
+    description: '최근에 올라온 파티를 빠르게 확인하세요.',
+    emptyDescription: '현재 조건에서 먼저 보여줄 신규 파티가 없습니다.',
+    sort: 'newest',
+  },
+];
+
 export function parsePartyDiscoveryFilters(searchParams) {
   return {
     query: searchParams.get('q')?.trim() ?? '',
     status: normalizeFilterValue(searchParams.get('status'), PARTY_STATUS_FILTERS, 'all'),
     storage: normalizeFilterValue(searchParams.get('storage'), PARTY_STORAGE_FILTERS, 'all'),
     unit: normalizeFilterValue(searchParams.get('unit'), PARTY_UNIT_FILTERS, 'all'),
+    sort: normalizeFilterValue(searchParams.get('sort'), PARTY_SORT_OPTIONS, 'recommended'),
   };
 }
 
@@ -42,6 +74,9 @@ export function buildPartyDiscoverySearch(filters) {
   }
   if (filters.unit && filters.unit !== 'all') {
     searchParams.set('unit', filters.unit);
+  }
+  if (filters.sort && filters.sort !== 'recommended') {
+    searchParams.set('sort', filters.sort);
   }
 
   return searchParams;
@@ -95,6 +130,62 @@ export function summarizePartyDiscoveryFilters(filters) {
   return summary;
 }
 
+export function sortParties(parties, sort = 'recommended') {
+  return [...parties].sort((left, right) => {
+    const statusCompare = compareStatusRank(left, right);
+    if (statusCompare !== 0) {
+      return statusCompare;
+    }
+
+    switch (sort) {
+      case 'deadline': {
+        return compareByDeadline(left, right) || compareByPopularity(left, right) || compareByNewest(left, right);
+      }
+      case 'popular': {
+        return compareByPopularity(left, right) || compareByDeadline(left, right) || compareByNewest(left, right);
+      }
+      case 'newest': {
+        return compareByNewest(left, right) || compareByPopularity(left, right) || compareByDeadline(left, right);
+      }
+      default: {
+        return compareByDeadline(left, right) || compareByPopularity(left, right) || compareByNewest(left, right);
+      }
+    }
+  });
+}
+
+export function buildDiscoverySections(parties) {
+  const activeParties = parties.filter((party) => party.status === 'active');
+
+  return PARTY_DISCOVERY_SECTION_META.map((section) => {
+    const source = section.key === 'newest' ? parties : activeParties;
+    const topParties = sortParties(source, section.sort).slice(0, 3);
+
+    return {
+      ...section,
+      parties: topParties,
+      featuredParty: topParties[0] ?? null,
+    };
+  });
+}
+
+export function getPartySortHighlight(sort, rank) {
+  if (rank > 2) {
+    return null;
+  }
+
+  switch (sort) {
+    case 'deadline':
+      return { label: '마감 임박', tone: 'deadline' };
+    case 'popular':
+      return { label: '인기 파티', tone: 'popular' };
+    case 'newest':
+      return { label: '신규', tone: 'newest' };
+    default:
+      return { label: '추천', tone: 'recommended' };
+  }
+}
+
 function normalizeFilterValue(value, options, fallback) {
   if (!value) {
     return fallback;
@@ -134,4 +225,67 @@ function matchesUnitFilter(minimumShareUnit, unitFilter) {
 
 function findLabel(options, value) {
   return options.find((option) => option.value === value)?.label ?? value;
+}
+
+function compareStatusRank(left, right) {
+  return getStatusRank(left) - getStatusRank(right);
+}
+
+function getStatusRank(party) {
+  switch (party.status) {
+    case 'active':
+      return 0;
+    case 'full':
+      return 1;
+    default:
+      return 2;
+  }
+}
+
+function compareByDeadline(left, right) {
+  const leftTime = getDeadlineTimestamp(left);
+  const rightTime = getDeadlineTimestamp(right);
+  return leftTime - rightTime;
+}
+
+function compareByPopularity(left, right) {
+  const ratioDiff = getProgressRatio(right) - getProgressRatio(left);
+  if (ratioDiff !== 0) {
+    return ratioDiff;
+  }
+
+  const remainingDiff = getRemainingQuantity(left) - getRemainingQuantity(right);
+  if (remainingDiff !== 0) {
+    return remainingDiff;
+  }
+
+  return 0;
+}
+
+function compareByNewest(left, right) {
+  return Number(right.partyId ?? right.id ?? 0) - Number(left.partyId ?? left.id ?? 0);
+}
+
+function getProgressRatio(party) {
+  const target = Number(party.targetQuantity ?? party.totalQuantity ?? 0);
+  if (target <= 0) {
+    return 0;
+  }
+
+  return Math.round(((Number(party.currentQuantity ?? 0) / target) * 1000)) / 1000;
+}
+
+function getRemainingQuantity(party) {
+  const target = Number(party.targetQuantity ?? party.totalQuantity ?? 0);
+  const current = Number(party.currentQuantity ?? 0);
+  return Math.max(0, target - current);
+}
+
+function getDeadlineTimestamp(party) {
+  if (!party.deadline) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+
+  const parsed = new Date(party.deadline).getTime();
+  return Number.isNaN(parsed) ? Number.MAX_SAFE_INTEGER : parsed;
 }

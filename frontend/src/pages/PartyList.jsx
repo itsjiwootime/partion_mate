@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, SlidersHorizontal } from 'lucide-react';
+import { Search, SlidersHorizontal, Sparkles } from 'lucide-react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import PartyCard from '../components/PartyCard';
 import { api } from '../api/client';
@@ -8,12 +8,16 @@ import { LoadingState, EmptyState } from '../components/Feedback';
 import { applyPartyListRealtimeUpdate, normalizePartySummary } from '../utils/party';
 import {
   buildPartyDiscoverySearch,
+  buildDiscoverySections,
   filterParties,
+  getPartySortHighlight,
   hasActivePartyDiscoveryFilters,
   parsePartyDiscoveryFilters,
   PARTY_STATUS_FILTERS,
+  PARTY_SORT_OPTIONS,
   PARTY_STORAGE_FILTERS,
   PARTY_UNIT_FILTERS,
+  sortParties,
   summarizePartyDiscoveryFilters,
 } from '../utils/partyDiscovery';
 import { subscribeToPartyStream } from '../utils/partyRealtime';
@@ -36,6 +40,12 @@ function PartyList() {
   const filterSummary = useMemo(() => summarizePartyDiscoveryFilters(filters), [filters]);
   const hasActiveFilters = useMemo(() => hasActivePartyDiscoveryFilters(filters), [filters]);
   const filteredParties = useMemo(() => filterParties(parties, filters), [parties, filters]);
+  const sortedParties = useMemo(() => sortParties(filteredParties, filters.sort), [filteredParties, filters.sort]);
+  const discoverySections = useMemo(() => buildDiscoverySections(filteredParties), [filteredParties]);
+  const sortLabel = useMemo(
+    () => PARTY_SORT_OPTIONS.find((option) => option.value === filters.sort)?.label ?? '추천순',
+    [filters.sort],
+  );
 
   useEffect(() => {
     let active = true;
@@ -266,6 +276,91 @@ function PartyList() {
         </div>
       </section>
 
+      <section className="card-elevated p-4 space-y-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-sm font-semibold text-mint-700">
+              <Sparkles size={16} />
+              발견 섹션
+            </div>
+            <p className="section-subtitle">마감 임박, 인기, 신규 관점으로 빠르게 훑고 원하는 기준으로 다시 정렬하세요.</p>
+          </div>
+          <label className="space-y-2 lg:w-56">
+            <span className="helper-text">정렬 방식</span>
+            <select
+              value={filters.sort}
+              onChange={(event) => updateFilters({ sort: event.target.value })}
+              className="input"
+              aria-label="정렬 방식"
+            >
+              {PARTY_SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="grid gap-3 lg:grid-cols-3">
+          {discoverySections.map((section) => {
+            const featured = section.featuredParty;
+            const selected = filters.sort === section.sort;
+
+            return (
+              <button
+                key={section.key}
+                type="button"
+                onClick={() => updateFilters({ sort: section.sort })}
+                className={[
+                  'card p-4 text-left transition',
+                  selected ? 'border-mint-300 shadow-md ring-1 ring-mint-200' : 'hover:-translate-y-1 hover:shadow-md',
+                ].join(' ')}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span
+                    className={[
+                      'badge',
+                      section.key === 'deadline'
+                        ? 'bg-amber-100 text-amber-900'
+                        : section.key === 'popular'
+                          ? 'bg-sky-100 text-sky-800'
+                          : 'bg-mint-500/15 text-mint-700',
+                    ].join(' ')}
+                  >
+                    {section.label}
+                  </span>
+                  <span className="text-xs text-ink/45">{section.parties.length}개 후보</span>
+                </div>
+
+                {featured ? (
+                  <>
+                    <p className="mt-3 text-base font-semibold text-ink">{featured.title}</p>
+                    <p className="mt-1 text-xs text-ink/50">{featured.storeName}</p>
+                    <p className="mt-3 text-sm text-ink/70">
+                      {section.key === 'deadline'
+                        ? `마감 ${featured.deadlineLabel ?? '미정'}`
+                        : section.key === 'popular'
+                          ? `달성률 ${Math.min(100, Math.round(((featured.currentQuantity ?? 0) / (featured.targetQuantity || 1)) * 100))}%`
+                          : `최소 ${featured.minimumShareUnit}${featured.unitLabel ?? '개'}부터 참여 가능`}
+                    </p>
+                  </>
+                ) : (
+                  <p className="mt-3 text-sm text-ink/55">{section.emptyDescription}</p>
+                )}
+
+                <div className="mt-4 text-xs font-semibold text-mint-700">{selected ? `${sortLabel} 적용 중` : `${section.label} 보기`}</div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 text-xs text-ink/55">
+          <span>{sortLabel}으로 정렬 중</span>
+          <span className="badge bg-mint-500/10 text-mint-800">상위 3개 카드 강조</span>
+        </div>
+      </section>
+
       {loading && <LoadingState />}
       {error && <p className="text-sm text-red-600">{error}</p>}
       {!loading && !error && parties.length === 0 && (
@@ -296,15 +391,21 @@ function PartyList() {
         />
       )}
       <div className="grid gap-3 md:grid-cols-2">
-        {filteredParties.map((party) => (
-          <PartyCard
-            key={party.partyId}
-            partyId={party.partyId}
-            chatUnreadCount={chatUnreadMap[party.partyId] ?? 0}
-            {...party}
-            onViewDetail={() => navigate(`/parties/${party.partyId}`, { state: { party } })}
-          />
-        ))}
+        {sortedParties.map((party, index) => {
+          const highlight = getPartySortHighlight(filters.sort, index);
+
+          return (
+            <PartyCard
+              key={party.partyId}
+              partyId={party.partyId}
+              chatUnreadCount={chatUnreadMap[party.partyId] ?? 0}
+              discoveryBadgeLabel={highlight?.label}
+              discoveryBadgeTone={highlight?.tone}
+              {...party}
+              onViewDetail={() => navigate(`/parties/${party.partyId}`, { state: { party } })}
+            />
+          );
+        })}
       </div>
     </div>
   );
