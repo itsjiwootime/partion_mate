@@ -1,0 +1,221 @@
+# Partition Mate
+
+> 위치 기반 공동구매/소분 플랫폼  
+> 동시 참여 제어, 대기열 승격, 실시간 상태 동기화, 운영 알림까지 하나의 흐름으로 연결한 풀스택 프로젝트
+
+## 프로젝트 소개
+
+대형마트 공동구매 서비스는 단순히 파티를 모집하는 것에서 끝나지 않습니다.  
+동시에 여러 사용자가 같은 파티에 참여할 때 초과 모집이 발생하지 않아야 하고, 정원이 찬 뒤에는 대기열과 자동 승격이 일관되게 동작해야 하며, 모집 이후에도 마감, 정산, 픽업, 후기, 알림까지 상태 변화가 계속 이어집니다.
+
+이 프로젝트는 이런 문제를 다음 관점에서 풀었습니다.
+
+- `동시성 제어`: 같은 파티에 참여 요청이 몰려도 초과 모집과 중복 참여를 막는다.
+- `상태 동기화`: 참여, 취소, 대기열 승격, 자동 마감을 여러 화면에 실시간으로 반영한다.
+- `운영 흐름 연결`: 모집 이후 정산, 픽업, 후기, 신뢰도, 신고/차단까지 이어지는 흐름을 설계한다.
+- `세션 안정화`: 짧은 수명 JWT 구조에서도 사용자가 다시 로그인하지 않고 세션을 복구할 수 있게 한다.
+
+## 어떤 문제를 해결했는가
+
+### 1. 공동구매 모집은 동시 요청에 취약하다
+- 남은 수량을 동시에 읽고 저장하면 초과 모집이 발생할 수 있다.
+- API 레벨 중복 검증만으로는 flush 시점 충돌을 일관되게 다루기 어렵다.
+
+### 2. 모집 이후 상태 변화가 많아 화면 정합성이 쉽게 깨진다
+- 참여 확정, 취소, 대기열 승격, 자동 마감이 여러 화면에서 동시에 반영되어야 한다.
+- 채팅은 양방향 통신이 필요하지만, 모집 상태 갱신은 단방향 푸시가 더 적합하다.
+
+### 3. 위치 기반 탐색은 반복 조회가 잦아 체감 성능이 중요하다
+- 홈/지점 탐색 화면은 주변 지점 조회와 파티 목록 재조회가 자주 발생한다.
+- 단순 조회 방식으로는 warm path 최적화가 어렵다.
+
+### 4. JWT만으로는 세션 경험이 쉽게 끊긴다
+- access token 만료 시 매번 로그인으로 보내면 보호 API UX가 나빠진다.
+- refresh token을 프론트 저장소에 직접 들고 있지 않으면서도 rotation과 로그아웃 무효화가 가능해야 했다.
+
+## 핵심 성과
+
+### 정량 성과
+- 동시 참여 100건 시나리오에서 `초과 모집 0건`, `중복 참여 0건`을 확인했습니다.
+- 같은 시나리오에서 평균 응답시간 `37.43ms`, P95 `117.96ms`를 기록했습니다.
+- 주변 지점 조회 API는 평균 `71.78ms -> 12.49ms`로 `82.60%` 감소했습니다.
+- 같은 조회의 warm path는 평균 `1.64ms`, P95 `2.26ms`, cache hit ratio `0.95`까지 낮췄습니다.
+
+### 참고 문서
+- [동시 참여 부하 측정](docs/benchmarks/E1-5-party-join-load-benchmark.md)
+- [위치 기반 조회 성능 비교](docs/benchmarks/E2-5-store-query-performance-comparison.md)
+
+> 위 수치는 각각 `H2 in-memory` 기반 서비스 벤치마크와 `MockMvc + H2` 기준 측정값이며, 운영 환경 수치와 동일하다고 주장하지 않습니다.
+
+## 기술적으로 집중한 설계 포인트
+
+| 문제 | 선택 | 이유 |
+| --- | --- | --- |
+| 파티 참여 초과 모집 방지 | `PESSIMISTIC_WRITE` 락 + `saveAndFlush` | 단일 DB 구조에서 가장 단순하게 정합성을 보장하고, DB 유니크 제약 충돌도 서비스 레벨에서 일관된 예외로 변환하기 위해 |
+| 실시간 모집 현황 반영 | 공개 SSE + 보호 화면 fallback 재조회 | 공개 파티 상태는 단방향 전파로 충분하고, 현재 JWT 인증 구조에서 브라우저 `EventSource` 제약을 우회하기보다 단순한 공개 스트림이 더 적합했기 때문 |
+| 파티 채팅 | `WebSocket + STOMP` | 채팅은 양방향 통신과 재연결이 핵심이며, 파티 단위 구독 모델을 명확하게 유지할 수 있기 때문 |
+| 알림 정합성 | Outbox 패턴 + 워커 재처리 | 도메인 상태 변경과 알림 이벤트 저장을 같은 트랜잭션에 묶고, 실제 발송은 비동기로 분리하기 위해 |
+| 세션 복구 | `HttpOnly Cookie` refresh token + rotation | refresh token을 프론트 JS에서 직접 다루지 않으면서도 재발급, 로그아웃 무효화, 기기 단위 제어를 가능하게 하기 위해 |
+
+관련 문서:
+
+- [파티 참여 락 전략 ADR](docs/adr/ADR-20260315-party-join-lock-strategy.md)
+- [실시간 SSE 선택 ADR](docs/adr/ADR-20260316-party-realtime-sse-choice.md)
+- [채팅 전송 방식 ADR](docs/adr/ADR-20260317-websocket-stomp-chat-transport.md)
+- [Outbox 패턴 ADR](docs/adr/ADR-20260316-outbox-pattern-for-party-events.md)
+- [Refresh Token 저장 구조 ADR](docs/adr/ADR-20260318-refresh-token-cookie-storage.md)
+- [Refresh Rotation ADR](docs/adr/ADR-20260318-refresh-rotation-and-logout-invalidation.md)
+
+## 주요 기능
+
+### 모집과 대기열
+- 파티 생성, 수정, 호스트 종료
+- 동시 참여 제어
+- 정원 초과 시 대기열 등록
+- 취소 발생 시 FIFO 자동 승격
+
+### 실시간 반영
+- `GET /party/stream` SSE 기반 모집 상태 동기화
+- 연결 오류 시 선형 backoff 재연결
+- 보호 화면은 API 재조회로 fallback 보정
+
+### 거래 운영
+- 예상 금액과 실제 결제 금액 분리
+- 송금 상태 관리
+- 픽업 시간/장소 확정 및 참여자 확인
+- 거래 완료 후 후기 작성과 신뢰도 반영
+
+### 안전 기능
+- 신고 접수
+- 사용자 차단과 상호작용 제한
+- 노쇼 누적 정책
+- 신뢰 배지, 경고 신호 노출
+
+### 알림과 채팅
+- 앱 내 알림 조회
+- Web Push 구독 및 설정
+- 파티 전용 인앱 채팅
+- 안 읽은 메시지 수, 호스트 공지 고정
+
+## 아키텍처
+
+```mermaid
+flowchart LR
+    U["User"] --> FE["React + Vite"]
+    FE -->|"REST API"| BE["Spring Boot"]
+    FE -->|"SSE /party/stream"| BE
+    FE -->|"WebSocket /ws-chat"| BE
+    BE --> DB["MySQL"]
+    BE --> CACHE["Caffeine Cache"]
+    BE --> OUTBOX["Outbox Event"]
+    OUTBOX --> WORKER["Notification Worker"]
+    WORKER --> INAPP["In-app Notification"]
+    WORKER --> PUSH["Web Push"]
+```
+
+## 검증 포인트
+
+- 백엔드는 동시성, 자동 마감, Outbox, SSE, WebSocket, 인증 흐름을 통합 테스트로 검증했습니다.
+- 프론트엔드는 `Vitest + React Testing Library`로 로그인, 탐색, 생성, 참여, 채팅, 알림, 프로필 설정 등 핵심 흐름 테스트를 추가했습니다.
+- 성능 관련 항목은 `docs/benchmarks`에 재실행 가능한 명령과 조건을 문서화했습니다.
+
+## 기술 스택
+
+### Backend
+- Java 21
+- Spring Boot 3.5
+- Spring Web
+- Spring Data JPA
+- Spring Security
+- Spring WebSocket
+- MySQL 8
+- JWT
+- Caffeine Cache
+
+### Frontend
+- React 18
+- Vite
+- React Router
+- Tailwind CSS
+- STOMP.js
+- Vitest
+- React Testing Library
+
+## 실행 방법
+
+### 1. DB 실행
+```bash
+docker compose up -d db
+```
+
+### 2. 백엔드 실행
+```bash
+./mvnw spring-boot:run
+```
+
+기본 포트는 `8080`입니다.
+
+### 3. 프론트엔드 실행
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+기본 개발 서버는 `5173`입니다.  
+백엔드 기본 주소는 `http://localhost:8080`입니다.
+
+### 4. 선택 환경변수
+
+프론트에서 주소 검색/지도 연동까지 쓰려면 `frontend/.env.local`에 아래 값을 둘 수 있습니다.
+
+```bash
+VITE_API_BASE=http://localhost:8080
+VITE_KAKAO_MAP_KEY=your_kakao_javascript_key
+```
+
+백엔드 기본 환경변수는 [`.env.example`](.env.example), [`src/main/resources/application.yml`](src/main/resources/application.yml), [`docs/local-db.md`](docs/local-db.md)에 정리돼 있습니다.
+
+## 테스트
+
+백엔드:
+
+```bash
+./mvnw test
+```
+
+프론트엔드:
+
+```bash
+cd frontend
+npm test
+```
+
+## 문서
+
+- [에이전트 로드맵](docs/agent-roadmap.md)
+- [ADR 목록](docs/adr)
+- [기능/이벤트 스펙](docs/specs)
+- [성능 측정 문서](docs/benchmarks)
+- [로컬 DB 실행 가이드](docs/local-db.md)
+
+## 프로젝트 구조
+
+```text
+.
+├── src/main/java           # Spring Boot 백엔드
+├── src/main/resources      # application.yml, 시드 데이터
+├── frontend                # React/Vite 프론트엔드
+├── docs/adr                # 아키텍처 결정 기록
+├── docs/specs              # 기능/이벤트 스펙
+├── docs/benchmarks         # 성능 측정 결과
+└── docs/agent-roadmap.md   # 구현 백로그 및 메모
+```
+
+## 현재 한계
+
+- 성능 수치는 아직 `MySQL 실서버 환경`이 아닌 `H2/MockMvc` 기반 측정이 중심입니다.
+- SSE는 `Last-Event-ID` 재전송을 지원하지 않아 재연결 시 API fallback에 의존합니다.
+- 채팅은 현재 단일 인스턴스 기준이며, 다중 인스턴스 확장 시 별도 브로커가 필요합니다.
+- refresh token은 기기 단위 rotation과 무효화까지는 지원하지만, 토큰 family 추적 기반 전체 세션 폐기까지는 구현하지 않았습니다.
+
