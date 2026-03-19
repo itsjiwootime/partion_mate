@@ -57,15 +57,6 @@
 | 알림 정합성 | Outbox 패턴 + 워커 재처리 | 도메인 상태 변경과 알림 이벤트 저장을 같은 트랜잭션에 묶고, 실제 발송은 비동기로 분리하기 위해 |
 | 세션 복구 | `HttpOnly Cookie` refresh token + rotation | refresh token을 프론트 JS에서 직접 다루지 않으면서도 재발급, 로그아웃 무효화, 기기 단위 제어를 가능하게 하기 위해 |
 
-관련 문서:
-
-- [파티 참여 락 전략 ADR](docs/adr/ADR-20260315-party-join-lock-strategy.md)
-- [실시간 SSE 선택 ADR](docs/adr/ADR-20260316-party-realtime-sse-choice.md)
-- [채팅 전송 방식 ADR](docs/adr/ADR-20260317-websocket-stomp-chat-transport.md)
-- [Outbox 패턴 ADR](docs/adr/ADR-20260316-outbox-pattern-for-party-events.md)
-- [Refresh Token 저장 구조 ADR](docs/adr/ADR-20260318-refresh-token-cookie-storage.md)
-- [Refresh Rotation ADR](docs/adr/ADR-20260318-refresh-rotation-and-logout-invalidation.md)
-
 ## 주요 기능
 
 ### 모집과 대기열
@@ -112,12 +103,6 @@ flowchart LR
     WORKER --> INAPP["In-app Notification"]
     WORKER --> PUSH["Web Push"]
 ```
-
-## 검증 포인트
-
-- 백엔드는 동시성, 자동 마감, Outbox, SSE, WebSocket, 인증 흐름을 통합 테스트로 검증했습니다.
-- 프론트엔드는 `Vitest + React Testing Library`로 로그인, 탐색, 생성, 참여, 채팅, 알림, 프로필 설정 등 핵심 흐름 테스트를 추가했습니다.
-- 성능 관련 항목은 `docs/benchmarks`에 재실행 가능한 명령과 조건을 문서화했습니다.
 
 ## 기술 스택
 
@@ -191,14 +176,6 @@ cd frontend
 npm test
 ```
 
-## 문서
-
-- [에이전트 로드맵](docs/agent-roadmap.md)
-- [ADR 목록](docs/adr)
-- [기능/이벤트 스펙](docs/specs)
-- [성능 측정 문서](docs/benchmarks)
-- [로컬 DB 실행 가이드](docs/local-db.md)
-
 ## 프로젝트 구조
 
 ```text
@@ -211,11 +188,3 @@ npm test
 ├── docs/benchmarks         # 성능 측정 결과
 └── docs/agent-roadmap.md   # 구현 백로그 및 메모
 ```
-
-## 현재 한계
-
-- 성능 수치는 아직 `MySQL 실서버 환경`이 아닌 `H2/MockMvc` 기반 측정이 중심입니다.
-- SSE는 `Last-Event-ID` 재전송을 지원하지 않아 재연결 시 API fallback에 의존합니다.
-- 채팅은 현재 단일 인스턴스 기준이며, 다중 인스턴스 확장 시 별도 브로커가 필요합니다.
-- refresh token은 기기 단위 rotation과 무효화까지는 지원하지만, 토큰 family 추적 기반 전체 세션 폐기까지는 구현하지 않았습니다.
-
