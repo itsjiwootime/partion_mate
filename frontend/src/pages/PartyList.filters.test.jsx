@@ -124,7 +124,7 @@ describe('PartyList filters', () => {
     // then
     expect(screen.getByDisplayValue('양재점')).toBeInTheDocument();
     expect(screen.getByText('전체 4개 중 1개 표시')).toBeInTheDocument();
-    expect(screen.getByText('검색어: 양재점')).toBeInTheDocument();
+    expect(screen.getAllByText('검색어: 양재점').length).toBeGreaterThan(0);
     expect(screen.getByRole('combobox', { name: '보관 방식 필터' })).toHaveValue('REFRIGERATED');
     expect(screen.getByRole('combobox', { name: '소분 단위 필터' })).toHaveValue('ONE');
     expect(screen.queryByText('상봉점 냉동만두')).not.toBeInTheDocument();

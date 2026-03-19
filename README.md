@@ -15,6 +15,31 @@
 - `운영 흐름 연결`: 모집 이후 정산, 픽업, 후기, 신뢰도, 신고/차단까지 이어지는 흐름을 설계한다.
 - `세션 안정화`: 짧은 수명 JWT 구조에서도 사용자가 다시 로그인하지 않고 세션을 복구할 수 있게 한다.
 
+## 모바일 주요 화면
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="docs/screenshots/viewport/mobile-home-viewport.png" width="220" alt="모바일 홈 화면" /><br />
+      홈
+    </td>
+    <td align="center">
+      <img src="docs/screenshots/viewport/mobile-party-list-cards-viewport.png" width="220" alt="모바일 파티 목록 화면" /><br />
+      파티 목록
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="docs/screenshots/viewport/mobile-party-detail-viewport.png" width="220" alt="모바일 파티 상세 화면" /><br />
+      파티 상세
+    </td>
+    <td align="center">
+      <img src="docs/screenshots/viewport/mobile-create-party-viewport.png" width="220" alt="모바일 파티 생성 화면" /><br />
+      파티 생성
+    </td>
+  </tr>
+</table>
+
 ## 어떤 문제를 해결했는가
 
 ### 1. 공동구매 모집은 동시 요청에 취약하다

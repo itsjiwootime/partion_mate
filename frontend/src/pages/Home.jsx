@@ -28,6 +28,7 @@ function Home() {
   const [storedCoords, setStoredCoords] = useState(null);
   const [useBrowserLocation, setUseBrowserLocation] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showQuickFilters, setShowQuickFilters] = useState(false);
   const [discoveryParties, setDiscoveryParties] = useState([]);
   const [discoveryLoading, setDiscoveryLoading] = useState(false);
   const discoverySections = useMemo(() => buildDiscoverySections(discoveryParties), [discoveryParties]);
@@ -211,25 +212,40 @@ function Home() {
           <p className="section-subtitle">상품명, 지점명, 파티 제목 검색과 대표 필터를 바로 적용할 수 있습니다.</p>
         </div>
 
-        <div className="input-row">
-          <Search size={16} className="text-mint-700" />
-          <input
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            className="input-control"
-            placeholder="예: 휴지, 코스트코 양재점, 냉동 만두"
-            aria-label="홈 파티 검색"
-          />
+        <div className="input-row flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+          <div className="flex items-center gap-2">
+            <Search size={16} className="shrink-0 text-mint-700" />
+            <input
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              className="input-control"
+              placeholder="예: 휴지, 코스트코 양재점, 냉동 만두"
+              aria-label="홈 파티 검색"
+            />
+          </div>
           <button
             type="button"
             onClick={() => navigateToPartyDiscovery({ query: searchQuery })}
-            className="btn-primary px-4 py-2 text-sm"
+            className="btn-primary w-full px-4 py-2 text-sm sm:w-auto"
           >
             검색
           </button>
         </div>
 
-        <div className="grid gap-2 sm:grid-cols-3">
+        <div className="flex items-center justify-between gap-3 sm:hidden">
+          <p className="helper-text">대표 조건을 빠르게 열어 바로 적용할 수 있어요.</p>
+          <button
+            type="button"
+            onClick={() => setShowQuickFilters((current) => !current)}
+            className="btn-secondary shrink-0 px-3 py-2 text-xs"
+            aria-expanded={showQuickFilters}
+          >
+            {showQuickFilters ? '조건 숨기기' : '조건 보기'}
+            <ChevronDown size={14} className={showQuickFilters ? 'rotate-180 transition' : 'transition'} />
+          </button>
+        </div>
+
+        <div className={[showQuickFilters ? 'grid' : 'hidden', 'gap-2 sm:grid sm:grid-cols-3'].join(' ')}>
           <button onClick={() => navigateToPartyDiscovery({ status: 'active' })} className="card p-4 text-left">
             <div className="flex items-center gap-2 text-sm font-semibold text-mint-700">
               <CircleDot size={16} />

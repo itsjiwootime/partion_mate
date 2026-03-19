@@ -40,6 +40,7 @@ function PartyList() {
   const [realtimeState, setRealtimeState] = useState('connecting');
   const [chatUnreadMap, setChatUnreadMap] = useState({});
   const [favoriteLoadingId, setFavoriteLoadingId] = useState(null);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const filters = useMemo(() => parsePartyDiscoveryFilters(searchParams), [searchParams]);
   const filterSummary = useMemo(() => summarizePartyDiscoveryFilters(filters), [filters]);
   const hasActiveFilters = useMemo(() => hasActivePartyDiscoveryFilters(filters), [filters]);
@@ -254,64 +255,91 @@ function PartyList() {
           />
         </div>
 
-        <div className="space-y-2">
-          <p className="helper-text">상태</p>
-          <div className="flex flex-wrap gap-2">
-            {PARTY_STATUS_FILTERS.map((option) => (
-              <button
-                key={option.value}
-                onClick={() => updateFilters({ status: option.value })}
-                className={[
-                  'btn-pill',
-                  filters.status === option.value ? 'bg-mint-500 text-white hover:bg-mint-600' : '',
-                ].join(' ')}
+        <div className="flex items-center justify-between gap-3 sm:hidden">
+          <p className="helper-text">상세 필터는 필요할 때만 열어 좁혀볼 수 있어요.</p>
+          <button
+            type="button"
+            onClick={() => setShowAdvancedFilters((current) => !current)}
+            className="btn-secondary shrink-0 px-3 py-2 text-xs"
+            aria-expanded={showAdvancedFilters}
+          >
+            {showAdvancedFilters ? '필터 숨기기' : '필터 보기'}
+          </button>
+        </div>
+
+        {!showAdvancedFilters && hasActiveFilters && (
+          <div className="flex flex-wrap items-center gap-2 text-xs text-ink/55 sm:hidden">
+            {filterSummary.map((item) => (
+              <span key={item} className="badge bg-ink/5 text-ink/70">
+                {item}
+              </span>
+            ))}
+            <button onClick={resetFilters} className="btn-ghost px-0 py-0 text-xs">
+              필터 초기화
+            </button>
+          </div>
+        )}
+
+        <div className={[showAdvancedFilters ? 'space-y-4' : 'hidden', 'sm:block sm:space-y-4'].join(' ')}>
+          <div className="space-y-2">
+            <p className="helper-text">상태</p>
+            <div className="flex flex-wrap gap-2">
+              {PARTY_STATUS_FILTERS.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => updateFilters({ status: option.value })}
+                  className={[
+                    'btn-pill',
+                    filters.status === option.value ? 'bg-mint-500 text-white hover:bg-mint-600' : '',
+                  ].join(' ')}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="space-y-2">
+              <span className="helper-text">보관 방식</span>
+              <select
+                value={filters.storage}
+                onChange={(event) => updateFilters({ storage: event.target.value })}
+                className="input"
+                aria-label="보관 방식 필터"
               >
-                {option.label}
-              </button>
+                {PARTY_STORAGE_FILTERS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="space-y-2">
+              <span className="helper-text">소분 단위</span>
+              <select
+                value={filters.unit}
+                onChange={(event) => updateFilters({ unit: event.target.value })}
+                className="input"
+                aria-label="소분 단위 필터"
+              >
+                {PARTY_UNIT_FILTERS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 text-xs text-ink/55">
+            <span>전체 {parties.length}개 중 {filteredParties.length}개 표시</span>
+            {filterSummary.map((item) => (
+              <span key={item} className="badge bg-ink/5 text-ink/70">
+                {item}
+              </span>
             ))}
           </div>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="space-y-2">
-            <span className="helper-text">보관 방식</span>
-            <select
-              value={filters.storage}
-              onChange={(event) => updateFilters({ storage: event.target.value })}
-              className="input"
-              aria-label="보관 방식 필터"
-            >
-              {PARTY_STORAGE_FILTERS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="space-y-2">
-            <span className="helper-text">소분 단위</span>
-            <select
-              value={filters.unit}
-              onChange={(event) => updateFilters({ unit: event.target.value })}
-              className="input"
-              aria-label="소분 단위 필터"
-            >
-              {PARTY_UNIT_FILTERS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 text-xs text-ink/55">
-          <span>전체 {parties.length}개 중 {filteredParties.length}개 표시</span>
-          {filterSummary.map((item) => (
-            <span key={item} className="badge bg-ink/5 text-ink/70">
-              {item}
-            </span>
-          ))}
         </div>
       </section>
 

@@ -1,0 +1,8 @@
+*
+!.gitignore
+!viewport/
+viewport/*
+!viewport/mobile-home-viewport.png
+!viewport/mobile-party-list-cards-viewport.png
+!viewport/mobile-party-detail-viewport.png
+!viewport/mobile-create-party-viewport.png
