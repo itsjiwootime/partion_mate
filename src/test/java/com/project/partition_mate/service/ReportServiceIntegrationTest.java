@@ -10,7 +10,6 @@ import com.project.partition_mate.domain.ReportTargetType;
 import com.project.partition_mate.domain.StorageType;
 import com.project.partition_mate.domain.Store;
 import com.project.partition_mate.domain.User;
-import com.project.partition_mate.domain.WaitingQueueEntry;
 import com.project.partition_mate.exception.BusinessException;
 import com.project.partition_mate.dto.CreateReportRequest;
 import com.project.partition_mate.dto.ReportResponse;
@@ -19,7 +18,6 @@ import com.project.partition_mate.repository.PartyRepository;
 import com.project.partition_mate.repository.ReportRepository;
 import com.project.partition_mate.repository.StoreRepository;
 import com.project.partition_mate.repository.UserRepository;
-import com.project.partition_mate.repository.WaitingQueueRepository;
 import com.project.partition_mate.security.CustomUserDetails;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -53,9 +51,6 @@ class ReportServiceIntegrationTest {
     private PartyMemberRepository partyMemberRepository;
 
     @Autowired
-    private WaitingQueueRepository waitingQueueRepository;
-
-    @Autowired
     private StoreRepository storeRepository;
 
     @Autowired
@@ -65,7 +60,6 @@ class ReportServiceIntegrationTest {
     void tearDown() {
         SecurityContextHolder.clearContext();
         reportRepository.deleteAll();
-        waitingQueueRepository.deleteAll();
         partyMemberRepository.deleteAll();
         partyRepository.deleteAll();
         storeRepository.deleteAll();
@@ -103,15 +97,14 @@ class ReportServiceIntegrationTest {
     }
 
     @Test
-    void 대기중인_사용자가_파티를_신고하면_접수한다() {
+    void 파티와_무관한_사용자가_파티를_신고하면_예외가_발생한다() {
         // given
-        Store store = storeRepository.saveAndFlush(createStore("대기 신고 지점"));
+        Store store = storeRepository.saveAndFlush(createStore("무관 신고 지점"));
         User host = userRepository.saveAndFlush(createUser("host"));
         User member = userRepository.saveAndFlush(createUser("member"));
-        User waitingUser = userRepository.saveAndFlush(createUser("waiting"));
+        User stranger = userRepository.saveAndFlush(createUser("stranger"));
         Party party = createParty(store, host, member);
-        waitingQueueRepository.saveAndFlush(WaitingQueueEntry.create(party, waitingUser, 1));
-        setAuth(waitingUser);
+        setAuth(stranger);
         CreateReportRequest request = createRequest(
                 ReportTargetType.PARTY,
                 party.getId(),
@@ -121,13 +114,12 @@ class ReportServiceIntegrationTest {
         );
 
         // when
-        ReportResponse response = reportService.createReport(waitingUser, request);
+        Throwable thrown = catchThrowable(() -> reportService.createReport(stranger, request));
 
         // then
-        assertThat(response.getTargetType()).isEqualTo(ReportTargetType.PARTY);
-        assertThat(response.getTargetUserId()).isNull();
-        assertThat(response.getPartyId()).isEqualTo(party.getId());
-        assertThat(reportRepository.findAll()).hasSize(1);
+        assertThat(thrown)
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("해당 파티와 관련된 사용자만 신고할 수 있습니다.");
     }
 
     @Test
@@ -187,10 +179,9 @@ class ReportServiceIntegrationTest {
         Store store = storeRepository.saveAndFlush(createStore("채팅 신고 지점"));
         User host = userRepository.saveAndFlush(createUser("host"));
         User member = userRepository.saveAndFlush(createUser("member"));
-        User waitingUser = userRepository.saveAndFlush(createUser("waiting"));
+        User stranger = userRepository.saveAndFlush(createUser("stranger"));
         Party party = createParty(store, host, member);
-        waitingQueueRepository.saveAndFlush(WaitingQueueEntry.create(party, waitingUser, 1));
-        setAuth(waitingUser);
+        setAuth(stranger);
         CreateReportRequest request = createRequest(
                 ReportTargetType.CHAT,
                 party.getId(),
@@ -200,7 +191,7 @@ class ReportServiceIntegrationTest {
         );
 
         // when
-        Throwable thrown = catchThrowable(() -> reportService.createReport(waitingUser, request));
+        Throwable thrown = catchThrowable(() -> reportService.createReport(stranger, request));
 
         // then
         assertThat(thrown)

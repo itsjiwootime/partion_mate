@@ -5,7 +5,6 @@ import com.project.partition_mate.domain.Report;
 import com.project.partition_mate.domain.ReportStatus;
 import com.project.partition_mate.domain.ReportTargetType;
 import com.project.partition_mate.domain.User;
-import com.project.partition_mate.domain.WaitingQueueStatus;
 import com.project.partition_mate.dto.CreateReportRequest;
 import com.project.partition_mate.dto.ReportResponse;
 import com.project.partition_mate.exception.BusinessException;
@@ -13,7 +12,6 @@ import com.project.partition_mate.repository.PartyMemberRepository;
 import com.project.partition_mate.repository.PartyRepository;
 import com.project.partition_mate.repository.ReportRepository;
 import com.project.partition_mate.repository.UserRepository;
-import com.project.partition_mate.repository.WaitingQueueRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +29,6 @@ public class ReportService {
     private final PartyRepository partyRepository;
     private final UserRepository userRepository;
     private final PartyMemberRepository partyMemberRepository;
-    private final WaitingQueueRepository waitingQueueRepository;
     private final Clock clock;
 
     @Transactional
@@ -114,9 +111,7 @@ public class ReportService {
     }
 
     private void validateReporterRelatedToParty(User reporter, Party party) {
-        boolean joined = partyMemberRepository.existsByPartyAndUser(party, reporter);
-        boolean waiting = waitingQueueRepository.existsByPartyAndUserAndStatus(party, reporter, WaitingQueueStatus.WAITING);
-        if (!joined && !waiting) {
+        if (!partyMemberRepository.existsByPartyAndUser(party, reporter)) {
             throw BusinessException.onlyRelatedUserCanReportParty();
         }
     }

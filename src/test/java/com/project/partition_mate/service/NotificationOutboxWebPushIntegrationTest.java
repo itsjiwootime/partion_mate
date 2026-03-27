@@ -122,12 +122,12 @@ class NotificationOutboxWebPushIntegrationTest {
     }
 
     @Test
-    void 대기열_승격_이벤트를_처리하면_앱내알림과_web_push를_함께_보낸다() {
+    void 파티종료_이벤트를_처리하면_앱내알림과_web_push를_함께_보낸다() {
         // given
-        Store store = storeRepository.saveAndFlush(createStore("승격 지점"));
+        Store store = storeRepository.saveAndFlush(createStore("종료 지점"));
         User user = userRepository.saveAndFlush(createUser("member"));
         Party party = partyRepository.saveAndFlush(new Party(
-                "승격 테스트",
+                "종료 테스트",
                 "휴지",
                 20000,
                 store,
@@ -135,8 +135,8 @@ class NotificationOutboxWebPushIntegrationTest {
                 "https://open.kakao.com/o/push",
                 LocalDateTime.now().plusHours(3)
         ));
-        saveSubscription(user, "https://push.example.com/subscriptions/promoted");
-        notificationOutboxService.publishWaitingPromoted(party, user, 1);
+        saveSubscription(user, "https://push.example.com/subscriptions/closed");
+        notificationOutboxService.publishPartyClosed(party, List.of(user.getId()));
         LocalDateTime processingTime = outboxEventRepository.findAll().getFirst().getNextAttemptAt().plusSeconds(1);
 
         // when
@@ -148,13 +148,13 @@ class NotificationOutboxWebPushIntegrationTest {
         assertThat(deliveryProcessedCount).isEqualTo(1);
         assertThat(userNotificationRepository.findAll())
                 .extracting(UserNotification::getType)
-                .containsExactly(UserNotificationType.WAITING_PROMOTED);
+                .containsExactly(UserNotificationType.PARTY_CLOSED);
         assertThat(externalNotificationDeliveryRepository.findAll())
                 .extracting(ExternalNotificationDelivery::getStatus)
                 .containsExactly(ExternalNotificationDeliveryStatus.SENT);
         assertThat(recordingWebPushGateway.attempts).hasSize(1);
-        assertThat(recordingWebPushGateway.attempts.getFirst().payloadJson()).contains("\"type\":\"WAITING_PROMOTED\"");
-        assertThat(recordingWebPushGateway.attempts.getFirst().payloadJson()).contains("\"url\":\"/chat/" + party.getId() + "\"");
+        assertThat(recordingWebPushGateway.attempts.getFirst().payloadJson()).contains("\"type\":\"PARTY_CLOSED\"");
+        assertThat(recordingWebPushGateway.attempts.getFirst().payloadJson()).contains("\"url\":\"/notifications\"");
     }
 
     @Test
@@ -203,7 +203,7 @@ class NotificationOutboxWebPushIntegrationTest {
         String endpoint = "https://push.example.com/subscriptions/gone";
         saveSubscription(user, endpoint);
         recordingWebPushGateway.withStatus(endpoint, 410);
-        notificationOutboxService.publishWaitingPromoted(party, user, 1);
+        notificationOutboxService.publishPartyClosed(party, List.of(user.getId()));
         LocalDateTime processingTime = outboxEventRepository.findAll().getFirst().getNextAttemptAt().plusSeconds(1);
 
         // when
@@ -233,9 +233,9 @@ class NotificationOutboxWebPushIntegrationTest {
         ));
         saveSubscription(user, "https://push.example.com/subscriptions/off");
         userNotificationPreferenceRepository.saveAndFlush(
-                UserNotificationPreference.create(user, UserNotificationType.WAITING_PROMOTED, false, LocalDateTime.now())
+                UserNotificationPreference.create(user, UserNotificationType.PARTY_CLOSED, false, LocalDateTime.now())
         );
-        notificationOutboxService.publishWaitingPromoted(party, user, 1);
+        notificationOutboxService.publishPartyClosed(party, List.of(user.getId()));
         LocalDateTime processingTime = outboxEventRepository.findAll().getFirst().getNextAttemptAt().plusSeconds(1);
 
         // when
@@ -245,7 +245,7 @@ class NotificationOutboxWebPushIntegrationTest {
         // then
         assertThat(userNotificationRepository.findAll())
                 .extracting(UserNotification::getType)
-                .containsExactly(UserNotificationType.WAITING_PROMOTED);
+                .containsExactly(UserNotificationType.PARTY_CLOSED);
         assertThat(deliveryProcessedCount).isEqualTo(0);
         assertThat(recordingWebPushGateway.attempts).isEmpty();
         assertThat(externalNotificationDeliveryRepository.findAll()).isEmpty();
@@ -269,7 +269,7 @@ class NotificationOutboxWebPushIntegrationTest {
         String endpoint = "https://push.example.com/subscriptions/retry";
         saveSubscription(user, endpoint);
         recordingWebPushGateway.withStatus(endpoint, 503);
-        notificationOutboxService.publishWaitingPromoted(party, user, 1);
+        notificationOutboxService.publishPartyClosed(party, List.of(user.getId()));
         LocalDateTime processingTime = outboxEventRepository.findAll().getFirst().getNextAttemptAt().plusSeconds(1);
 
         // when
@@ -284,7 +284,7 @@ class NotificationOutboxWebPushIntegrationTest {
         assertThat(thirdDeliveryCount).isEqualTo(1);
         assertThat(userNotificationRepository.findAll())
                 .extracting(UserNotification::getType)
-                .containsExactly(UserNotificationType.WAITING_PROMOTED);
+                .containsExactly(UserNotificationType.PARTY_CLOSED);
         assertThat(outboxEventRepository.findAll())
                 .extracting(OutboxEvent::getStatus)
                 .containsExactly(com.project.partition_mate.domain.OutboxEventStatus.PROCESSED);
@@ -311,7 +311,7 @@ class NotificationOutboxWebPushIntegrationTest {
                 now.plusHours(3)
         ));
         saveSubscription(user, "https://push.example.com/subscriptions/dedup");
-        notificationOutboxService.publishWaitingPromoted(party, user, 1);
+        notificationOutboxService.publishPartyClosed(party, List.of(user.getId()));
         OutboxEvent event = outboxEventRepository.findAll().getFirst();
         LocalDateTime processingTime = event.getNextAttemptAt().plusSeconds(1);
 

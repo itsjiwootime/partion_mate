@@ -24,12 +24,8 @@ public class BusinessException extends RuntimeException {
         return new BusinessException("이미 참여한 파티입니다.", HttpStatus.CONFLICT);
     }
 
-    public static BusinessException alreadyWaiting() {
-        return new BusinessException("이미 대기 중인 파티입니다.", HttpStatus.CONFLICT);
-    }
-
-    public static BusinessException notJoinedOrWaiting() {
-        return new BusinessException("참여 중이거나 대기 중인 내역이 없습니다.", HttpStatus.NOT_FOUND);
+    public static BusinessException notJoined() {
+        return new BusinessException("참여 중인 내역이 없습니다.", HttpStatus.NOT_FOUND);
     }
 
     public static BusinessException hostCannotCancel() {

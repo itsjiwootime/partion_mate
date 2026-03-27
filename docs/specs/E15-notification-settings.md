@@ -21,10 +21,8 @@
 
 ## Web Push 지원 범위
 - Web Push 지원
-  - `WAITING_PROMOTED`
   - `PICKUP_UPDATED`
   - `PARTY_CLOSED`
-  - `WAITING_EXPIRED`
 - 앱 내 알림만 지원
   - `PARTY_JOIN_CONFIRMED`
   - `PARTY_UPDATED`
@@ -39,10 +37,10 @@
 ```json
 [
   {
-    "type": "WAITING_PROMOTED",
-    "label": "대기열 승격",
-    "description": "대기열에서 참여로 승격되면 알려줍니다.",
-    "deepLinkTargetLabel": "채팅방",
+    "type": "PICKUP_UPDATED",
+    "label": "픽업 일정 확정",
+    "description": "픽업 장소와 시간이 확정되거나 변경되면 알려줍니다.",
+    "deepLinkTargetLabel": "파티 상세",
     "webPushSupported": true,
     "webPushEnabled": true
   },
@@ -62,7 +60,7 @@
 {
   "preferences": [
     {
-      "type": "WAITING_PROMOTED",
+      "type": "PICKUP_UPDATED",
       "webPushEnabled": false
     },
     {
@@ -88,11 +86,11 @@
 - 서버에 VAPID 키가 준비되지 않았으면 `enabled=false`, `publicKey=""`
 
 ## 딥링크 규칙
-- `PARTY_JOIN_CONFIRMED`, `WAITING_PROMOTED`
+- `PARTY_JOIN_CONFIRMED`
   - `/chat/{partyId}`
 - `PICKUP_UPDATED`, `PARTY_UPDATED`
   - `/parties/{partyId}`
-- `PARTY_CLOSED`, `WAITING_EXPIRED`
+- `PARTY_CLOSED`
   - `/notifications`
 - `partyId`를 만들 수 없는 예외 상황은 `/notifications`로 fallback 한다.
 

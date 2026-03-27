@@ -71,7 +71,7 @@ describe('JoinParty flow', () => {
     });
   });
 
-  it('잔여_수량이_없으면_대기열_등록_후_내_파티로_이동한다', async () => {
+  it('잔여_수량이_없으면_참여를_막고_오류를_보여준다', async () => {
     // given
     addToastMock.mockReset();
     api.getPartyDetail.mockReset();
@@ -87,33 +87,24 @@ describe('JoinParty flow', () => {
       minimumShareUnit: 1,
       unitLabel: '개',
     });
-    api.joinParty.mockResolvedValue({
-      joinStatus: 'WAITING',
-      message: '대기열에 등록되었습니다.',
-    });
     const user = userEvent.setup();
 
     render(
       <MemoryRouter initialEntries={['/parties/9/join']}>
         <Routes>
           <Route path="/parties/:id/join" element={<JoinParty />} />
-          <Route path="/my-parties" element={<div>내 파티 화면</div>} />
         </Routes>
       </MemoryRouter>,
     );
 
     // when
-    await screen.findByRole('heading', { level: 1, name: '대기열 등록' });
-    expect(screen.getByText('잔여 수량이 부족해 즉시 참여 대신 대기열로 등록됩니다.')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: '대기열 등록' }));
+    await screen.findByRole('heading', { level: 1, name: '참여하기' });
+    expect(screen.getByText('잔여 수량이 부족해 참여할 수 없습니다.')).toBeInTheDocument();
 
     // then
-    await waitFor(() => {
-      expect(api.joinParty).toHaveBeenCalledWith({ partyId: 9, quantity: 1 });
-    });
-    expect(addToastMock).toHaveBeenCalledWith('대기열에 등록되었습니다.', 'success');
-    await waitFor(() => {
-      expect(screen.getByText('내 파티 화면')).toBeInTheDocument();
-    });
+    expect(screen.getByRole('button', { name: '참여 확정' })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: '참여 확정' }));
+    expect(api.joinParty).not.toHaveBeenCalled();
+    expect(addToastMock).not.toHaveBeenCalled();
   });
 });

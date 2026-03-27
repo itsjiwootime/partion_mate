@@ -10,18 +10,17 @@
 - 작업 완료 후 이 문서의 상태를 갱신한다.
 
 ## Resume Goal
-- 동시성 제어와 대기열 설계 경험을 이력서에 남길 수 있어야 한다.
+- 동시성 제어와 모집 정합성 확보 경험을 이력서에 남길 수 있어야 한다.
 - 위치 기반 조회 최적화의 전후 성능 수치를 확보해야 한다.
 - 자동 마감과 알림 파이프라인으로 운영 자동화 경험을 설명할 수 있어야 한다.
 - 실시간 모집 현황 반영으로 상태 동기화 경험을 보여줄 수 있어야 한다.
 
 ## Project Defaults
-- 대기열 정책은 `현재 승격 자격이 유지된 대기자 기준 FIFO 자동 승격`을 기본으로 한다.
-- 같은 사용자는 동일 파티에 대해 `참여자` 또는 `대기자` 상태를 중복으로 가질 수 없다.
+- 같은 사용자는 동일 파티에 대해 `참여자` 상태를 중복으로 가질 수 없다.
 - 파티 상태는 기본적으로 `RECRUITING -> FULL -> CLOSED` 흐름을 따른다.
 - 정원이 모두 차면 즉시 `FULL`로 전이한다.
+- 정원이 모두 찼거나 요청 수량이 남은 수량보다 크면 참여 요청은 즉시 실패한다.
 - `deadline`이 지나면 정원 충족 여부와 관계없이 `CLOSED`로 전이한다.
-- `CLOSED` 전이 시 남아 있는 대기열 항목은 `EXPIRED` 또는 동등한 종료 상태로 처리한다.
 - Epic 3의 1차 알림 채널은 `앱 내 알림`으로 한정한다. 이메일, 문자, 외부 메신저 연동은 범위에서 제외한다.
 - Epic 4의 실시간 전송 방식은 `SSE`를 기본으로 한다. 양방향 통신이 필요한 요구가 생기기 전까지 WebSocket은 도입하지 않는다.
 - 채팅은 `파티 전용 채팅`만 지원한다. 사용자 간 DM, 파일 전송, 이미지 업로드는 1차 범위에서 제외한다.
@@ -60,7 +59,9 @@
 - `[~]` 진행 중
 - `[x]` 완료
 
-## Epic 1. 동시 참여 제어 + 대기열
+## Epic 1. 동시 참여 제어
+
+> 참고: `E1-1`부터 `E1-4`, `E9-1` 등 과거 완료 카드에는 대기열 설계 이력이 남아 있다. 현재 기본 정책은 `E1-6`과 `ADR-20260327-remove-waiting-queue-join-fail-fast.md`를 기준으로 본다.
 
 ### [x] E1-1 참여 제약 스키마
 - 목표: 중복 참여와 대기열 저장을 위한 스키마를 만든다.
@@ -100,7 +101,15 @@
 - 완료 조건: 초과 모집 0건, 중복 참여 0건, 평균/백분위 응답시간 결과를 남긴다.
 - 검증: 반복 가능한 부하 테스트 실행 결과.
 - ADR: 측정 방식과 테스트 가정, 한계를 문서화한다.
-- 구현 메모(2026-03-15): `PartyJoinLoadBenchmarkTest`와 실행 스크립트를 추가했고, `docs/benchmarks/E1-5-party-join-load-benchmark.md`에 평균 37.43ms, P95 117.96ms 결과를 기록했다.
+- 구현 메모(2026-03-15, 2026-03-27 보강): `PartyJoinLoadBenchmarkTest`와 실행 스크립트를 추가했고, 실패 정책을 대기열 등록에서 즉시 실패로 단순화한 뒤 `docs/benchmarks/E1-5-party-join-load-benchmark.md`를 300건 기준 평균 119.99ms, P95 196.30ms, P99 382.89ms 결과로 갱신했다. 추가로 `PartyJoinHttpMysqlBenchmarkTest`와 `scripts/run_party_join_http_mysql_benchmark.sh`를 만들어 로컬 Docker MySQL 8.4 + HTTP 300건 기준 평균 557.45ms, P95 795.11ms, P99 907.52ms를 기록했고 결과는 `docs/benchmarks/E1-5-party-join-http-mysql-benchmark.md`에 남겼다.
+
+### [x] E1-6 대기열 제거와 참여 실패 정책 단순화
+- 목표: 모집 정합성 설명을 단순화하고 파티 참여 정책을 `정원 초과 시 즉시 실패`로 통일한다.
+- 범위: `WaitingQueue` 도메인 제거, 참여/취소/알림/프론트/테스트 정책 정리.
+- 완료 조건: `waiting` 개념 없이도 초과 모집 0건, 중복 참여 0건을 검증하고 현재 계약 문서를 갱신한다.
+- 검증: `PartyJoinPolicyIntegrationTest`, `PartyConcurrencyIntegrationTest`, `PartyJoinLoadBenchmarkTest`, 관련 알림/프론트 테스트.
+- ADR: 대기열 제거와 fail-fast 참여 정책 선택 근거를 문서화한다.
+- 구현 메모(2026-03-27): `WaitingQueueEntry`, `WaitingQueueRepository`, `ParticipationStatus.WAITING`, `WAITING_*` 알림/실시간 분기를 제거했다. 참여 요청은 `남은 수량(...)이 부족하여 참여할 수 없습니다.` 예외로 즉시 실패하고, 프론트는 대기열 CTA 대신 참여 불가 안내를 노출한다.
 
 ## Epic 2. 위치 기반 조회 최적화
 

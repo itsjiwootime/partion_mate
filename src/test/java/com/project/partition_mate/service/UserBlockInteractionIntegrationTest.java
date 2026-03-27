@@ -10,6 +10,7 @@ import com.project.partition_mate.dto.ChatMessageRequest;
 import com.project.partition_mate.dto.CreatePartyRequest;
 import com.project.partition_mate.dto.JoinPartyRequest;
 import com.project.partition_mate.exception.BusinessException;
+import com.project.partition_mate.repository.OutboxEventRepository;
 import com.project.partition_mate.repository.ChatMessageRepository;
 import com.project.partition_mate.repository.ChatReadStateRepository;
 import com.project.partition_mate.repository.ChatRoomRepository;
@@ -18,7 +19,6 @@ import com.project.partition_mate.repository.PartyRepository;
 import com.project.partition_mate.repository.StoreRepository;
 import com.project.partition_mate.repository.UserBlockRepository;
 import com.project.partition_mate.repository.UserRepository;
-import com.project.partition_mate.repository.WaitingQueueRepository;
 import com.project.partition_mate.security.CustomUserDetails;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -55,6 +55,9 @@ class UserBlockInteractionIntegrationTest {
     private ChatReadStateRepository chatReadStateRepository;
 
     @Autowired
+    private OutboxEventRepository outboxEventRepository;
+
+    @Autowired
     private ChatMessageRepository chatMessageRepository;
 
     @Autowired
@@ -72,17 +75,14 @@ class UserBlockInteractionIntegrationTest {
     @Autowired
     private UserRepository userRepository;
 
-    @Autowired
-    private WaitingQueueRepository waitingQueueRepository;
-
     @AfterEach
     void tearDown() {
         SecurityContextHolder.clearContext();
+        outboxEventRepository.deleteAll();
         userBlockRepository.deleteAll();
         chatReadStateRepository.deleteAll();
         chatMessageRepository.deleteAll();
         chatRoomRepository.deleteAll();
-        waitingQueueRepository.deleteAll();
         partyMemberRepository.deleteAll();
         partyRepository.deleteAll();
         storeRepository.deleteAll();
@@ -127,44 +127,6 @@ class UserBlockInteractionIntegrationTest {
         assertThatThrownBy(() -> chatService.sendTextMessage(party.getId(), chatMessageRequest("메시지 전송 시도"), member))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("차단 관계가 있는 사용자가 포함된 채팅방에는 접근할 수 없습니다.");
-    }
-
-    @Test
-    void 차단된_대기자는_자동승격되지_않고_다음_대기자가_승격된다() {
-        // given
-        Store store = storeRepository.saveAndFlush(createStore("차단 대기열 지점"));
-        User host = userRepository.saveAndFlush(createUser("host"));
-        User joinedMember = userRepository.saveAndFlush(createUser("joined-member"));
-        User fillerMember = userRepository.saveAndFlush(createUser("filler-member"));
-        User blockedWaitingUser = userRepository.saveAndFlush(createUser("blocked-waiting"));
-        User eligibleWaitingUser = userRepository.saveAndFlush(createUser("eligible-waiting"));
-        Party party = createParty(store, host, joinedMember);
-        party.acceptMember(PartyMember.joinAsMember(party, fillerMember, 1));
-        partyRepository.saveAndFlush(party);
-
-        setAuth(blockedWaitingUser);
-        partyService.joinParty(party.getId(), joinPartyRequest(1));
-        setAuth(eligibleWaitingUser);
-        partyService.joinParty(party.getId(), joinPartyRequest(1));
-
-        userBlockService.blockUser(host, blockedWaitingUser.getId());
-        setAuth(joinedMember);
-
-        // when
-        partyService.cancelJoin(party.getId());
-
-        // then
-        Party reloaded = partyRepository.findById(party.getId()).orElseThrow();
-        assertThat(waitingQueueRepository.findFirstByPartyAndUserAndStatus(
-                reloaded,
-                blockedWaitingUser,
-                com.project.partition_mate.domain.WaitingQueueStatus.EXPIRED
-        ))
-                .isPresent();
-        assertThat(partyMemberRepository.findByParty(reloaded))
-                .extracting(pm -> pm.getUser().getId())
-                .contains(host.getId(), eligibleWaitingUser.getId())
-                .doesNotContain(blockedWaitingUser.getId(), joinedMember.getId());
     }
 
     private Party createParty(Store store, User host, User member) {

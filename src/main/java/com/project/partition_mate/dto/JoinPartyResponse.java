@@ -10,18 +10,15 @@ public class JoinPartyResponse {
 
     private final ParticipationStatus joinStatus;
     private final String message;
-    private final Integer waitingPosition;
     private final PartyResponse party;
     private final Warning warning;
 
     private JoinPartyResponse(ParticipationStatus joinStatus,
                               String message,
-                              Integer waitingPosition,
                               PartyResponse party,
                               Warning warning) {
         this.joinStatus = joinStatus;
         this.message = message;
-        this.waitingPosition = waitingPosition;
         this.party = party;
         this.warning = warning;
     }
@@ -34,28 +31,9 @@ public class JoinPartyResponse {
         return new JoinPartyResponse(
                 ParticipationStatus.JOINED,
                 "파티 참여가 완료되었습니다.",
-                null,
                 PartyResponse.from(party),
                 warning
         );
-    }
-
-    public static JoinPartyResponse waiting(Party party, int waitingPosition) {
-        return waiting(party, waitingPosition, null);
-    }
-
-    public static JoinPartyResponse waiting(Party party, int waitingPosition, Warning warning) {
-        return new JoinPartyResponse(
-                ParticipationStatus.WAITING,
-                "잔여 수량이 부족해 대기열 " + waitingPosition + "번으로 등록되었습니다.",
-                waitingPosition,
-                PartyResponse.from(party),
-                warning
-        );
-    }
-
-    public boolean isWaiting() {
-        return this.joinStatus == ParticipationStatus.WAITING;
     }
 
     @Getter

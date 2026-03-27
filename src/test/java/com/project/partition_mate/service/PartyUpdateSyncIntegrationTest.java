@@ -13,8 +13,6 @@ import com.project.partition_mate.domain.Store;
 import com.project.partition_mate.domain.User;
 import com.project.partition_mate.domain.UserNotification;
 import com.project.partition_mate.domain.UserNotificationType;
-import com.project.partition_mate.domain.WaitingQueueEntry;
-import com.project.partition_mate.domain.WaitingQueueStatus;
 import com.project.partition_mate.dto.PartyDetailResponse;
 import com.project.partition_mate.dto.UpdatePartyRequest;
 import com.project.partition_mate.repository.ChatMessageRepository;
@@ -25,7 +23,6 @@ import com.project.partition_mate.repository.PartyRepository;
 import com.project.partition_mate.repository.StoreRepository;
 import com.project.partition_mate.repository.UserNotificationRepository;
 import com.project.partition_mate.repository.UserRepository;
-import com.project.partition_mate.repository.WaitingQueueRepository;
 import com.project.partition_mate.security.CustomUserDetails;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -59,9 +56,6 @@ class PartyUpdateSyncIntegrationTest {
     private PartyMemberRepository partyMemberRepository;
 
     @Autowired
-    private WaitingQueueRepository waitingQueueRepository;
-
-    @Autowired
     private StoreRepository storeRepository;
 
     @Autowired
@@ -84,7 +78,6 @@ class PartyUpdateSyncIntegrationTest {
         SecurityContextHolder.clearContext();
         userNotificationRepository.deleteAll();
         outboxEventRepository.deleteAll();
-        waitingQueueRepository.deleteAll();
         partyMemberRepository.deleteAll();
         partyRepository.deleteAll();
         storeRepository.deleteAll();
@@ -92,14 +85,14 @@ class PartyUpdateSyncIntegrationTest {
     }
 
     @Test
-    void 호스트가_파티를_수정하면_알림과_채팅과_대기열을_함께_동기화한다() {
+    void 호스트가_파티를_수정하면_참여자에게_알림과_채팅을_동기화한다() {
         // given
+        userNotificationRepository.deleteAll();
+        outboxEventRepository.deleteAll();
         Store store = storeRepository.saveAndFlush(createStore("조건 변경 지점"));
         User host = userRepository.saveAndFlush(createUser("host"));
         User member = userRepository.saveAndFlush(createUser("member"));
-        User waitingUser = userRepository.saveAndFlush(createUser("waiting"));
         Party party = createFullParty(store, host, member);
-        waitingQueueRepository.saveAndFlush(WaitingQueueEntry.create(party, waitingUser, 1));
         setAuth(host);
         UpdatePartyRequest request = updateRequest(
                 party.getTitle(),
@@ -122,30 +115,24 @@ class PartyUpdateSyncIntegrationTest {
 
         // then
         Party updatedParty = partyRepository.findDetailById(party.getId()).orElseThrow();
-        assertThat(response.getStatus()).isEqualTo(PartyStatus.FULL);
-        assertThat(updatedParty.getPartyStatus()).isEqualTo(PartyStatus.FULL);
+        assertThat(response.getStatus()).isEqualTo(PartyStatus.RECRUITING);
+        assertThat(updatedParty.getPartyStatus()).isEqualTo(PartyStatus.RECRUITING);
         assertThat(updatedParty.getGuideNote()).isEqualTo("픽업 15분 전까지 도착해 주세요.");
-        assertThat(waitingQueueRepository.findAllByPartyAndStatusOrderByQueuedAtAsc(updatedParty, WaitingQueueStatus.PROMOTED))
-                .hasSize(1);
 
         List<OutboxEvent> outboxEvents = outboxEventRepository.findAll();
         assertThat(outboxEvents)
                 .extracting(OutboxEvent::getEventType)
-                .containsExactlyInAnyOrder(
-                        OutboxEventType.PARTY_JOIN_CONFIRMED,
-                        OutboxEventType.WAITING_PROMOTED,
-                        OutboxEventType.PARTY_UPDATED
-                );
+                .containsExactly(OutboxEventType.PARTY_UPDATED);
         assertThat(outboxEvents)
                 .filteredOn(event -> event.getEventType() == OutboxEventType.PARTY_UPDATED)
                 .singleElement()
                 .satisfies(event -> assertThat(event.getPayload()).contains("변경 항목: 총 수량, 마감 시간, 안내 문구"));
-        assertThat(processedCount).isEqualTo(2);
+        assertThat(processedCount).isEqualTo(1);
 
         List<UserNotification> notifications = userNotificationRepository.findAll();
         assertThat(notifications)
                 .extracting(UserNotification::getType)
-                .containsExactlyInAnyOrder(UserNotificationType.WAITING_PROMOTED, UserNotificationType.PARTY_UPDATED);
+                .containsExactly(UserNotificationType.PARTY_UPDATED);
         assertThat(notifications)
                 .filteredOn(notification -> notification.getType() == UserNotificationType.PARTY_UPDATED)
                 .singleElement()
@@ -155,8 +142,7 @@ class PartyUpdateSyncIntegrationTest {
         List<ChatMessage> messages = chatMessageRepository.findTop100ByChatRoomOrderByIdDesc(chatRoom);
         assertThat(messages)
                 .extracting(ChatMessage::getContent)
-                .anySatisfy(content -> assertThat(content).contains("호스트가 파티 조건을 수정했습니다."))
-                .anySatisfy(content -> assertThat(content).contains("대기열에서 채팅방 참여 상태로 승격되었습니다."));
+                .anySatisfy(content -> assertThat(content).contains("호스트가 파티 조건을 수정했습니다."));
     }
 
     private Party createFullParty(Store store, User host, User member) {

@@ -48,7 +48,6 @@ public class PartyDetailResponse {
     private final Long memberId;
     private final PartyMemberRole userRole;
     private final ParticipationStatus participationStatus;
-    private final Integer waitingPosition;
     private final Integer requestedQuantity;
     private final Integer expectedAmount;
     private final Integer actualAmount;
@@ -92,7 +91,6 @@ public class PartyDetailResponse {
                                 Long memberId,
                                 PartyMemberRole userRole,
                                 ParticipationStatus participationStatus,
-                                Integer waitingPosition,
                                 Integer requestedQuantity,
                                 Integer expectedAmount,
                                 Integer actualAmount,
@@ -137,7 +135,6 @@ public class PartyDetailResponse {
         this.memberId = memberId;
         this.userRole = userRole;
         this.participationStatus = participationStatus;
-        this.waitingPosition = waitingPosition;
         this.requestedQuantity = requestedQuantity;
         this.expectedAmount = expectedAmount;
         this.actualAmount = actualAmount;
@@ -159,7 +156,6 @@ public class PartyDetailResponse {
                                            Long memberId,
                                            PartyMemberRole userRole,
                                            ParticipationStatus participationStatus,
-                                           Integer waitingPosition,
                                            Integer requestedQuantity,
                                            Integer expectedAmount,
                                            Integer actualAmount,
@@ -201,7 +197,6 @@ public class PartyDetailResponse {
                 memberId,
                 userRole,
                 participationStatus,
-                waitingPosition,
                 requestedQuantity,
                 expectedAmount,
                 actualAmount,

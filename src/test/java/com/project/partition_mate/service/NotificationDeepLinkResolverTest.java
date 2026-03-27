@@ -16,14 +16,14 @@ class NotificationDeepLinkResolverTest {
 
         // when
         String joinConfirmedLink = notificationDeepLinkResolver.resolve(UserNotificationType.PARTY_JOIN_CONFIRMED, partyId);
-        String waitingPromotedLink = notificationDeepLinkResolver.resolve(UserNotificationType.WAITING_PROMOTED, partyId);
         String pickupUpdatedLink = notificationDeepLinkResolver.resolve(UserNotificationType.PICKUP_UPDATED, partyId);
+        String partyUpdatedLink = notificationDeepLinkResolver.resolve(UserNotificationType.PARTY_UPDATED, partyId);
         String partyClosedLink = notificationDeepLinkResolver.resolve(UserNotificationType.PARTY_CLOSED, partyId);
 
         // then
         assertThat(joinConfirmedLink).isEqualTo("/chat/42");
-        assertThat(waitingPromotedLink).isEqualTo("/chat/42");
         assertThat(pickupUpdatedLink).isEqualTo("/parties/42");
+        assertThat(partyUpdatedLink).isEqualTo("/parties/42");
         assertThat(partyClosedLink).isEqualTo("/notifications");
     }
 
@@ -31,7 +31,7 @@ class NotificationDeepLinkResolverTest {
     void 파티아이디가_없으면_알림내역으로_보낸다() {
         // given
         // when
-        String link = notificationDeepLinkResolver.resolve(UserNotificationType.WAITING_EXPIRED, null);
+        String link = notificationDeepLinkResolver.resolve(UserNotificationType.PARTY_CLOSED, null);
 
         // then
         assertThat(link).isEqualTo("/notifications");

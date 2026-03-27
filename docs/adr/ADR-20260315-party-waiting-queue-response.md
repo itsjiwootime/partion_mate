@@ -1,5 +1,8 @@
 # ADR-20260315 Party Waiting Queue Response
 
+- 상태: Superseded
+- 대체 ADR: `ADR-20260327-remove-waiting-queue-join-fail-fast.md`
+
 ## 배경
 정원 초과 요청을 단순 실패로 처리하면 사용자 입장에서 같은 파티를 반복 조회하고 다시 시도해야 한다. 로드맵 E1-3의 목표는 정원 초과 요청을 대기열로 전환하고, 클라이언트가 즉시 대기 상태를 이해할 수 있는 응답 모델을 제공하는 것이다.
 

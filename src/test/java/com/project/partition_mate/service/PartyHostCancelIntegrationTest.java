@@ -12,8 +12,6 @@ import com.project.partition_mate.domain.Store;
 import com.project.partition_mate.domain.User;
 import com.project.partition_mate.domain.UserNotification;
 import com.project.partition_mate.domain.UserNotificationType;
-import com.project.partition_mate.domain.WaitingQueueEntry;
-import com.project.partition_mate.domain.WaitingQueueStatus;
 import com.project.partition_mate.dto.ConfirmSettlementRequest;
 import com.project.partition_mate.dto.PartyDetailResponse;
 import com.project.partition_mate.exception.BusinessException;
@@ -23,7 +21,6 @@ import com.project.partition_mate.repository.PartyRepository;
 import com.project.partition_mate.repository.StoreRepository;
 import com.project.partition_mate.repository.UserNotificationRepository;
 import com.project.partition_mate.repository.UserRepository;
-import com.project.partition_mate.repository.WaitingQueueRepository;
 import com.project.partition_mate.security.CustomUserDetails;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -58,9 +55,6 @@ class PartyHostCancelIntegrationTest {
     private PartyMemberRepository partyMemberRepository;
 
     @Autowired
-    private WaitingQueueRepository waitingQueueRepository;
-
-    @Autowired
     private StoreRepository storeRepository;
 
     @Autowired
@@ -81,7 +75,6 @@ class PartyHostCancelIntegrationTest {
         storeQueryCacheSupport.clearAll();
         userNotificationRepository.deleteAll();
         outboxEventRepository.deleteAll();
-        waitingQueueRepository.deleteAll();
         partyMemberRepository.deleteAll();
         partyRepository.deleteAll();
         storeRepository.deleteAll();
@@ -94,9 +87,7 @@ class PartyHostCancelIntegrationTest {
         Store store = storeRepository.saveAndFlush(createStore("호스트 취소 지점"));
         User host = userRepository.saveAndFlush(createUser("host"));
         User member = userRepository.saveAndFlush(createUser("member"));
-        User waitingUser = userRepository.saveAndFlush(createUser("waiting"));
         Party party = createParty(store, host, member);
-        waitingQueueRepository.saveAndFlush(WaitingQueueEntry.create(party, waitingUser, 1));
         setAuth(host);
 
         // when
@@ -110,8 +101,6 @@ class PartyHostCancelIntegrationTest {
         assertThat(closedParty.getPartyStatus()).isEqualTo(PartyStatus.CLOSED);
         assertThat(closedParty.getCloseReason()).isEqualTo(PartyCloseReason.HOST_CANCELED);
         assertThat(closedParty.getClosedAt()).isNotNull();
-        assertThat(waitingQueueRepository.findAllByPartyAndStatusOrderByQueuedAtAsc(closedParty, WaitingQueueStatus.EXPIRED))
-                .hasSize(1);
 
         List<OutboxEvent> outboxEvents = outboxEventRepository.findAll();
         assertThat(outboxEvents)
@@ -124,7 +113,7 @@ class PartyHostCancelIntegrationTest {
         List<UserNotification> notifications = userNotificationRepository.findAll();
         assertThat(notifications)
                 .extracting(UserNotification::getType)
-                .containsExactlyInAnyOrder(UserNotificationType.PARTY_CLOSED, UserNotificationType.WAITING_EXPIRED);
+                .containsExactly(UserNotificationType.PARTY_CLOSED);
         assertThat(notifications)
                 .filteredOn(notification -> notification.getType() == UserNotificationType.PARTY_CLOSED)
                 .singleElement()

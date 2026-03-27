@@ -9,11 +9,11 @@ import com.project.partition_mate.domain.User;
 import com.project.partition_mate.dto.JoinPartyRequest;
 import com.project.partition_mate.dto.JoinPartyResponse;
 import com.project.partition_mate.exception.BusinessException;
+import com.project.partition_mate.repository.OutboxEventRepository;
 import com.project.partition_mate.repository.PartyMemberRepository;
 import com.project.partition_mate.repository.PartyRepository;
 import com.project.partition_mate.repository.StoreRepository;
 import com.project.partition_mate.repository.UserRepository;
-import com.project.partition_mate.repository.WaitingQueueRepository;
 import com.project.partition_mate.security.CustomUserDetails;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -60,18 +60,18 @@ class NoShowJoinPolicyIntegrationTest {
     private PartyMemberRepository partyMemberRepository;
 
     @Autowired
+    private OutboxEventRepository outboxEventRepository;
+
+    @Autowired
     private StoreRepository storeRepository;
 
     @Autowired
     private UserRepository userRepository;
 
-    @Autowired
-    private WaitingQueueRepository waitingQueueRepository;
-
     @AfterEach
     void tearDown() {
         SecurityContextHolder.clearContext();
-        waitingQueueRepository.deleteAll();
+        outboxEventRepository.deleteAll();
         partyMemberRepository.deleteAll();
         partyRepository.deleteAll();
         storeRepository.deleteAll();
@@ -144,43 +144,6 @@ class NoShowJoinPolicyIntegrationTest {
         assertThat(response.getWarning()).isNull();
     }
 
-    @Test
-    void 노쇼제한_상태가_된_대기자는_자동승격되지_않고_다음_대기자가_승격된다() {
-        // given
-        Store store = storeRepository.saveAndFlush(createStore());
-        User partyHost = userRepository.saveAndFlush(createUser("party-host"));
-        User joinedMember = userRepository.saveAndFlush(createUser("joined-member"));
-        User blockedWaitingUser = userRepository.saveAndFlush(createUser("blocked-waiting"));
-        User eligibleWaitingUser = userRepository.saveAndFlush(createUser("eligible-waiting"));
-        User historyHost = userRepository.saveAndFlush(createUser("history-host"));
-        Party targetParty = createRecruitingParty(store, partyHost, 2, 1);
-        joinDirectly(targetParty, joinedMember, 1);
-
-        setAuth(blockedWaitingUser);
-        partyService.joinParty(targetParty.getId(), joinRequest(1));
-        setAuth(eligibleWaitingUser);
-        partyService.joinParty(targetParty.getId(), joinRequest(1));
-
-        createTradeHistory(store, historyHost, blockedWaitingUser, TradeStatus.NO_SHOW, LocalDateTime.now().minusDays(2));
-        createTradeHistory(store, historyHost, blockedWaitingUser, TradeStatus.NO_SHOW, LocalDateTime.now().minusDays(1));
-        setAuth(joinedMember);
-
-        // when
-        partyService.cancelJoin(targetParty.getId());
-
-        // then
-        Party reloaded = partyRepository.findById(targetParty.getId()).orElseThrow();
-        assertThat(waitingQueueRepository.findFirstByPartyAndUserAndStatus(
-                reloaded,
-                blockedWaitingUser,
-                com.project.partition_mate.domain.WaitingQueueStatus.EXPIRED
-        )).isPresent();
-        assertThat(partyMemberRepository.findByParty(reloaded))
-                .extracting(pm -> pm.getUser().getId())
-                .contains(partyHost.getId(), eligibleWaitingUser.getId())
-                .doesNotContain(blockedWaitingUser.getId(), joinedMember.getId());
-    }
-
     private Store createStore() {
         int sequence = STORE_SEQUENCE.incrementAndGet();
         return new Store(
@@ -237,13 +200,6 @@ class NoShowJoinPolicyIntegrationTest {
         }
         partyRepository.saveAndFlush(party);
     }
-
-    private void joinDirectly(Party party, User user, int requestedQuantity) {
-        PartyMember member = PartyMember.joinAsMember(party, user, requestedQuantity);
-        party.acceptMember(member);
-        partyMemberRepository.saveAndFlush(member);
-    }
-
     private JoinPartyRequest joinRequest(int requestedQuantity) {
         JoinPartyRequest request = new JoinPartyRequest();
         ReflectionTestUtils.setField(request, "memberRequestQuantity", requestedQuantity);

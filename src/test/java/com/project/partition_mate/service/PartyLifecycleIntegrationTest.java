@@ -10,15 +10,12 @@ import com.project.partition_mate.domain.Store;
 import com.project.partition_mate.domain.User;
 import com.project.partition_mate.domain.UserNotification;
 import com.project.partition_mate.domain.UserNotificationType;
-import com.project.partition_mate.domain.WaitingQueueEntry;
-import com.project.partition_mate.domain.WaitingQueueStatus;
 import com.project.partition_mate.repository.OutboxEventRepository;
 import com.project.partition_mate.repository.PartyMemberRepository;
 import com.project.partition_mate.repository.PartyRepository;
 import com.project.partition_mate.repository.StoreRepository;
 import com.project.partition_mate.repository.UserNotificationRepository;
 import com.project.partition_mate.repository.UserRepository;
-import com.project.partition_mate.repository.WaitingQueueRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,9 +46,6 @@ class PartyLifecycleIntegrationTest {
     private PartyMemberRepository partyMemberRepository;
 
     @Autowired
-    private WaitingQueueRepository waitingQueueRepository;
-
-    @Autowired
     private StoreRepository storeRepository;
 
     @Autowired
@@ -71,7 +65,6 @@ class PartyLifecycleIntegrationTest {
         storeQueryCacheSupport.clearAll();
         userNotificationRepository.deleteAll();
         outboxEventRepository.deleteAll();
-        waitingQueueRepository.deleteAll();
         partyMemberRepository.deleteAll();
         partyRepository.deleteAll();
         storeRepository.deleteAll();
@@ -106,7 +99,6 @@ class PartyLifecycleIntegrationTest {
         Store store = storeRepository.saveAndFlush(createStore("종료 테스트 지점"));
         User host = userRepository.saveAndFlush(createUser("host"));
         User member = userRepository.saveAndFlush(createUser("member"));
-        User waitingUser = userRepository.saveAndFlush(createUser("waiting"));
 
         Party party = new Party("마감 테스트", "휴지", 30000, store, 3, "https://open.kakao.com/o/test", referenceTime.plusHours(1));
         party.acceptMember(PartyMember.joinAsHost(party, host, 1));
@@ -114,8 +106,6 @@ class PartyLifecycleIntegrationTest {
         party = partyRepository.saveAndFlush(party);
         ReflectionTestUtils.setField(party, "deadline", referenceTime.minusMinutes(5));
         partyRepository.saveAndFlush(party);
-
-        waitingQueueRepository.saveAndFlush(WaitingQueueEntry.create(party, waitingUser, 1));
 
         // when
         int closedCount = partyLifecycleService.closeExpiredParties(referenceTime);
@@ -127,8 +117,6 @@ class PartyLifecycleIntegrationTest {
         assertThat(closedParty.getPartyStatus()).isEqualTo(PartyStatus.CLOSED);
         assertThat(closedParty.getCloseReason()).isEqualTo(PartyCloseReason.DEADLINE_EXPIRED);
         assertThat(closedParty.getClosedAt()).isEqualTo(referenceTime);
-        assertThat(waitingQueueRepository.findAllByPartyAndStatusOrderByQueuedAtAsc(closedParty, WaitingQueueStatus.EXPIRED))
-                .hasSize(1);
 
         List<OutboxEvent> outboxEvents = outboxEventRepository.findAll();
         assertThat(outboxEvents)
@@ -140,7 +128,7 @@ class PartyLifecycleIntegrationTest {
         List<UserNotification> notifications = userNotificationRepository.findAll();
         assertThat(notifications)
                 .extracting(UserNotification::getType)
-                .containsExactlyInAnyOrder(UserNotificationType.PARTY_CLOSED, UserNotificationType.PARTY_CLOSED, UserNotificationType.WAITING_EXPIRED);
+                .containsExactlyInAnyOrder(UserNotificationType.PARTY_CLOSED, UserNotificationType.PARTY_CLOSED);
     }
 
     private Store createStore(String name) {

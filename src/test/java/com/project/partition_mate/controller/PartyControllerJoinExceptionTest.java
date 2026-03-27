@@ -1,7 +1,5 @@
 package com.project.partition_mate.controller;
 
-import com.project.partition_mate.dto.JoinPartyResponse;
-import com.project.partition_mate.dto.PartyResponse;
 import com.project.partition_mate.exception.BusinessException;
 import com.project.partition_mate.exception.GlobalExceptionHandler;
 import com.project.partition_mate.service.PartyService;
@@ -19,7 +17,6 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.mock;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -64,18 +61,11 @@ class PartyControllerJoinExceptionTest {
     }
 
     @Test
-    @DisplayName("잔여 수량이 부족하면 대기열 응답을 반환한다")
-    void 잔여_수량이_부족하면_대기열_응답을_반환한다() throws Exception {
+    @DisplayName("잔여 수량이 부족하면 공통 예외 응답을 반환한다")
+    void 잔여_수량이_부족하면_공통_예외_응답을_반환한다() throws Exception {
         // given
-        JoinPartyResponse joinPartyResponse = mock(JoinPartyResponse.class);
-        PartyResponse partyResponse = new PartyResponse(1L, "비타민 소분", "비타민", 30000, 3, null, "코스트코", 3, null);
-
-        given(joinPartyResponse.isWaiting()).willReturn(true);
-        given(joinPartyResponse.getJoinStatus()).willReturn(com.project.partition_mate.domain.ParticipationStatus.WAITING);
-        given(joinPartyResponse.getMessage()).willReturn("잔여 수량이 부족해 대기열 1번으로 등록되었습니다.");
-        given(joinPartyResponse.getWaitingPosition()).willReturn(1);
-        given(joinPartyResponse.getParty()).willReturn(partyResponse);
-        given(partyService.joinParty(eq(1L), any())).willReturn(joinPartyResponse);
+        given(partyService.joinParty(eq(1L), any()))
+                .willThrow(BusinessException.insufficientQuantity(0));
 
         // when
         // then
@@ -86,9 +76,8 @@ class PartyControllerJoinExceptionTest {
                                   "memberRequestQuantity": 1
                                 }
                                 """))
-                .andExpect(status().isAccepted())
-                .andExpect(jsonPath("$.joinStatus").value("WAITING"))
-                .andExpect(jsonPath("$.waitingPosition").value(1))
-                .andExpect(jsonPath("$.message").value("잔여 수량이 부족해 대기열 1번으로 등록되었습니다."));
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("BUSINESS_ERROR"))
+                .andExpect(jsonPath("$.message").value("남은 수량(0개)이 부족하여 참여할 수 없습니다."));
     }
 }

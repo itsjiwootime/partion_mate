@@ -58,10 +58,8 @@
 - outbox 워커는 앱 내 알림을 저장한 뒤 `external_notification_delivery` 작업을 생성한다.
 - 실제 Web Push 발송과 재시도는 별도 delivery 스케줄러가 처리한다.
 - 외부 푸시 대상 알림 타입
-  - `WAITING_PROMOTED`
   - `PICKUP_UPDATED`
   - `PARTY_CLOSED`
-  - `WAITING_EXPIRED`
 - 앱 내 알림만 유지하는 타입
   - `PARTY_JOIN_CONFIRMED`
   - `PARTY_UPDATED`
@@ -74,11 +72,11 @@
 ## Web Push payload
 ```json
 {
-  "type": "WAITING_PROMOTED",
-  "title": "대기열에서 승격되었습니다",
-  "body": "휴지 공동구매 파티에서 1개 요청이 참여로 승격되었습니다.",
-  "url": "/chat/12",
-  "tag": "WAITING_PROMOTED"
+  "type": "PARTY_CLOSED",
+  "title": "파티 모집이 종료되었습니다",
+  "body": "휴지 공동구매 파티가 마감 시간에 도달해 종료되었습니다.",
+  "url": "/notifications",
+  "tag": "PARTY_CLOSED"
 }
 ```
 

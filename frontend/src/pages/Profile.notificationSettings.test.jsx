@@ -71,10 +71,10 @@ describe('Profile notification settings', () => {
     });
     api.getMyNotificationPreferences.mockResolvedValue([
       {
-        type: 'WAITING_PROMOTED',
-        label: '대기열 승격',
-        description: '대기열에서 참여로 승격되면 알려줍니다.',
-        deepLinkTargetLabel: '채팅방',
+        type: 'PICKUP_UPDATED',
+        label: '픽업 일정 확정',
+        description: '픽업 장소와 시간이 확정되거나 변경되면 알려줍니다.',
+        deepLinkTargetLabel: '파티 상세',
         webPushSupported: true,
         webPushEnabled: true,
       },
@@ -91,10 +91,10 @@ describe('Profile notification settings', () => {
     api.getMyReports.mockResolvedValue([]);
     api.updateMyNotificationPreferences.mockResolvedValue([
       {
-        type: 'WAITING_PROMOTED',
-        label: '대기열 승격',
-        description: '대기열에서 참여로 승격되면 알려줍니다.',
-        deepLinkTargetLabel: '채팅방',
+        type: 'PICKUP_UPDATED',
+        label: '픽업 일정 확정',
+        description: '픽업 장소와 시간이 확정되거나 변경되면 알려줍니다.',
+        deepLinkTargetLabel: '파티 상세',
         webPushSupported: true,
         webPushEnabled: false,
       },
@@ -123,7 +123,7 @@ describe('Profile notification settings', () => {
     );
 
     // when
-    const checkbox = await screen.findByRole('checkbox', { name: '대기열 승격 브라우저 푸시' });
+    const checkbox = await screen.findByRole('checkbox', { name: '픽업 일정 확정 브라우저 푸시' });
     await user.click(checkbox);
 
     // then
@@ -131,7 +131,7 @@ describe('Profile notification settings', () => {
       expect(api.updateMyNotificationPreferences).toHaveBeenCalledWith({
         preferences: [
           {
-            type: 'WAITING_PROMOTED',
+            type: 'PICKUP_UPDATED',
             webPushEnabled: false,
           },
           {
@@ -169,10 +169,10 @@ describe('Profile notification settings', () => {
     });
     api.getMyNotificationPreferences.mockResolvedValue([
       {
-        type: 'WAITING_PROMOTED',
-        label: '대기열 승격',
-        description: '대기열에서 참여로 승격되면 알려줍니다.',
-        deepLinkTargetLabel: '채팅방',
+        type: 'PICKUP_UPDATED',
+        label: '픽업 일정 확정',
+        description: '픽업 장소와 시간이 확정되거나 변경되면 알려줍니다.',
+        deepLinkTargetLabel: '파티 상세',
         webPushSupported: true,
         webPushEnabled: false,
       },
@@ -189,10 +189,10 @@ describe('Profile notification settings', () => {
     api.getMyReports.mockResolvedValue([]);
     api.updateMyNotificationPreferences.mockResolvedValue([
       {
-        type: 'WAITING_PROMOTED',
-        label: '대기열 승격',
-        description: '대기열에서 참여로 승격되면 알려줍니다.',
-        deepLinkTargetLabel: '채팅방',
+        type: 'PICKUP_UPDATED',
+        label: '픽업 일정 확정',
+        description: '픽업 장소와 시간이 확정되거나 변경되면 알려줍니다.',
+        deepLinkTargetLabel: '파티 상세',
         webPushSupported: true,
         webPushEnabled: true,
       },
@@ -229,7 +229,7 @@ describe('Profile notification settings', () => {
       expect(api.updateMyNotificationPreferences).toHaveBeenCalledWith({
         preferences: [
           {
-            type: 'WAITING_PROMOTED',
+            type: 'PICKUP_UPDATED',
             webPushEnabled: true,
           },
           {
@@ -274,10 +274,10 @@ describe('Profile notification settings', () => {
     api.getMyReports.mockResolvedValue([]);
     api.getMyNotificationPreferences.mockResolvedValue([
       {
-        type: 'WAITING_PROMOTED',
-        label: '대기열 승격',
-        description: '대기열에서 참여로 승격되면 알려줍니다.',
-        deepLinkTargetLabel: '채팅방',
+        type: 'PICKUP_UPDATED',
+        label: '픽업 일정 확정',
+        description: '픽업 장소와 시간이 확정되거나 변경되면 알려줍니다.',
+        deepLinkTargetLabel: '파티 상세',
         webPushSupported: true,
         webPushEnabled: false,
       },
@@ -348,10 +348,10 @@ describe('Profile notification settings', () => {
     api.getMyReports.mockResolvedValue([]);
     api.getMyNotificationPreferences.mockResolvedValue([
       {
-        type: 'WAITING_PROMOTED',
-        label: '대기열 승격',
-        description: '대기열에서 참여로 승격되면 알려줍니다.',
-        deepLinkTargetLabel: '채팅방',
+        type: 'PICKUP_UPDATED',
+        label: '픽업 일정 확정',
+        description: '픽업 장소와 시간이 확정되거나 변경되면 알려줍니다.',
+        deepLinkTargetLabel: '파티 상세',
         webPushSupported: true,
         webPushEnabled: true,
       },

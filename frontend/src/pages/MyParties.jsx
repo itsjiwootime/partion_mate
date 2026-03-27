@@ -114,7 +114,7 @@ function MyParties() {
         delete next[partyId];
         return next;
       });
-      addToast('참여 또는 대기 내역을 취소했습니다.', 'success');
+      addToast('참여 내역을 취소했습니다.', 'success');
     } catch (e) {
       addToast(e.message || '취소 중 오류가 발생했습니다.', 'error');
     } finally {
@@ -168,8 +168,7 @@ function MyParties() {
 
       <div className="grid gap-3 md:grid-cols-2">
         {list.map((p) => {
-          const isWaiting = p.participationStatus === 'WAITING';
-          const canCancel = isWaiting || p.userRole === 'MEMBER';
+          const canCancel = p.userRole === 'MEMBER';
 
           return (
             <div
@@ -177,22 +176,18 @@ function MyParties() {
               className="card w-full rounded-xl p-4 text-left space-y-3"
             >
             <div className="flex items-center justify-between">
-              <div className="text-xs font-semibold text-mint-700">
-                {isWaiting ? '대기 중' : roleLabel[p.userRole] ?? p.userRole}
-              </div>
+              <div className="text-xs font-semibold text-mint-700">{roleLabel[p.userRole] ?? p.userRole}</div>
               <div
                 className={[
                   'badge',
-                  isWaiting
-                    ? 'bg-amber-100 text-amber-900'
-                    : p.status === 'CLOSED'
-                      ? 'bg-red-50 text-red-700'
+                  p.status === 'CLOSED'
+                    ? 'bg-red-50 text-red-700'
                     : p.status === 'FULL'
                       ? 'bg-ink/10 text-ink/50'
                       : 'bg-mint-500/15 text-mint-700',
                 ].join(' ')}
               >
-                {isWaiting ? `대기열 ${p.waitingPosition ?? '-'}번` : p.status === 'CLOSED' ? '종료' : p.status === 'FULL' ? '마감' : '모집 중'}
+                {p.status === 'CLOSED' ? '종료' : p.status === 'FULL' ? '마감' : '모집 중'}
               </div>
             </div>
             <h3 className="mt-1 text-lg font-semibold text-ink">{p.title}</h3>
@@ -202,22 +197,18 @@ function MyParties() {
               {p.currentQuantity ?? 0} / {p.totalQuantity}개
             </div>
             <div className="text-xs text-ink/60">
-              {isWaiting ? `대기 요청 수량 ${p.requestedQuantity ?? 0}개` : `내 참여 수량 ${p.requestedQuantity ?? 0}개`}
+              {`내 참여 수량 ${p.requestedQuantity ?? 0}개`}
             </div>
-            {!isWaiting && (
-              <>
-                <div className="text-xs text-ink/60">
-                  정산: {p.actualAmount != null ? `${p.actualAmount.toLocaleString()}원` : '확정 전'} · {p.paymentStatusLabel ?? '정산 대기'}
-                </div>
-                <div className="text-xs text-ink/60">
-                  거래 상태: {p.tradeStatusLabel ?? '거래 전'}
-                </div>
-                {p.pickupPlace && (
-                  <div className="text-xs text-ink/60">
-                    픽업: {p.pickupPlace} · {p.pickupTimeLabel ?? '미정'}
-                  </div>
-                )}
-              </>
+            <div className="text-xs text-ink/60">
+              정산: {p.actualAmount != null ? `${p.actualAmount.toLocaleString()}원` : '확정 전'} · {p.paymentStatusLabel ?? '정산 대기'}
+            </div>
+            <div className="text-xs text-ink/60">
+              거래 상태: {p.tradeStatusLabel ?? '거래 전'}
+            </div>
+            {p.pickupPlace && (
+              <div className="text-xs text-ink/60">
+                픽업: {p.pickupPlace} · {p.pickupTimeLabel ?? '미정'}
+              </div>
             )}
             <div className="text-xs text-ink/60">
               마감: {p.deadlineLabel ?? p.deadline ?? '미정'}
@@ -236,14 +227,12 @@ function MyParties() {
               >
                 상세 보기
               </button>
-              {!isWaiting && (
-                <button
-                  onClick={() => navigate(`/chat/${p.id}`)}
-                  className="btn-secondary flex-1"
-                >
-                  채팅
-                </button>
-              )}
+              <button
+                onClick={() => navigate(`/chat/${p.id}`)}
+                className="btn-secondary flex-1"
+              >
+                채팅
+              </button>
               {canCancel && p.status !== 'CLOSED' && (
                 <button
                   onClick={() => handleCancel(p.id)}

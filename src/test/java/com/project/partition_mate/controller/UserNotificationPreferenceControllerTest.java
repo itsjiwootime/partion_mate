@@ -70,24 +70,24 @@ class UserNotificationPreferenceControllerTest {
     void 내_알림설정을_조회한다() throws Exception {
         // given
         given(userService.getNotificationPreferences(currentUser))
-                .willReturn(List.of(NotificationPreferenceResponse.of(UserNotificationType.WAITING_PROMOTED, true)));
+                .willReturn(List.of(NotificationPreferenceResponse.of(UserNotificationType.PICKUP_UPDATED, true)));
 
         // when
         // then
         mockMvc.perform(get("/api/users/me/notification-preferences"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].type").value("WAITING_PROMOTED"))
-                .andExpect(jsonPath("$[0].label").value("대기열 승격"))
+                .andExpect(jsonPath("$[0].type").value("PICKUP_UPDATED"))
+                .andExpect(jsonPath("$[0].label").value("픽업 일정 확정"))
                 .andExpect(jsonPath("$[0].webPushSupported").value(true))
                 .andExpect(jsonPath("$[0].webPushEnabled").value(true))
-                .andExpect(jsonPath("$[0].deepLinkTargetLabel").value("채팅방"));
+                .andExpect(jsonPath("$[0].deepLinkTargetLabel").value("파티 상세"));
     }
 
     @Test
     void 내_알림설정을_수정한다() throws Exception {
         // given
         given(userService.updateNotificationPreferences(eq(currentUser), any()))
-                .willReturn(List.of(NotificationPreferenceResponse.of(UserNotificationType.WAITING_PROMOTED, false)));
+                .willReturn(List.of(NotificationPreferenceResponse.of(UserNotificationType.PICKUP_UPDATED, false)));
 
         // when
         // then
@@ -96,20 +96,20 @@ class UserNotificationPreferenceControllerTest {
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "preferences", List.of(
                                         Map.of(
-                                                "type", "WAITING_PROMOTED",
+                                                "type", "PICKUP_UPDATED",
                                                 "webPushEnabled", false
                                         )
                                 )
                         ))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].type").value("WAITING_PROMOTED"))
+                .andExpect(jsonPath("$[0].type").value("PICKUP_UPDATED"))
                 .andExpect(jsonPath("$[0].webPushEnabled").value(false));
 
         ArgumentCaptor<com.project.partition_mate.dto.UpdateNotificationPreferencesRequest> captor =
                 ArgumentCaptor.forClass(com.project.partition_mate.dto.UpdateNotificationPreferencesRequest.class);
         then(userService).should().updateNotificationPreferences(eq(currentUser), captor.capture());
         assertThat(captor.getValue().getPreferences()).hasSize(1);
-        assertThat(captor.getValue().getPreferences().getFirst().getType()).isEqualTo(UserNotificationType.WAITING_PROMOTED);
+        assertThat(captor.getValue().getPreferences().getFirst().getType()).isEqualTo(UserNotificationType.PICKUP_UPDATED);
         assertThat(captor.getValue().getPreferences().getFirst().isWebPushEnabled()).isFalse();
     }
 }

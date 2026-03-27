@@ -49,8 +49,8 @@ class UserNotificationPreferenceServiceIntegrationTest {
 
         // then
         assertThat(responses).hasSize(UserNotificationType.values().length);
-        assertThat(findByType(responses, UserNotificationType.WAITING_PROMOTED).isWebPushSupported()).isTrue();
-        assertThat(findByType(responses, UserNotificationType.WAITING_PROMOTED).isWebPushEnabled()).isTrue();
+        assertThat(findByType(responses, UserNotificationType.PICKUP_UPDATED).isWebPushSupported()).isTrue();
+        assertThat(findByType(responses, UserNotificationType.PICKUP_UPDATED).isWebPushEnabled()).isTrue();
         assertThat(findByType(responses, UserNotificationType.PARTY_UPDATED).isWebPushSupported()).isFalse();
         assertThat(findByType(responses, UserNotificationType.PARTY_UPDATED).isWebPushEnabled()).isFalse();
         assertThat(findByType(responses, UserNotificationType.PARTY_CLOSED).getDeepLinkTargetLabel()).isEqualTo("알림 내역");
@@ -61,7 +61,7 @@ class UserNotificationPreferenceServiceIntegrationTest {
         // given
         User user = userRepository.saveAndFlush(new User("member", "member@test.com", "pw", "서울", 37.5, 127.0));
         UpdateNotificationPreferencesRequest request = request(
-                preference(UserNotificationType.WAITING_PROMOTED, false),
+                preference(UserNotificationType.PICKUP_UPDATED, false),
                 preference(UserNotificationType.PARTY_CLOSED, false)
         );
 
@@ -71,10 +71,10 @@ class UserNotificationPreferenceServiceIntegrationTest {
         // then
         assertThat(userNotificationPreferenceRepository.findAll()).hasSize(2)
                 .extracting(UserNotificationPreference::getNotificationType)
-                .containsExactlyInAnyOrder(UserNotificationType.WAITING_PROMOTED, UserNotificationType.PARTY_CLOSED);
-        assertThat(findByType(responses, UserNotificationType.WAITING_PROMOTED).isWebPushEnabled()).isFalse();
+                .containsExactlyInAnyOrder(UserNotificationType.PICKUP_UPDATED, UserNotificationType.PARTY_CLOSED);
+        assertThat(findByType(responses, UserNotificationType.PICKUP_UPDATED).isWebPushEnabled()).isFalse();
         assertThat(findByType(responses, UserNotificationType.PARTY_CLOSED).isWebPushEnabled()).isFalse();
-        assertThat(userNotificationPreferenceService.isWebPushEnabled(user, UserNotificationType.WAITING_PROMOTED)).isFalse();
+        assertThat(userNotificationPreferenceService.isWebPushEnabled(user, UserNotificationType.PICKUP_UPDATED)).isFalse();
     }
 
     @Test

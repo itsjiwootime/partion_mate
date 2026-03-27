@@ -82,7 +82,6 @@ export function normalizePartyDetail(input) {
     storeName: input.storeName ?? '',
     openChatUrl: input.openChatUrl ?? '',
     participationStatus: input.participationStatus ?? null,
-    waitingPosition: input.waitingPosition ?? null,
     requestedQuantity: input.requestedQuantity ?? null,
     closeReason: input.closeReason ?? null,
     closedAt: input.closedAt ?? null,

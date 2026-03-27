@@ -12,9 +12,9 @@ public class NotificationDeepLinkResolver {
         }
 
         return switch (notificationType) {
-            case PARTY_JOIN_CONFIRMED, WAITING_PROMOTED -> "/chat/" + partyId;
+            case PARTY_JOIN_CONFIRMED -> "/chat/" + partyId;
             case PICKUP_UPDATED, PARTY_UPDATED -> "/parties/" + partyId;
-            case PARTY_CLOSED, WAITING_EXPIRED -> "/notifications";
+            case PARTY_CLOSED -> "/notifications";
         };
     }
 }

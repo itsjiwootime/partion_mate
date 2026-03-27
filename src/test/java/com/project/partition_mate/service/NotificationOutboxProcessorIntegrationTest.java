@@ -166,7 +166,7 @@ class NotificationOutboxProcessorIntegrationTest {
     }
 
     @Test
-    void 외부구독이_없으면_external_delivery를_생성하지_않는다() {
+    void 외부구독이_없으면_party_closed_web_push_delivery를_생성하지_않는다() {
         // given
         LocalDateTime now = LocalDateTime.now();
         Store store = storeRepository.saveAndFlush(createStore());
@@ -180,7 +180,7 @@ class NotificationOutboxProcessorIntegrationTest {
                 "https://open.kakao.com/o/test",
                 now.plusHours(2)
         ));
-        notificationOutboxService.publishWaitingPromoted(party, user, 1);
+        notificationOutboxService.publishPartyClosed(party, List.of(user.getId()));
         OutboxEvent event = outboxEventRepository.findAll().getFirst();
         LocalDateTime processingTime = event.getNextAttemptAt().plusSeconds(1);
 

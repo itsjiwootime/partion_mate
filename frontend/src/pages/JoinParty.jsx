@@ -35,7 +35,7 @@ function JoinParty() {
         if (isBlockedPartyInteractionMessage(err?.message)) {
           setBlockedFeedback({
             title: '차단 관계가 있어 이 파티에 참여할 수 없어요',
-            description: '상대 사용자와 차단 관계가 있으면 참여와 대기열 등록이 제한됩니다. 차단 해제는 프로필의 신뢰·안전 관리에서 할 수 있습니다.',
+            description: '상대 사용자와 차단 관계가 있으면 파티 참여가 제한됩니다. 차단 해제는 프로필의 신뢰·안전 관리에서 할 수 있습니다.',
           });
           return;
         }
@@ -65,8 +65,7 @@ function JoinParty() {
   const minimumShareUnit = Math.max(1, detail?.minimumShareUnit ?? 1);
   const perUnit = detail?.targetQuantity ? Math.round((detail.totalPrice || 0) / detail.targetQuantity) : 0;
   const expectedPrice = perUnit * (quantity || 0);
-  const queueOnly = Boolean(detail) && detail.status !== 'closed' && (detail.status === 'full' || remaining <= 0);
-  const isJoinClosed = !detail || detail.status === 'closed';
+  const isJoinClosed = !detail || detail.status === 'closed' || detail.status === 'full' || remaining <= 0;
   const maxRequestQuantity = targetQuantity > 0 ? targetQuantity : undefined;
 
   const handleSubmit = async (e) => {
@@ -77,7 +76,7 @@ function JoinParty() {
       return;
     }
     if (isJoinClosed) {
-      setError('이미 종료된 파티입니다.');
+      setError(!detail || detail.status === 'closed' ? '이미 종료된 파티입니다.' : '잔여 수량이 부족해 참여할 수 없습니다.');
       return;
     }
     const req = Math.max(minimumShareUnit, Math.min(quantity, maxRequestQuantity || quantity));
@@ -89,18 +88,13 @@ function JoinParty() {
       const message = result?.message ?? '참여가 완료되었습니다.';
       addToast(message, 'success');
 
-      if (result?.joinStatus === 'WAITING') {
-        navigate('/my-parties', { replace: true });
-        return;
-      }
-
       navigate(`/parties/${id}`, { replace: true });
     } catch (err) {
       const msg = err.message || '참여 중 오류가 발생했습니다.';
       if (isBlockedPartyInteractionMessage(msg)) {
         setBlockedFeedback({
           title: '차단 관계가 있어 이 파티에 참여할 수 없어요',
-          description: '이제 이 파티 참여와 대기열 등록은 제한됩니다. 차단 해제가 필요하면 프로필의 신뢰·안전 관리로 이동하세요.',
+          description: '이제 이 파티 참여는 제한됩니다. 차단 해제가 필요하면 프로필의 신뢰·안전 관리로 이동하세요.',
         });
         setError('');
         return;
@@ -124,7 +118,7 @@ function JoinParty() {
       </button>
 
       <div className="card-elevated p-5 space-y-3">
-        <h1 className="text-xl font-semibold text-ink">{queueOnly ? '대기열 등록' : '참여하기'}</h1>
+        <h1 className="text-xl font-semibold text-ink">참여하기</h1>
         {detail && (
           <div className="text-sm text-ink/70 space-y-1">
             <div className="font-semibold text-ink">{detail.title}</div>
@@ -135,9 +129,7 @@ function JoinParty() {
               </span>
             </div>
             <p className="text-xs text-ink/55">
-              {queueOnly
-                ? '지금 바로 참여할 수 없어도 대기열에 등록할 수 있습니다. 빈 자리가 생기면 자동 승격됩니다.'
-                : `최소 ${minimumShareUnit}${detail.unitLabel ?? '개'} 단위로 참여할 수 있습니다.`}
+              {`최소 ${minimumShareUnit}${detail.unitLabel ?? '개'} 단위로 참여할 수 있습니다.`}
             </p>
           </div>
         )}
@@ -170,7 +162,7 @@ function JoinParty() {
         {blockedFeedback ? (
           <SafetyFallbackCard
             title="참여 대신 차단 상태를 먼저 확인해 주세요"
-            description="차단 관계가 해제되기 전까지는 이 파티에 참여하거나 대기열에 등록할 수 없습니다."
+            description="차단 관계가 해제되기 전까지는 이 파티에 참여할 수 없습니다."
             action={
               <button
                 type="button"
@@ -199,7 +191,7 @@ function JoinParty() {
         ) : null}
         <form onSubmit={handleSubmit} className="space-y-3" hidden={Boolean(blockedFeedback)}>
           <label className="block text-sm text-ink/70">
-            {queueOnly ? '대기 요청 수량' : '요청 수량'}
+            요청 수량
             <input
               type="number"
               min={minimumShareUnit}
@@ -215,15 +207,18 @@ function JoinParty() {
             <span>예상 부담금</span>
             <span className="text-lg font-bold text-mint-700">{expectedPrice.toLocaleString()}원</span>
           </div>
-          {queueOnly && <p className="text-sm text-ink/60">잔여 수량이 부족해 즉시 참여 대신 대기열로 등록됩니다.</p>}
-          {isJoinClosed && <p className="text-sm text-ink/60">이미 종료된 파티입니다.</p>}
+          {isJoinClosed && (
+            <p className="text-sm text-ink/60">
+              {!detail || detail.status === 'closed' ? '이미 종료된 파티입니다.' : '잔여 수량이 부족해 참여할 수 없습니다.'}
+            </p>
+          )}
           {error && <p className="text-sm text-red-600">{error}</p>}
           <button
             type="submit"
             disabled={submitting || isJoinClosed}
             className="btn-primary w-full"
           >
-            {submitting ? '처리중...' : queueOnly ? '대기열 등록' : '참여 확정'}
+            {submitting ? '처리중...' : '참여 확정'}
           </button>
         </form>
       </div>

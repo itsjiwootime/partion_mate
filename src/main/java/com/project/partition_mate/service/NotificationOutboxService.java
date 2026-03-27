@@ -40,16 +40,6 @@ public class NotificationOutboxService {
         save("PARTY", party.getId(), OutboxEventType.PARTY_JOIN_CONFIRMED, payload);
     }
 
-    public void publishWaitingPromoted(Party party, User recipient, int requestedQuantity) {
-        ObjectNode payload = objectMapper.createObjectNode();
-        payload.put("partyId", party.getId());
-        payload.put("partyTitle", party.getTitle());
-        payload.put("recipientUserId", recipient.getId());
-        payload.put("requestedQuantity", requestedQuantity);
-
-        save("PARTY", party.getId(), OutboxEventType.WAITING_PROMOTED, payload);
-    }
-
     public void publishPickupUpdated(Party party, List<Long> joinedUserIds) {
         ObjectNode payload = objectMapper.createObjectNode();
         payload.put("partyId", party.getId());
@@ -63,25 +53,22 @@ public class NotificationOutboxService {
 
     public void publishPartyUpdated(Party party,
                                     List<Long> joinedUserIds,
-                                    List<Long> waitingUserIds,
                                     String changeSummary) {
         ObjectNode payload = objectMapper.createObjectNode();
         payload.put("partyId", party.getId());
         payload.put("partyTitle", party.getTitle());
         payload.put("changeSummary", changeSummary);
         payload.set("joinedUserIds", toLongArray(joinedUserIds));
-        payload.set("waitingUserIds", toLongArray(waitingUserIds));
 
         save("PARTY", party.getId(), OutboxEventType.PARTY_UPDATED, payload);
     }
 
-    public void publishPartyClosed(Party party, List<Long> joinedUserIds, List<Long> expiredWaitingUserIds) {
+    public void publishPartyClosed(Party party, List<Long> joinedUserIds) {
         ObjectNode payload = objectMapper.createObjectNode();
         payload.put("partyId", party.getId());
         payload.put("partyTitle", party.getTitle());
         payload.put("closeReason", party.getCloseReason() != null ? party.getCloseReason().name() : PartyCloseReason.DEADLINE_EXPIRED.name());
         payload.set("joinedUserIds", toLongArray(joinedUserIds));
-        payload.set("expiredWaitingUserIds", toLongArray(expiredWaitingUserIds));
 
         save("PARTY", party.getId(), OutboxEventType.PARTY_CLOSED, payload);
     }

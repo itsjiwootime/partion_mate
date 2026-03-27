@@ -4,42 +4,52 @@ import com.project.partition_mate.domain.Party;
 import com.project.partition_mate.domain.PartyMember;
 import com.project.partition_mate.domain.Store;
 import com.project.partition_mate.domain.User;
-import com.project.partition_mate.dto.JoinPartyRequest;
-import com.project.partition_mate.dto.JoinPartyResponse;
-import com.project.partition_mate.exception.BusinessException;
-import com.project.partition_mate.repository.OutboxEventRepository;
 import com.project.partition_mate.repository.PartyMemberRepository;
 import com.project.partition_mate.repository.PartyRepository;
 import com.project.partition_mate.repository.StoreRepository;
 import com.project.partition_mate.repository.UserRepository;
-import com.project.partition_mate.security.CustomUserDetails;
-import org.junit.jupiter.api.AfterEach;
+import com.project.partition_mate.security.JwtTokenProvider;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.boot.test.web.server.LocalServerPort;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest
-@ActiveProfiles("test")
-class PartyJoinLoadBenchmarkTest {
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@EnabledIfEnvironmentVariable(named = "RUN_MYSQL_HTTP_BENCHMARK", matches = "true")
+class PartyJoinHttpMysqlBenchmarkTest {
+
+    private static final String JOIN_REQUEST_BODY = """
+            {
+              "memberRequestQuantity": 1
+            }
+            """;
+
+    @LocalServerPort
+    private int port;
 
     @Autowired
-    private PartyService partyService;
+    private JwtTokenProvider jwtTokenProvider;
 
     @Autowired
     private PartyRepository partyRepository;
@@ -48,29 +58,16 @@ class PartyJoinLoadBenchmarkTest {
     private PartyMemberRepository partyMemberRepository;
 
     @Autowired
-    private OutboxEventRepository outboxEventRepository;
-
-    @Autowired
     private StoreRepository storeRepository;
 
     @Autowired
     private UserRepository userRepository;
 
-    @AfterEach
-    void tearDown() {
-        SecurityContextHolder.clearContext();
-        outboxEventRepository.deleteAll();
-        partyMemberRepository.deleteAll();
-        partyRepository.deleteAll();
-        storeRepository.deleteAll();
-        userRepository.deleteAll();
-    }
-
     @Test
-    void 동시_참여_300건_부하테스트_결과를_기록한다() throws Exception {
+    void HTTP와_MySQL_기준_동시_참여_300건_부하테스트_결과를_기록한다() throws Exception {
         // given
         Store store = storeRepository.saveAndFlush(new Store(
-                "부하테스트 지점",
+                "HTTP 벤치마크 지점",
                 "서울시",
                 LocalTime.of(9, 0),
                 LocalTime.of(22, 0),
@@ -78,47 +75,61 @@ class PartyJoinLoadBenchmarkTest {
                 127.0,
                 "02-0000-0000"
         ));
-        User host = userRepository.saveAndFlush(new User("benchmark-host", "benchmark-host@test.com", "pw", "서울", 37.5, 127.0));
-        setAuth(host);
-
-        Party party = new Party("부하 테스트 파티", "대용량 상품", 50000, store, 20, "https://open.kakao.com/o/test");
-        PartyMember hostMember = PartyMember.joinAsHost(party, host, 1);
-        party.acceptMember(hostMember);
+        User host = userRepository.saveAndFlush(new User("http-benchmark-host", "http-benchmark-host@test.com", "pw", "서울", 37.5, 127.0));
+        Party party = new Party("HTTP 부하 테스트 파티", "대용량 상품", 50000, store, 20, "https://open.kakao.com/o/test");
+        party.acceptMember(PartyMember.joinAsHost(party, host, 1));
         party = partyRepository.saveAndFlush(party);
-        Long partyId = party.getId();
-        SecurityContextHolder.clearContext();
 
         int requestCount = 300;
         ExecutorService executor = Executors.newFixedThreadPool(64);
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch doneLatch = new CountDownLatch(requestCount);
+        HttpClient httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(3))
+                .build();
         List<Long> latencies = Collections.synchronizedList(new ArrayList<>());
-        List<Exception> unexpectedErrors = Collections.synchronizedList(new ArrayList<>());
+        ConcurrentLinkedQueue<String> unexpectedResponses = new ConcurrentLinkedQueue<>();
         AtomicInteger joinedCount = new AtomicInteger();
         AtomicInteger insufficientRejectedCount = new AtomicInteger();
+        List<String> accessTokens = new ArrayList<>();
 
         for (int i = 0; i < requestCount; i++) {
-            User member = userRepository.saveAndFlush(new User("benchmark-user-" + i, "benchmark-user-" + i + "@test.com", "pw", "서울", 37.5, 127.0));
+            User member = userRepository.saveAndFlush(new User(
+                    "http-benchmark-user-" + i,
+                    "http-benchmark-user-" + i + "@test.com",
+                    "pw",
+                    "서울",
+                    37.5,
+                    127.0
+            ));
+            accessTokens.add(jwtTokenProvider.createToken(member.getId()));
+        }
+
+        URI joinUri = URI.create("http://localhost:" + port + "/party/" + party.getId() + "/join");
+        for (String accessToken : accessTokens) {
             executor.submit(() -> {
                 long startNanos = System.nanoTime();
                 try {
                     startLatch.await();
-                    setAuth(member);
-                    JoinPartyResponse response = partyService.joinParty(partyId, joinRequest(1));
-                    if (response.getJoinStatus() == com.project.partition_mate.domain.ParticipationStatus.JOINED) {
+                    HttpRequest request = HttpRequest.newBuilder(joinUri)
+                            .header("Authorization", "Bearer " + accessToken)
+                            .header("Content-Type", "application/json")
+                            .timeout(Duration.ofSeconds(10))
+                            .POST(HttpRequest.BodyPublishers.ofString(JOIN_REQUEST_BODY))
+                            .build();
+                    HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+                    if (response.statusCode() == 201 && response.body().contains("\"joinStatus\":\"JOINED\"")) {
                         joinedCount.incrementAndGet();
-                    }
-                } catch (BusinessException ex) {
-                    if (ex.getMessage().startsWith("남은 수량(")) {
+                    } else if (response.statusCode() == 409 && response.body().contains("남은 수량(")) {
                         insufficientRejectedCount.incrementAndGet();
                     } else {
-                        unexpectedErrors.add(ex);
+                        unexpectedResponses.add(response.statusCode() + " " + response.body());
                     }
                 } catch (Exception ex) {
-                    unexpectedErrors.add(ex);
+                    unexpectedResponses.add(ex.getClass().getSimpleName() + ": " + ex.getMessage());
                 } finally {
                     latencies.add(System.nanoTime() - startNanos);
-                    SecurityContextHolder.clearContext();
                     doneLatch.countDown();
                 }
             });
@@ -131,14 +142,17 @@ class PartyJoinLoadBenchmarkTest {
         executor.awaitTermination(10, TimeUnit.SECONDS);
 
         // then
-        Party reloaded = partyRepository.findById(partyId).orElseThrow();
+        Party reloaded = partyRepository.findById(party.getId()).orElseThrow();
         List<PartyMember> joinedMembers = partyMemberRepository.findByParty(reloaded);
         double averageMs = latencies.stream().mapToLong(Long::longValue).average().orElse(0.0) / 1_000_000.0;
         double p95Ms = percentileMillis(latencies, 0.95);
         double p99Ms = percentileMillis(latencies, 0.99);
+        Set<Long> joinedUserIds = joinedMembers.stream()
+                .map(member -> member.getUser().getId())
+                .collect(Collectors.toSet());
 
         System.out.printf(
-                "PARTY_JOIN_BENCHMARK joined=%d rejected=%d averageMs=%.2f p95Ms=%.2f p99Ms=%.2f%n",
+                "PARTY_JOIN_HTTP_MYSQL_BENCHMARK joined=%d rejected=%d averageMs=%.2f p95Ms=%.2f p99Ms=%.2f%n",
                 joinedCount.get(),
                 insufficientRejectedCount.get(),
                 averageMs,
@@ -146,16 +160,11 @@ class PartyJoinLoadBenchmarkTest {
                 p99Ms
         );
 
-        assertThat(unexpectedErrors).isEmpty();
+        assertThat(unexpectedResponses).isEmpty();
         assertThat(joinedCount.get()).isEqualTo(19);
         assertThat(insufficientRejectedCount.get()).isEqualTo(281);
         assertThat(joinedMembers.stream().mapToInt(PartyMember::getRequestedQuantity).sum()).isEqualTo(reloaded.getTotalQuantity());
-    }
-
-    private JoinPartyRequest joinRequest(int requestedQuantity) {
-        JoinPartyRequest request = new JoinPartyRequest();
-        ReflectionTestUtils.setField(request, "memberRequestQuantity", requestedQuantity);
-        return request;
+        assertThat(joinedUserIds).hasSize(joinedMembers.size());
     }
 
     private double percentileMillis(List<Long> latencies, double percentile) {
@@ -164,12 +173,5 @@ class PartyJoinLoadBenchmarkTest {
         int index = (int) Math.ceil(sorted.size() * percentile) - 1;
         index = Math.max(0, Math.min(index, sorted.size() - 1));
         return sorted.get(index) / 1_000_000.0;
-    }
-
-    private void setAuth(User user) {
-        CustomUserDetails principal = new CustomUserDetails(user);
-        UsernamePasswordAuthenticationToken authentication =
-                new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
-        SecurityContextHolder.getContext().setAuthentication(authentication);
     }
 }

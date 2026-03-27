@@ -24,8 +24,8 @@ describe('Notifications deep link', () => {
     api.getMyNotifications.mockResolvedValue([
       {
         id: 1,
-        type: 'WAITING_PROMOTED',
-        title: '대기열 승격',
+        type: 'PARTY_JOIN_CONFIRMED',
+        title: '참여 확정',
         message: '채팅방으로 이동해 안내를 확인하세요.',
         linkUrl: '/chat/7',
         createdAtLabel: '2026.03.18 14:00',

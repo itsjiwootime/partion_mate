@@ -5,12 +5,9 @@ import com.project.partition_mate.domain.PartyCloseReason;
 import com.project.partition_mate.domain.PartyMember;
 import com.project.partition_mate.domain.PartyStatus;
 import com.project.partition_mate.domain.User;
-import com.project.partition_mate.domain.WaitingQueueEntry;
-import com.project.partition_mate.domain.WaitingQueueStatus;
 import com.project.partition_mate.dto.PartyRealtimeTrigger;
 import com.project.partition_mate.repository.PartyMemberRepository;
 import com.project.partition_mate.repository.PartyRepository;
-import com.project.partition_mate.repository.WaitingQueueRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
@@ -23,7 +20,6 @@ public class PartyLifecycleService {
 
     private final PartyRepository partyRepository;
     private final PartyMemberRepository partyMemberRepository;
-    private final WaitingQueueRepository waitingQueueRepository;
     private final NotificationOutboxService notificationOutboxService;
     private final PartyRealtimeService partyRealtimeService;
     private final StoreQueryCacheSupport storeQueryCacheSupport;
@@ -32,7 +28,6 @@ public class PartyLifecycleService {
 
     public PartyLifecycleService(PartyRepository partyRepository,
                                  PartyMemberRepository partyMemberRepository,
-                                 WaitingQueueRepository waitingQueueRepository,
                                  NotificationOutboxService notificationOutboxService,
                                  PartyRealtimeService partyRealtimeService,
                                  StoreQueryCacheSupport storeQueryCacheSupport,
@@ -40,7 +35,6 @@ public class PartyLifecycleService {
                                  Clock clock) {
         this.partyRepository = partyRepository;
         this.partyMemberRepository = partyMemberRepository;
-        this.waitingQueueRepository = waitingQueueRepository;
         this.notificationOutboxService = notificationOutboxService;
         this.partyRealtimeService = partyRealtimeService;
         this.storeQueryCacheSupport = storeQueryCacheSupport;
@@ -101,18 +95,9 @@ public class PartyLifecycleService {
                 .filter(userId -> excludedUserId == null || !excludedUserId.equals(userId))
                 .toList();
 
-        List<WaitingQueueEntry> waitingEntries = waitingQueueRepository.findAllByPartyAndStatusOrderByQueuedAtAsc(
-                party,
-                WaitingQueueStatus.WAITING
-        );
-        List<Long> expiredWaitingUserIds = waitingEntries.stream()
-                .map(waitingEntry -> waitingEntry.getUser().getId())
-                .toList();
-
-        waitingEntries.forEach(WaitingQueueEntry::expire);
         party.close(now, closeReason);
 
-        notificationOutboxService.publishPartyClosed(party, joinedUserIds, expiredWaitingUserIds);
+        notificationOutboxService.publishPartyClosed(party, joinedUserIds);
         chatService.appendSystemMessage(party, chatMessage);
         storeQueryCacheSupport.evictStoreQueries(party.getStore().getId());
         partyRealtimeService.publishPartyUpdatedAfterCommit(party, PartyRealtimeTrigger.PARTY_CLOSED);

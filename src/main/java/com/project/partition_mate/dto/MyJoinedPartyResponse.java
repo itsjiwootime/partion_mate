@@ -29,7 +29,6 @@ public class MyJoinedPartyResponse {
     private final Integer actualTotalPrice;
     private final String openChatUrl;
     private final ParticipationStatus participationStatus;
-    private final Integer waitingPosition;
     private final Integer requestedQuantity;
     private final Integer expectedAmount;
     private final Integer actualAmount;
@@ -71,7 +70,6 @@ public class MyJoinedPartyResponse {
                                   Integer actualTotalPrice,
                                   String openChatUrl,
                                   ParticipationStatus participationStatus,
-                                  Integer waitingPosition,
                                   Integer requestedQuantity,
                                   Integer expectedAmount,
                                   Integer actualAmount,
@@ -106,7 +104,6 @@ public class MyJoinedPartyResponse {
         this.actualTotalPrice = actualTotalPrice;
         this.openChatUrl = openChatUrl;
         this.participationStatus = participationStatus;
-        this.waitingPosition = waitingPosition;
         this.requestedQuantity = requestedQuantity;
         this.expectedAmount = expectedAmount;
         this.actualAmount = actualAmount;
@@ -183,7 +180,6 @@ public class MyJoinedPartyResponse {
                 actualTotalPrice,
                 openChatUrl,
                 ParticipationStatus.JOINED,
-                null,
                 requestedQuantity,
                 expectedAmount,
                 actualAmount,
@@ -207,68 +203,4 @@ public class MyJoinedPartyResponse {
         );
     }
 
-    public static MyJoinedPartyResponse waiting(Long id,
-                                                String title,
-                                                String productName,
-                                                String storeName,
-                                                PartyStatus status,
-                                                Integer totalQuantity,
-                                                Integer currentQuantity,
-                                                Integer totalPrice,
-                                                Integer expectedTotalPrice,
-                                                Integer actualTotalPrice,
-                                                String openChatUrl,
-                                                Integer waitingPosition,
-                                                Integer requestedQuantity,
-                                                String unitLabel,
-                                                Integer minimumShareUnit,
-                                                StorageType storageType,
-                                                PackagingType packagingType,
-                                                boolean hostProvidesPackaging,
-                                                boolean onSiteSplit,
-                                                String guideNote,
-                                                String receiptNote,
-                                                String pickupPlace,
-                                                LocalDateTime pickupTime,
-                                                LocalDateTime deadline,
-                                                LocalDateTime closedAt,
-                                                PartyCloseReason closeReason) {
-        return new MyJoinedPartyResponse(
-                id,
-                title,
-                productName,
-                storeName,
-                status,
-                totalQuantity,
-                currentQuantity,
-                null,
-                null,
-                totalPrice,
-                expectedTotalPrice,
-                actualTotalPrice,
-                openChatUrl,
-                ParticipationStatus.WAITING,
-                waitingPosition,
-                requestedQuantity,
-                null,
-                null,
-                null,
-                null,
-                unitLabel,
-                minimumShareUnit,
-                storageType,
-                packagingType,
-                hostProvidesPackaging,
-                onSiteSplit,
-                guideNote,
-                receiptNote,
-                pickupPlace,
-                pickupTime,
-                false,
-                false,
-                deadline,
-                closedAt,
-                closeReason
-        );
-    }
 }

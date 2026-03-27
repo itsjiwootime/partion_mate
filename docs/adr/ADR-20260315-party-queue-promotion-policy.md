@@ -1,5 +1,8 @@
 # ADR-20260315 Party Queue Promotion Policy
 
+- 상태: Superseded
+- 대체 ADR: `ADR-20260327-remove-waiting-queue-join-fail-fast.md`
+
 ## 배경
 대기열을 도입하면 사용자가 취소하거나 이탈했을 때 누구를 어떤 순서로 승격시킬지 정책이 필요하다. 특히 앞선 대기자의 요청 수량이 현재 남은 수량보다 큰 경우 뒤 사람을 건너뛸지 여부는 서비스 경험과 구현 복잡도 모두에 영향을 준다.
 

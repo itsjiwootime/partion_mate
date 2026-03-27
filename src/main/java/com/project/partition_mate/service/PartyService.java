@@ -9,8 +9,6 @@ import com.project.partition_mate.domain.Review;
 import com.project.partition_mate.domain.Store;
 import com.project.partition_mate.domain.TradeStatus;
 import com.project.partition_mate.domain.User;
-import com.project.partition_mate.domain.WaitingQueueEntry;
-import com.project.partition_mate.domain.WaitingQueueStatus;
 import com.project.partition_mate.dto.ConfirmPickupScheduleRequest;
 import com.project.partition_mate.dto.ConfirmSettlementRequest;
 import com.project.partition_mate.dto.CreatePartyRequest;
@@ -31,7 +29,6 @@ import com.project.partition_mate.repository.PartyMemberRepository;
 import com.project.partition_mate.repository.PartyRepository;
 import com.project.partition_mate.repository.ReviewRepository;
 import com.project.partition_mate.repository.StoreRepository;
-import com.project.partition_mate.repository.WaitingQueueRepository;
 import com.project.partition_mate.security.CustomUserDetails;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
@@ -58,7 +55,6 @@ public class PartyService {
 
     private final PartyRepository partyRepository;
     private final PartyMemberRepository partyMemberRepository;
-    private final WaitingQueueRepository waitingQueueRepository;
     private final StoreRepository storeRepository;
     private final ReviewRepository reviewRepository;
     private final StoreQueryCacheSupport storeQueryCacheSupport;
@@ -141,7 +137,7 @@ public class PartyService {
             return joinImmediately(party, member, request.getMemberRequestQuantity(), noShowDecision);
         }
 
-        return joinWaitingQueue(party, member, request.getMemberRequestQuantity(), noShowDecision);
+        throw BusinessException.insufficientQuantity(party.getRemainingQuantity());
     }
 
     @Transactional
@@ -156,16 +152,7 @@ public class PartyService {
             return;
         }
 
-        WaitingQueueEntry waitingEntry = waitingQueueRepository.findFirstByPartyAndUserAndStatus(
-                party,
-                currentUser,
-                WaitingQueueStatus.WAITING
-        ).orElse(null);
-        if (waitingEntry == null) {
-            throw BusinessException.notJoinedOrWaiting();
-        }
-
-        waitingEntry.cancel();
+        throw BusinessException.notJoined();
     }
 
     @Transactional
@@ -219,18 +206,10 @@ public class PartyService {
         if (changeSummary.hasChanges()) {
             chatService.appendSystemMessage(party, "호스트가 파티 조건을 수정했습니다. " + changeSummary.message());
         }
-        if (previous.totalQuantity() < party.getTotalQuantity()) {
-            promoteWaitingMembers(party);
-        }
 
         storeQueryCacheSupport.evictStoreQueries(party.getStore().getId());
         if (changeSummary.hasChanges()) {
-            publishPartyUpdatedSync(
-                    party,
-                    joinedRecipientIds,
-                    resolveWaitingRecipientIds(party),
-                    changeSummary.message()
-            );
+            publishPartyUpdatedSync(party, joinedRecipientIds, changeSummary.message());
         }
         return buildPartyDetailResponse(party, currentUser);
     }
@@ -456,26 +435,6 @@ public class PartyService {
         return JoinPartyResponse.joined(party, createJoinWarning(noShowDecision));
     }
 
-    private JoinPartyResponse joinWaitingQueue(Party party,
-                                               User member,
-                                               Integer requestedQuantity,
-                                               NoShowPolicyService.Decision noShowDecision) {
-        WaitingQueueEntry waitingQueueEntry = WaitingQueueEntry.create(party, member, requestedQuantity);
-
-        try {
-            waitingQueueRepository.saveAndFlush(waitingQueueEntry);
-        } catch (DataIntegrityViolationException ex) {
-            throw BusinessException.alreadyWaiting();
-        }
-
-        int waitingPosition = waitingQueueRepository.findAllByPartyAndStatusOrderByQueuedAtAsc(
-                        party,
-                        WaitingQueueStatus.WAITING
-                ).size();
-
-        return JoinPartyResponse.waiting(party, waitingPosition, createJoinWarning(noShowDecision));
-    }
-
     private void cancelJoinedMember(Party party, PartyMember joinedMember) {
         if (joinedMember.isHost()) {
             throw BusinessException.hostCannotCancel();
@@ -485,79 +444,13 @@ public class PartyService {
         partyMemberRepository.delete(joinedMember);
         partyMemberRepository.flush();
         chatService.appendSystemMessage(party, joinedMember.getUser().getUsername() + "님이 파티에서 나갔습니다.");
-        boolean promoted = promoteWaitingMembers(party);
         storeQueryCacheSupport.evictStoreQueries(party.getStore().getId());
-        if (!promoted) {
-            partyRealtimeService.publishPartyUpdatedAfterCommit(party, PartyRealtimeTrigger.MEMBER_CANCELLED);
-        }
-    }
-
-    private boolean promoteWaitingMembers(Party party) {
-        List<WaitingQueueEntry> waitingEntries = waitingQueueRepository.findAllByPartyAndStatusOrderByQueuedAtAsc(
-                party,
-                WaitingQueueStatus.WAITING
-        );
-
-        boolean promoted = false;
-        for (WaitingQueueEntry waitingEntry : waitingEntries) {
-            if (shouldExpireWaitingEntryDuringPromotion(party, waitingEntry)) {
-                waitingEntry.expire();
-                continue;
-            }
-
-            if (party.getRemainingQuantity() < waitingEntry.getRequestedQuantity()) {
-                break;
-            }
-
-            PartyMember promotedMember = PartyMember.joinAsMember(
-                    party,
-                    waitingEntry.getUser(),
-                    waitingEntry.getRequestedQuantity()
-            );
-
-            party.acceptMember(promotedMember);
-            partyMemberRepository.saveAndFlush(promotedMember);
-            waitingEntry.promote();
-            notificationOutboxService.publishWaitingPromoted(party, waitingEntry.getUser(), waitingEntry.getRequestedQuantity());
-            chatService.appendSystemMessage(
-                    party,
-                    waitingEntry.getUser().getUsername() + "님이 대기열에서 채팅방 참여 상태로 승격되었습니다."
-            );
-            promoted = true;
-
-            if (!party.isRecruiting()) {
-                break;
-            }
-        }
-
-        if (promoted) {
-            partyRealtimeService.publishPartyUpdatedAfterCommit(party, PartyRealtimeTrigger.WAITING_PROMOTED);
-        }
-
-        return promoted;
-    }
-
-    private boolean shouldExpireWaitingEntryDuringPromotion(Party party, WaitingQueueEntry waitingEntry) {
-        if (isBelowMinimumShareUnit(party, waitingEntry.getRequestedQuantity())) {
-            return true;
-        }
-
-        User waitingUser = waitingEntry.getUser();
-        if (userBlockPolicyService.hasBlockedParticipantInParty(party, waitingUser.getId())) {
-            return true;
-        }
-
-        NoShowPolicyService.Decision noShowDecision = noShowPolicyService.evaluate(waitingUser);
-        return noShowDecision.shouldBlock();
+        partyRealtimeService.publishPartyUpdatedAfterCommit(party, PartyRealtimeTrigger.MEMBER_CANCELLED);
     }
 
     private void validateNotAlreadyJoinedOrWaiting(Party party, User member) {
         if (partyMemberRepository.existsByPartyAndUser(party, member)) {
             throw BusinessException.alreadyJoined();
-        }
-
-        if (waitingQueueRepository.existsByPartyAndUserAndStatus(party, member, WaitingQueueStatus.WAITING)) {
-            throw BusinessException.alreadyWaiting();
         }
     }
 
@@ -653,10 +546,9 @@ public class PartyService {
 
     private void publishPartyUpdatedSync(Party party,
                                          List<Long> joinedRecipientIds,
-                                         List<Long> waitingRecipientIds,
                                          String changeSummary) {
-        if (!joinedRecipientIds.isEmpty() || !waitingRecipientIds.isEmpty()) {
-            notificationOutboxService.publishPartyUpdated(party, joinedRecipientIds, waitingRecipientIds, changeSummary);
+        if (!joinedRecipientIds.isEmpty()) {
+            notificationOutboxService.publishPartyUpdated(party, joinedRecipientIds, changeSummary);
         }
         partyRealtimeService.publishPartyUpdatedAfterCommit(party, PartyRealtimeTrigger.PARTY_UPDATED);
     }
@@ -670,13 +562,6 @@ public class PartyService {
                 .toList();
     }
 
-    private List<Long> resolveWaitingRecipientIds(Party party) {
-        return waitingQueueRepository.findAllByPartyAndStatusOrderByQueuedAtAsc(party, WaitingQueueStatus.WAITING).stream()
-                .map(WaitingQueueEntry::getUser)
-                .map(User::getId)
-                .toList();
-    }
-
     private LocalDateTime resolveDeadline(LocalDateTime requestedDeadline) {
         if (requestedDeadline != null) {
             return requestedDeadline;
@@ -685,19 +570,9 @@ public class PartyService {
     }
 
     private PartyDetailResponse buildPartyDetailResponse(Party party, User currentUser) {
-        PartyMember joinedMember = null;
-        WaitingQueueEntry waitingEntry = null;
-
-        if (currentUser != null) {
-            joinedMember = partyMemberRepository.findByPartyAndUser(party, currentUser).orElse(null);
-            if (joinedMember == null) {
-                waitingEntry = waitingQueueRepository.findFirstByPartyAndUserAndStatus(
-                        party,
-                        currentUser,
-                        WaitingQueueStatus.WAITING
-                ).orElse(null);
-            }
-        }
+        PartyMember joinedMember = currentUser != null
+                ? partyMemberRepository.findByPartyAndUser(party, currentUser).orElse(null)
+                : null;
 
         List<PartyMember> joinedMembers = getJoinedMembers(party);
         PartyMember hostMember = findHostMember(party);
@@ -726,7 +601,6 @@ public class PartyService {
                 .toList()
                 : List.of();
 
-        Integer waitingPosition = waitingEntry != null ? resolveWaitingPosition(waitingEntry) : null;
         boolean canReviewHost = joinedMember != null
                 && joinedMember.isMember()
                 && joinedMember.isReviewEligible()
@@ -741,9 +615,8 @@ public class PartyService {
                 party,
                 joinedMember != null ? joinedMember.getId() : null,
                 joinedMember != null ? joinedMember.getRole() : null,
-                joinedMember != null ? ParticipationStatus.JOINED : waitingEntry != null ? ParticipationStatus.WAITING : null,
-                waitingPosition,
-                joinedMember != null ? joinedMember.getRequestedQuantity() : waitingEntry != null ? waitingEntry.getRequestedQuantity() : null,
+                joinedMember != null ? ParticipationStatus.JOINED : null,
+                joinedMember != null ? joinedMember.getRequestedQuantity() : null,
                 joinedMember != null ? resolveExpectedAmount(joinedMember, previewExpectedAmounts) : null,
                 joinedMember != null ? joinedMember.getActualAmount() : null,
                 joinedMember != null ? joinedMember.getPaymentStatus() : null,
@@ -819,21 +692,6 @@ public class PartyService {
             return partyMember.getExpectedAmount();
         }
         return previewExpectedAmounts.get(partyMember.getId());
-    }
-
-    private int resolveWaitingPosition(WaitingQueueEntry waitingEntry) {
-        List<WaitingQueueEntry> waitingEntries = waitingQueueRepository.findAllByPartyAndStatusOrderByQueuedAtAsc(
-                waitingEntry.getParty(),
-                WaitingQueueStatus.WAITING
-        );
-        int waitingPosition = 1;
-        for (WaitingQueueEntry currentEntry : waitingEntries) {
-            if (currentEntry.getId().equals(waitingEntry.getId())) {
-                return waitingPosition;
-            }
-            waitingPosition++;
-        }
-        return waitingPosition;
     }
 
     private Map<Long, Integer> allocateAmounts(Integer totalAmount, List<PartyMember> members) {

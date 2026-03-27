@@ -49,9 +49,7 @@ public class PartyController {
     public ResponseEntity<JoinPartyResponse> joinParty(@PathVariable Long id,
                                                        @RequestBody @Valid JoinPartyRequest joinPartyRequest) {
         JoinPartyResponse joinPartyResponse = partyService.joinParty(id, joinPartyRequest);
-
-        HttpStatus status = joinPartyResponse.isWaiting() ? HttpStatus.ACCEPTED : HttpStatus.CREATED;
-        return ResponseEntity.status(status).body(joinPartyResponse);
+        return ResponseEntity.status(HttpStatus.CREATED).body(joinPartyResponse);
     }
 
     @PostMapping("/{id}/close")

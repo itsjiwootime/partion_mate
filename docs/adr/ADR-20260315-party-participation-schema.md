@@ -1,5 +1,8 @@
 # ADR-20260315 Party Participation Schema
 
+- 상태: Superseded
+- 대체 ADR: `ADR-20260327-remove-waiting-queue-join-fail-fast.md`
+
 ## 배경
 파티 참여자는 `(party_id, user_id)` 기준으로 한 번만 저장되어야 하고, 정원 초과 시 대기열로 전환할 다음 카드들을 위해 별도 대기열 저장 구조가 필요했다. 동시에 대기열 이력은 향후 승격, 만료, 취소 상태 전이를 표현할 수 있어야 했다.
 

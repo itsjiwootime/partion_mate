@@ -1,9 +1,10 @@
 # ADR-20260317-waiting-queue-ux-exposure
 
 - 날짜: 2026-03-17
-- 상태: Accepted
+- 상태: Superseded
 - 관련 작업: `E9-1`
 - 관련 파일: `frontend/src/pages/PartyDetail.jsx`, `frontend/src/pages/JoinParty.jsx`
+- 대체 ADR: `ADR-20260327-remove-waiting-queue-join-fail-fast.md`
 
 ## 배경
 - 백엔드는 모집 완료 상태에서 즉시 참여 대신 대기열 등록을 지원하지만, 프론트는 `FULL` 또는 잔여 수량 0인 파티에서 참여 CTA를 숨기고 있었다.

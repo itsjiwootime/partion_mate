@@ -85,7 +85,6 @@ public class NotificationOutboxProcessor {
 
         switch (event.getEventType()) {
             case PARTY_JOIN_CONFIRMED -> processJoinConfirmed(event, payload, now);
-            case WAITING_PROMOTED -> processWaitingPromoted(event, payload, now);
             case PICKUP_UPDATED -> processPickupUpdated(event, payload, now);
             case PARTY_UPDATED -> processPartyUpdated(event, payload, now);
             case PARTY_CLOSED -> processPartyClosed(event, payload, now);
@@ -108,24 +107,6 @@ public class NotificationOutboxProcessor {
                 "파티 참여가 완료되었습니다",
                 partyTitle + " 파티 참여가 확정되었습니다.",
                 notificationDeepLinkResolver.resolve(UserNotificationType.PARTY_JOIN_CONFIRMED, partyId),
-                now
-        );
-    }
-
-    private void processWaitingPromoted(OutboxEvent event, JsonNode payload, LocalDateTime now) {
-        Long partyId = requireLong(payload, "partyId");
-        Long recipientUserId = requireLong(payload, "recipientUserId");
-        String partyTitle = requireText(payload, "partyTitle");
-        int requestedQuantity = payload.path("requestedQuantity").asInt(0);
-
-        User recipient = loadUser(recipientUserId);
-        saveNotification(
-                event,
-                recipient,
-                UserNotificationType.WAITING_PROMOTED,
-                "대기열에서 승격되었습니다",
-                partyTitle + " 파티에서 " + requestedQuantity + "개 요청이 참여로 승격되었습니다.",
-                notificationDeepLinkResolver.resolve(UserNotificationType.WAITING_PROMOTED, partyId),
                 now
         );
     }
@@ -155,7 +136,6 @@ public class NotificationOutboxProcessor {
         String partyTitle = requireText(payload, "partyTitle");
         String changeSummary = requireText(payload, "changeSummary");
         List<Long> joinedUserIds = readLongArray(payload.path("joinedUserIds"));
-        List<Long> waitingUserIds = readLongArray(payload.path("waitingUserIds"));
 
         for (Long userId : joinedUserIds) {
             saveNotification(
@@ -168,18 +148,6 @@ public class NotificationOutboxProcessor {
                     now
             );
         }
-
-        for (Long userId : waitingUserIds) {
-            saveNotification(
-                    event,
-                    loadUser(userId),
-                    UserNotificationType.PARTY_UPDATED,
-                    "대기 중인 파티 조건이 변경되었습니다",
-                    partyTitle + " 파티 조건이 변경되었습니다. " + changeSummary,
-                    notificationDeepLinkResolver.resolve(UserNotificationType.PARTY_UPDATED, partyId),
-                    now
-            );
-        }
     }
 
     private void processPartyClosed(OutboxEvent event, JsonNode payload, LocalDateTime now) {
@@ -187,7 +155,6 @@ public class NotificationOutboxProcessor {
         String partyTitle = requireText(payload, "partyTitle");
         PartyCloseReason closeReason = resolveCloseReason(payload.path("closeReason").asText(null));
         List<Long> joinedUserIds = readLongArray(payload.path("joinedUserIds"));
-        List<Long> expiredWaitingUserIds = readLongArray(payload.path("expiredWaitingUserIds"));
 
         for (Long userId : joinedUserIds) {
             saveNotification(
@@ -199,20 +166,6 @@ public class NotificationOutboxProcessor {
                             ? partyTitle + " 파티를 호스트가 취소했습니다."
                             : partyTitle + " 파티가 마감 시간에 도달해 종료되었습니다.",
                     notificationDeepLinkResolver.resolve(UserNotificationType.PARTY_CLOSED, partyId),
-                    now
-            );
-        }
-
-        for (Long userId : expiredWaitingUserIds) {
-            saveNotification(
-                    event,
-                    loadUser(userId),
-                    UserNotificationType.WAITING_EXPIRED,
-                    "대기열이 종료되었습니다",
-                    closeReason == PartyCloseReason.HOST_CANCELED
-                            ? partyTitle + " 파티를 호스트가 취소해 대기열이 종료되었습니다."
-                            : partyTitle + " 파티가 종료되어 대기열이 만료되었습니다.",
-                    notificationDeepLinkResolver.resolve(UserNotificationType.WAITING_EXPIRED, partyId),
                     now
             );
         }

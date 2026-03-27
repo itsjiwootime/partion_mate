@@ -152,12 +152,10 @@ function PartyDetail() {
     return Math.max(0, (detail.targetQuantity ?? 0) - (detail.currentQuantity ?? 0));
   }, [detail]);
 
-  const isWaitingParty = detail?.participationStatus === 'WAITING';
   const isClosedParty = detail?.status === 'closed';
   const isHost = detail?.userRole === 'LEADER';
   const isJoinedMember = detail?.userRole === 'MEMBER';
   const canJoinNow = !detail?.participationStatus && !isClosedParty && detail?.status !== 'full' && remaining > 0;
-  const canJoinWaitingList = !detail?.participationStatus && !isClosedParty && !canJoinNow;
   const hostUserId = detail?.hostTrust?.userId ?? null;
   const hostUsername = detail?.hostTrust?.username ?? '호스트';
   const canManageHostSafety = isAuthed && hostUserId != null && hostUsername !== userName;
@@ -1009,41 +1007,23 @@ function PartyDetail() {
             참여하기
           </button>
         )}
-        {canJoinWaitingList && (
-          <button
-            onClick={() => navigate(`/parties/${detail.partyId}/join`, { state: { detail } })}
-            className="btn-secondary w-full"
-          >
-            대기열 등록하기
-          </button>
-        )}
-        {!detail.participationStatus && !canJoinNow && !canJoinWaitingList && (
+        {!detail.participationStatus && !canJoinNow && (
           <div className="rounded-xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink/70">
-            {isClosedParty ? '이미 종료된 파티입니다.' : '모집이 마감된 파티입니다.'}
+            {isClosedParty ? '이미 종료된 파티입니다.' : '잔여 수량이 부족해 참여할 수 없습니다.'}
           </div>
         )}
-        {canJoinWaitingList && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            현재 잔여 수량이 부족합니다. 지금 등록하면 빈 자리가 생길 때 대기열 순서대로 승격됩니다.
-          </div>
-        )}
-        {detail.userRole && !isWaitingParty && (
+        {detail.userRole && (
           <div className="rounded-xl border border-mint-100 bg-white px-4 py-3 text-sm text-ink/70">
             이미 참여 중인 파티입니다.
           </div>
         )}
-        {detail.userRole && !isWaitingParty && (
+        {detail.userRole && (
           <button
             onClick={() => navigate(`/chat/${detail.partyId}`)}
             className="btn-secondary w-full"
           >
             채팅방 이동
           </button>
-        )}
-        {isWaitingParty && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            대기열 {detail.waitingPosition ?? '-'}번입니다. 빈 자리가 생기면 자동으로 승격됩니다.
-          </div>
         )}
       </div>
 
